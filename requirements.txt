@@ -1,0 +1,9 @@
+# Hi, you're looking at requirements!! Notice that this file is
+# in alphabetical order and almost all versions are pinned; also
+# subdeps are indented under the main dep and each dep has a
+# corresponding wheel available; now go and do likewise.
+
+--index-url https://pypi.tubularlabs.net/
+--use-wheel
+
+pyspark==1.6.0
