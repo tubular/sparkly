@@ -1,0 +1,1 @@
+DROP DATABASE sparkle_test;
