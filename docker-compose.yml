@@ -1,0 +1,23 @@
+version: '2'
+services:
+  sparkle:
+    build: .
+    depends_on:
+      - elastic
+      - cassandra
+      - mysql
+    links:
+      - elastic
+      - cassandra
+      - mysql
+
+  elastic:
+    image: elasticsearch:1.7.0
+  cassandra:
+    image: cassandra:2.1.13
+  mysql:
+    image: mysql
+    environment:
+      MYSQL_DATABASE: sparkle_test
+      MYSQL_USER: root
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"

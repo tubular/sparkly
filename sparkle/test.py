@@ -1,4 +1,6 @@
+import os
 from unittest import TestCase
+import shutil
 
 from sparkle import SparkleContext
 
@@ -15,3 +17,13 @@ class SparkleTest(TestCase):
     def tearDownClass(cls):
         cls.hc._sc.stop()
         super(SparkleTest, cls).tearDownClass()
+
+        try:
+            shutil.rmtree('metastore_db')
+        except OSError:
+            pass
+
+        try:
+            os.unlink('derby.log')
+        except OSError:
+            pass

@@ -14,6 +14,10 @@ publish:
 	curl -XPOST -u c4urself:4d15bedea98f2887b37fad3fb5f8627a http://ci.tubularlabs.net/job/pypi-reindex/build
 
 test:
-	echo "I promise to do this later"
+	docker-compose build sparkle
+	docker-compose run sparkle make run_test
+
+run_test:
+	tox tests
 
 .PHONY: build
