@@ -1,5 +1,5 @@
 import logging
-
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -59,3 +59,24 @@ def config_reader_writer(reader_or_writer, options):
             reader_or_writer = reader_or_writer.option(key, value)
 
     return reader_or_writer
+
+
+def absolute_path(file_path, *rel_path):
+    """Returns absolute path to file.
+
+    Usage:
+        >>> absolute_path('/my/current/dir/x.txt', 'relative', 'path')
+        '/my/current/dir/relative/path'
+
+        >>> import os
+        >>> absolute_path('x.txt', 'relative/path') == os.getcwd() + '/relative/path'
+        True
+
+    Args:
+        file_path (str): file
+        rel_path (list[str]): path parts
+
+    Returns:
+        str
+    """
+    return os.path.join(os.path.dirname(os.path.realpath(file_path)), *rel_path)

@@ -130,6 +130,29 @@ hc = sparkle.SparkleContext()
 hc.read.json('/path/to/the/json/file')
 ```
 
+#### Mysql database
+
+```
+
+import sparkle
+df = sparkle.read.mysql(hc, 'localhost', 'database', 'table',
+                        options={'user': 'root', 'password': ''})
+
+```
+
+
+#### Generic reader
+
+```
+
+import sparkle
+
+mysql_df = sparkle.read.by_url('mysql://localhost/db_name/table_name?user=root&password=pass')
+cassandra_df = sparkle.read.by_url('cassandra://localhost/key_space/table_name?consistency=ONE')
+elastic_df = sparkle.read.by_url('elastic://localhost/index_name/type_name?q=name:*Johhny*')
+
+```
+
 ### Utils for testing
 
 ```
