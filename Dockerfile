@@ -9,7 +9,8 @@ RUN pip3 install -r requirements.txt
 RUN pip3 install tox==2.3.1
 
 # cqlsh
-RUN tar -xzf tests/integration/resources/dsc-cassandra-2.1.13-bin.tar.gz
+RUN curl -O https://downloads.datastax.com/community/dsc-cassandra-2.1.13-bin.tar.gz
+RUN tar -xzf dsc-cassandra-2.1.13-bin.tar.gz
 ENV PATH $PATH:/opt/sparkle/dsc-cassandra-2.1.13/bin/
 
 # mysql
