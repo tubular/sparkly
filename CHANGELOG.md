@@ -1,3 +1,8 @@
+## 0.0.3
+* Fix build to include resources
+* Remove cassandra gz from repo
+* Fix cassandra write consistency parameter
+
 ## 0.0.2
 * Generic reader from_url
 * Integration testing

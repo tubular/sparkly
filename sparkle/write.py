@@ -18,7 +18,7 @@ def cassandra(df, host, keyspace, table, consistency='QUORUM', mode='append', op
 
     writer = config_reader_writer(df.write.format('org.apache.spark.sql.cassandra'), {
         'spark_cassandra_connection_host': host,
-        'spark_cassandra_input_consistency_level': consistency,
+        'spark_cassandra_output_consistency_level': consistency,
         'keyspace': keyspace,
         'table': table,
     })
