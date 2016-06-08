@@ -1,3 +1,6 @@
+## 0.1.3
+* Read cassandra parallelism parameter
+
 ## 0.1.2
 * Fix build to include resources
 * Remove cassandra gz from repo
