@@ -6,7 +6,6 @@ from unittest import TestCase
 from sparkle import SparkleContext, absolute_path
 from sparkle.read import by_url, elastic, csv, cassandra, mysql
 from sparkle.test import SparkleTest
-from contextlib import contextmanager
 
 
 class _TestContext(SparkleContext):
@@ -48,6 +47,16 @@ class TestTestByUrl(TestCase):
         by_url(hc, 'mysql://localhost/test_db/test_table?user=root&password=pass')
         mysql.assert_called_with(hc, 'localhost', 'test_db', 'test_table',
                                  options={'user': 'root', 'password': 'pass'})
+
+    @mock.patch('sparkle.read.cassandra')
+    def test_cassandra_parallelism(self, cassandra):
+        hc = mock.Mock()
+        by_url(hc, 'cassandra://localhost/test_cf/test_table?'
+                   'consistency=ONE&name=john&parallelism=4')
+        cassandra.assert_called_with(hc, 'localhost', 'test_cf', 'test_table',
+                                     consistency='ONE',
+                                     parallelism=4,
+                                     options={'name': 'john'})
 
 
 class TestReadCsv(SparkleTest):
@@ -103,27 +112,17 @@ class TestReadCassandra(SparkleTest):
         super(TestReadCassandra, self).tearDown()
         self._clear_data()
 
-    @contextmanager
-    def _py2(self):
-        # cqlsh needs python to point to python2
-        path = os.environ['PATH']
-        os.putenv('PATH', '/usr/bin/:{}'.format(path))
-        yield
-        os.putenv('PATH', path)
-
     def _setup_data(self):
-        with self._py2():
-            os.system('cqlsh -f {} {}'.format(
-                absolute_path(__file__, 'resources', 'cassandra_setup.cql'),
-                self.c_host))
+        os.system('source venv2/bin/activate && cqlsh -f {} {}'.format(
+            absolute_path(__file__, 'resources', 'cassandra_setup.cql'),
+            self.c_host))
 
     def _clear_data(self):
-        with self._py2():
-            os.system('cqlsh -f {} {}'.format(
-                absolute_path(__file__,
-                              'resources',
-                              'cassandra_teardown.cql'),
-                self.c_host))
+        os.system('source venv2/bin/activate && cqlsh -f {} {}'.format(
+            absolute_path(__file__,
+                          'resources',
+                          'cassandra_teardown.cql'),
+            self.c_host))
 
     def test_read_cassandra(self):
         reader = cassandra(self.hc, self.c_host, 'sparkle_test', 'test', consistency='ONE')

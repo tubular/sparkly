@@ -9,9 +9,7 @@ RUN pip3 install -r requirements.txt
 RUN pip3 install tox==2.3.1
 
 # cqlsh
-RUN curl -O https://downloads.datastax.com/community/dsc-cassandra-2.1.13-bin.tar.gz
-RUN tar -xzf dsc-cassandra-2.1.13-bin.tar.gz
-ENV PATH $PATH:/opt/sparkle/dsc-cassandra-2.1.13/bin/
+RUN yum install -y python-virtualenv && virtualenv -p python2 venv2 && venv2/bin/pip install cassandra-driver==2.7.2, cqlsh==4.1.1
 
 # mysql
 RUN yum install -y mysql

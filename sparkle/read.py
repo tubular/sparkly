@@ -14,6 +14,7 @@ def by_url(hc, url):
     Args:
         hc (sparkle.SparkleContext): Spark Context.
         url (str): describes data source.
+        parallelism (int): desired level of parallelism.
 
     Returns:
         pyspark.sql.DataFrame
@@ -30,6 +31,10 @@ def by_url(hc, url):
         consistency = options.pop('consistency', None)
         if consistency:
             kwargs['consistency'] = consistency
+
+        parallelism = options.pop('parallelism', None)
+        if parallelism:
+            kwargs['parallelism'] = int(parallelism)
 
         return cassandra(hc, host, keyspace, table, **kwargs)
 
@@ -57,7 +62,7 @@ def by_url(hc, url):
         raise NotImplementedError('{} is not supproted'.format(inp.scheme))
 
 
-def cassandra(hc, host, keyspace, table, consistency='QUORUM', options=None):
+def cassandra(hc, host, keyspace, table, consistency='QUORUM', parallelism=None, options=None):
     """Create dataframe from the cassandra table.
 
     Args:
@@ -66,6 +71,7 @@ def cassandra(hc, host, keyspace, table, consistency='QUORUM', options=None):
         keyspace (str)
         table (str)
         consistency (str)
+        parallelism (str): desired level of parallelism
         options (dict[str,str]): Additional options for `org.apache.spark.sql.cassandra` format.
 
     Returns:
@@ -80,7 +86,12 @@ def cassandra(hc, host, keyspace, table, consistency='QUORUM', options=None):
         'table': table,
     })
 
-    return config_reader_writer(reader, options).load()
+    reader = config_reader_writer(reader, options).load()
+
+    if parallelism:
+        reader = reader.coalesce(parallelism)
+
+    return reader
 
 
 def csv(hc, path, custom_schema=None, header=True, options=None):
