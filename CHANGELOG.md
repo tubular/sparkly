@@ -1,3 +1,6 @@
+## 0.1.4
+* Read elastic parallelism parameter
+
 ## 0.1.3
 * Read cassandra parallelism parameter
 
