@@ -39,6 +39,7 @@ class TestTestByUrl(TestCase):
         elastic.assert_called_with(hc, 'localhost', 'test_index', 'test_type',
                                    query='?q=name:*Johnny*',
                                    fields=['name', 'surname'],
+                                   parallelism=None,
                                    options={'name': 'Johnny'})
 
     @mock.patch('sparkle.read.mysql')
@@ -57,6 +58,17 @@ class TestTestByUrl(TestCase):
                                      consistency='ONE',
                                      parallelism=4,
                                      options={'name': 'john'})
+
+    @mock.patch('sparkle.read.elastic')
+    def test_elastic_parallelism(self, elastic):
+        hc = mock.Mock()
+        by_url(hc, 'elastic://localhost/test_index/test_type?'
+                   'q=name:*Johnny*&fields=name,surname&name=Johnny&parallelism=4')
+        elastic.assert_called_with(hc, 'localhost', 'test_index', 'test_type',
+                                   query='?q=name:*Johnny*',
+                                   fields=['name', 'surname'],
+                                   parallelism=4,
+                                   options={'name': 'Johnny'})
 
 
 class TestReadCsv(SparkleTest):

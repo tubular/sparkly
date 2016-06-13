@@ -47,9 +47,14 @@ def by_url(hc, url):
         if fields:
             fields = fields.split(',')
 
+        parallelism = options.pop('parallelism', None)
+        if parallelism:
+            parallelism = int(parallelism)
+
         es_index, es_type = inp.path.lstrip('/').split('/', 1)
         return elastic(hc, host, es_index, es_type,
-                       query=query, fields=fields, options=options)
+                       query=query, fields=fields,
+                       parallelism=parallelism, options=options)
 
     elif inp.scheme == 'csv':
         return csv(hc, inp.path, options=options)
@@ -120,7 +125,7 @@ def csv(hc, path, custom_schema=None, header=True, options=None):
     return config_reader_writer(reader, options).load(path)
 
 
-def elastic(hc, host, es_index, es_type, query='', fields=None, options=None):
+def elastic(hc, host, es_index, es_type, query='', fields=None, parallelism=None, options=None):
     """Create dataframe from the elasticsearch index.
 
     Args:
@@ -147,7 +152,12 @@ def elastic(hc, host, es_index, es_type, query='', fields=None, options=None):
     if fields:
         reader = reader.option('es.read.field.include', ','.join(fields))
 
-    return config_reader_writer(reader, options).load('{}/{}'.format(es_index, es_type))
+    reader = config_reader_writer(reader, options).load('{}/{}'.format(es_index, es_type))
+
+    if parallelism:
+        reader = reader.coalesce(parallelism)
+
+    return reader
 
 
 def mysql(hc, host, database, table, options=None):
