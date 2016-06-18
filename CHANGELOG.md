@@ -1,3 +1,6 @@
+## 0.1.5
+* Generating hive CREATE TABLE by dataframe schema
+
 ## 0.1.4
 * Read elastic parallelism parameter
 
