@@ -26,7 +26,7 @@ class TestHql(TestCase):
                 'metadata': {},
                 'name': 'created_at',
                 'nullable': True,
-                'type': 'long'
+                'type': 'timestamp'
             }, {
                 'metadata': {},
                 'name': 'date',
