@@ -61,6 +61,7 @@ _type_map = {
     'double': 'double',
     'long': 'bigint',
     'integer': 'bigint',
+    'timestamp': 'bigint',
     'boolean': 'boolean',
 }
 
