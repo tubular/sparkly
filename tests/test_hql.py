@@ -61,11 +61,11 @@ class TestHql(TestCase):
         self.assertEqual(
             res,
             'struct<'
-            'uid:string,'
-            'countries:map<string,bigint>,'
-            'created_at:bigint,'
-            'date:string,'
-            'by_countries:array<struct<country:string,views:bigint>>>'
+            '`uid`:string,'
+            '`countries`:map<string,bigint>,'
+            '`created_at`:timestamp,'
+            '`date`:string,'
+            '`by_countries`:array<struct<`country`:string,`views`:bigint>>>'
         )
 
     def test_get_create_table_sql(self):
@@ -125,9 +125,9 @@ class TestHql(TestCase):
 
         self.assertEqual(
             result,
-            "CREATE EXTERNAL TABLE facebook_storyteller "
+            "CREATE EXTERNAL TABLE `facebook_storyteller` "
             "(`uid` string, `countries` map<string,bigint>, `created_at` bigint, `date` string, "
-            "`by_countries` array<struct<country:string,views:bigint>>) "
+            "`by_countries` array<struct<`country`:string,`views`:bigint>>) "
             "STORED AS PARQUET LOCATION 's3://fb-storyteller-bucket'"
         )
 
@@ -159,7 +159,7 @@ class TestHql(TestCase):
 
         self.assertEqual(
             result,
-            "CREATE EXTERNAL TABLE test "
+            "CREATE EXTERNAL TABLE `test` "
             "(`shmate` string) "
             "PARTITIONED BY (`uid` string, `date` string) "
             "STORED AS PARQUET LOCATION 's3://fb-storyteller-bucket'"
@@ -176,12 +176,12 @@ class TestHql(TestCase):
             }, 'metadata': {}, 'name': 'demo', 'nullable': True
         })
 
-        self.assertEqual(res, 'struct<age_10:bigint,age_30:bigint>')
+        self.assertEqual(res, 'struct<`age_10`:bigint,`age_30`:bigint>')
 
     def test_get_create_table_sql_schema(self):
         res = get_create_table_statement('test',
                                          StructType([StructField("f1", StringType(), True)]),
                                          location='s3://test/')
         self.assertEqual(res,
-                         "CREATE EXTERNAL TABLE test (`f1` string) "
+                         "CREATE EXTERNAL TABLE `test` (`f1` string) "
                          "STORED AS PARQUET LOCATION 's3://test/'")

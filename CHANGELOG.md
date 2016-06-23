@@ -1,3 +1,7 @@
+## 0.1.7
+* Fix: direct mapping data frame type to hql
+* Fix: backticking field names
+
 ## 0.1.6
 * Fix: work with timestamp type in hql generator
 

@@ -37,14 +37,14 @@ def get_create_table_statement(table_name, schema, location, partition_by=None, 
             )
 
     if not partitioning:
-        return 'CREATE EXTERNAL TABLE {} ({}) ' \
+        return 'CREATE EXTERNAL TABLE `{}` ({}) ' \
                'STORED AS {} ' \
                'LOCATION \'{}\''.format(table_name,
                                         ', '.join(columns),
                                         format,
                                         location)
     else:
-        return 'CREATE EXTERNAL TABLE {} ({}) ' \
+        return 'CREATE EXTERNAL TABLE `{}` ({}) ' \
                'PARTITIONED BY ({}) ' \
                'STORED AS {} ' \
                'LOCATION \'{}\''.format(table_name,
@@ -57,11 +57,11 @@ def get_create_table_statement(table_name, schema, location, partition_by=None, 
 # simple df types map to hive types
 _type_map = {
     'string': 'string',
-    'float': 'double',
+    'float': 'float',
     'double': 'double',
     'long': 'bigint',
-    'integer': 'bigint',
-    'timestamp': 'bigint',
+    'integer': 'int',
+    'timestamp': 'timestamp',
     'boolean': 'boolean',
 }
 
@@ -86,7 +86,7 @@ def _type_to_hql(schema):
     if type_ == 'struct':
         definitions = []
         for field in schema['fields']:
-            definitions.append('{}:{}'.format(field['name'], _type_to_hql(field)))
+            definitions.append('`{}`:{}'.format(field['name'], _type_to_hql(field)))
 
         return 'struct<{}>'.format(','.join(definitions))
 
