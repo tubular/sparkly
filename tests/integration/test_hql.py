@@ -1,18 +1,11 @@
 import uuid
 import os
 
-from sparkle import SparkleContext
 from sparkle.hql import (get_all_tables, create_table,
                          table_exists, set_table_property,
                          get_table_property)
 from sparkle.test import SparkleTest
-
-
-class _TestContext(SparkleContext):
-    packages = ['datastax:spark-cassandra-connector:1.5.0-M3-s_2.10',
-                'org.elasticsearch:elasticsearch-spark_2.10:2.3.0',
-                'com.databricks:spark-csv_2.10:1.4.0',
-                ]
+from tests.integration.base import _TestContext
 
 
 class TestHql(SparkleTest):

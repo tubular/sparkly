@@ -1,3 +1,6 @@
+import json
+from pyspark.streaming.kafka import KafkaUtils, OffsetRange
+
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -62,6 +65,19 @@ def by_url(hc, url):
     elif inp.scheme == 'mysql':
         db, table = inp.path[1:].split('/', 1)
         return mysql(hc, host, db, table, options=options)
+
+    elif inp.scheme == 'kafka':
+        offset_ranges = []
+        for item in inp.path[1:].split('/'):
+            if not item:
+                continue
+
+            topic, partition, start_offset, end_offset = item.split(',')
+            offset_ranges.append(
+                (topic, int(partition), int(start_offset), int(end_offset))
+            )
+
+        return kafka(hc, host.split(','), offset_ranges)
 
     else:
         raise NotImplementedError('{} is not supproted'.format(inp.scheme))
@@ -184,6 +200,34 @@ def mysql(hc, host, database, table, options=None):
     return config_reader_writer(reader, options).load()
 
 
+def kafka(hc, brokers, offset_ranges):
+    """Creates dataframe from specified set of messages from Kafka topic.
+
+    Args:
+        hc (HiveContext):
+        brokers (list): additional kafka parameters, see KafkaUtils.createRDD docs
+        offset_ranges (list[(str, int, int, int)]): list of partition ranges
+            [(topic, partition, start_offset, end_offset)]
+
+    Returns:
+        pyspark.rdd.RDD
+    """
+    assert context_has_package(hc, 'org.apache.spark:spark-streaming-kafka')
+
+    def _default_decoder(item):
+        return json.loads(item.decode('utf-8'))
+
+    kafka_params = {
+        'metadata.broker.list': ','.join(brokers)
+    }
+    offset_ranges = [OffsetRange(topic, partition, start_offset, end_offset)
+                     for topic, partition, start_offset, end_offset in offset_ranges]
+    rdd = KafkaUtils.createRDD(hc._sc, kafka_params, offset_ranges,
+                               valueDecoder=_default_decoder)
+
+    return rdd
+
+
 if __name__ == '__main__':
     from sparkle import SparkleContext
 
@@ -191,6 +235,7 @@ if __name__ == '__main__':
         packages = ['datastax:spark-cassandra-connector:1.5.0-M3-s_2.10',
                     'org.elasticsearch:elasticsearch-spark_2.10:2.3.0',
                     'com.databricks:spark-csv_2.10:1.4.0',
+                    'org.apache.spark:spark-streaming-kafka_2.10:1.6.1',
                     ]
 
     cnx = TestContext()

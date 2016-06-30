@@ -1,3 +1,6 @@
+## 0.1.10
+* Kafka reader
+
 ## 0.1.9
 * Hql get_create_table_statement bug fixes when creating nested complex types
 
