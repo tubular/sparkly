@@ -1,16 +1,13 @@
+import json
 import unittest
+import uuid
 
 import os
-from sparkle import SparkleContext, absolute_path
-from sparkle.read import elastic, csv, cassandra, mysql
+from kafka import KafkaProducer
+from sparkle import absolute_path
+from sparkle.read import elastic, csv, cassandra, mysql, kafka
 from sparkle.test import SparkleTest
-
-
-class _TestContext(SparkleContext):
-    packages = ['datastax:spark-cassandra-connector:1.5.0-M3-s_2.10',
-                'org.elasticsearch:elasticsearch-spark_2.10:2.3.0',
-                'com.databricks:spark-csv_2.10:1.4.0',
-                ]
+from tests.integration.base import _TestContext
 
 
 class TestReadCsv(SparkleTest):
@@ -177,6 +174,56 @@ class TestReadMysql(SparkleTest):
              {'id': 2, 'name': 'john', 'surname': 'po', 'age': 222},
              {'id': 3, 'name': 'john', 'surname': 'ku', 'age': 333}])
 
+
+class TestReadKafka(SparkleTest):
+
+    context = _TestContext
+
+    def setUp(self):
+        super(TestReadKafka, self).setUp()
+        self._setup_data()
+
+    def _setup_data(self):
+        producer = KafkaProducer(bootstrap_servers='kafka:9092')
+        self.test_topic = 'test_topic_{}'.format(uuid.uuid4().hex[:10])
+        self.test_topic_2 = 'test_topic_2_{}'.format(uuid.uuid4().hex[:10])
+        for i in range(5):
+            producer.send(self.test_topic,
+                          json.dumps({'message': 'body',
+                                      'count': i,
+                                      'float': 0.09 * i}).encode('utf-8'),
+                          partition=0)
+            producer.send(self.test_topic_2,
+                          json.dumps({'name': 'johnny',
+                                      'count': i
+                                      }).encode('utf-8'),
+                          partition=0)
+        producer.flush()
+
+    def test_simple_read(self):
+        df = kafka(self.hc,
+                   brokers=['kafka:9092'],
+                   offset_ranges=[(self.test_topic, 0, 0, 2)],
+                   )
+        res = df.collect()
+        self.assertEqual([
+            (None, {'count': 0, 'message': 'body', 'float': 0.0}),
+            (None, {'count': 1, 'message': 'body', 'float': 0.09})],
+            res)
+
+    def test_read_multiple_topics(self):
+        df = kafka(self.hc,
+                   brokers=['kafka:9092'],
+                   offset_ranges=[(self.test_topic, 0, 0, 2),
+                                  (self.test_topic_2, 0, 0, 2)],
+                   )
+        res = df.collect()
+        self.assertEqual([
+            (None, {'count': 0, 'message': 'body', 'float': 0.0}),
+            (None, {'count': 1, 'message': 'body', 'float': 0.09}),
+            (None, {'count': 0, 'name': 'johnny'}),
+            (None, {'count': 1, 'name': 'johnny'}),
+        ], res)
 
 if __name__ == '__main__':
     unittest.main()

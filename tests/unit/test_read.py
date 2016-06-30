@@ -57,3 +57,18 @@ class TestTestByUrl(TestCase):
                                    fields=['name', 'surname'],
                                    parallelism=4,
                                    options={'name': 'Johnny'})
+
+    @mock.patch('sparkle.read.kafka')
+    def test_kafka(self, kafka):
+        hc = mock.Mock()
+        by_url(hc, 'kafka://localhost,other/test_topic,0,0,100/')
+        kafka.assert_called_with(hc,
+                                 ['localhost', 'other'],
+                                 [('test_topic', 0, 0, 100)],
+                                 )
+
+        by_url(hc, 'kafka://localhost:1111/test_topic,0,0,100/test_topic,0,1,10')
+        kafka.assert_called_with(hc,
+                                 ['localhost:1111'],
+                                 [('test_topic', 0, 0, 100),
+                                  ('test_topic', 0, 1, 10)])
