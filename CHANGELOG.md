@@ -1,3 +1,6 @@
+## 0.1.8
+* Hql utils: create_table, get_all_tables, table_exists, get_table_property, set_table_property
+
 ## 0.1.7
 * Fix: direct mapping data frame type to hql
 * Fix: backticking field names

@@ -2,7 +2,94 @@ from pyspark.sql import DataFrame
 from pyspark.sql.types import StructType
 
 
-def get_create_table_statement(table_name, schema, location, partition_by=None, format='PARQUET'):
+def get_all_tables(hc):
+    """Returns all tables available in metastore.
+
+    Args:
+        hc (HiveContext)
+
+    Returns:
+        (list)
+    """
+    return [o.tableName for o in hc.sql("SHOW TABLES").collect()]
+
+
+def table_exists(hc, table_name):
+    """Returns if table exists in metastore or not.
+
+     Args:
+        hc (HiveContext)
+
+    Returns:
+        (bool)
+    """
+    return table_name in get_all_tables(hc)
+
+
+def create_table(hc, table_name, df, location, partition_by=None, table_format=None):
+    """Creates table by DataFrame.
+
+    Args:
+        hc (pyspark.sql.context.HiveContext)
+        table_name (str)
+        df (pyspark.sql.dataframe.DataFrame)
+        partition_by (list)
+        output_path (str)
+
+    Returns:
+        None
+    """
+    create_table_sql = get_create_table_statement(
+        table_name,
+        df,
+        partition_by=partition_by,
+        location=location,
+        table_format=table_format,
+    )
+
+    hc.sql(create_table_sql)
+
+    if partition_by:
+        hc.sql('MSCK REPAIR TABLE {}'.format(table_name))
+
+
+def set_table_property(hc, table, property, value):
+    """Sets table property in Hive Metastore.
+
+    Args:
+        hc (HiveContext)
+        table (str): table name
+        property (str): property name
+        value (str): value of property
+    """
+    hc.sql("ALTER TABLE {} SET TBLPROPERTIES ('{}'='{}')".format(
+        table, property, value
+    ))
+
+
+def get_table_property(hc, table, property, to_type=None):
+    """Gets value of table property.
+
+    Args:
+        hc (HiveContext)
+        table (str)
+        property (str)
+        to_type (type): type to coarse to
+
+    Returns:
+        (any)
+    """
+    if not to_type:
+        to_type = str
+
+    df = hc.sql("SHOW TBLPROPERTIES {}('{}')".format(table, property))
+    prop_val = df.collect()[0].result.strip()
+
+    if 'does not have property' not in prop_val:
+        return to_type(prop_val)
+
+
+def get_create_table_statement(table_name, schema, location, partition_by=None, table_format=None):
     """Converts pyspark schema to hive CREATE TABLE definition.
 
     Args:
@@ -21,27 +108,28 @@ def get_create_table_statement(table_name, schema, location, partition_by=None, 
     elif isinstance(schema, StructType):
         schema = schema.jsonValue()
 
+    if not table_format:
+        table_format = 'PARQUET'
+
     if not partition_by:
         partition_by = []
 
     columns = []
-    partitioning = []
+    partitions_map = {}
     for field in schema['fields']:
         if field['name'] in partition_by:
-            partitioning.append(
-                '`{}` {}'.format(field['name'], _type_to_hql(field))
-            )
+            partitions_map[field['name']] = '`{}` {}'.format(field['name'], _type_to_hql(field))
         else:
             columns.append(
                 '`{}` {}'.format(field['name'], _type_to_hql(field))
             )
 
-    if not partitioning:
+    if not partition_by:
         return 'CREATE EXTERNAL TABLE `{}` ({}) ' \
                'STORED AS {} ' \
                'LOCATION \'{}\''.format(table_name,
                                         ', '.join(columns),
-                                        format,
+                                        table_format,
                                         location)
     else:
         return 'CREATE EXTERNAL TABLE `{}` ({}) ' \
@@ -49,8 +137,8 @@ def get_create_table_statement(table_name, schema, location, partition_by=None, 
                'STORED AS {} ' \
                'LOCATION \'{}\''.format(table_name,
                                         ', '.join(columns),
-                                        ', '.join(partitioning),
-                                        format,
+                                        ', '.join(partitions_map[item] for item in partition_by),
+                                        table_format,
                                         location)
 
 
