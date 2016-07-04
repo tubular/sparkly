@@ -1,9 +1,10 @@
 from unittest import TestCase
+
 from pyspark.sql.types import StructType, StringType, StructField
 from sparkle.hql import _type_to_hql, get_create_table_statement
 
 
-class TestHql(TestCase):
+class TestHqlCreateTableStatement(TestCase):
 
     def test_type_to_hql(self):
         res = _type_to_hql({
@@ -165,7 +166,7 @@ class TestHql(TestCase):
             "STORED AS PARQUET LOCATION 's3://fb-storyteller-bucket'"
         )
 
-    def test__type_to_sql_inner_struct(self):
+    def test_type_to_sql_inner_struct(self):
         res = _type_to_hql({
             'type': {
                 'type': 'struct',
