@@ -1,17 +1,22 @@
 APP_NAME := sparkle
+APP_PATH := $(shell pwd)
+VENV_PATH := $(APP_PATH)/venv3_$(APP_NAME)
+PIP_PATH := $(VENV_PATH)/bin/pip
+PYTHON_PATH := $(VENV_PATH)/bin/python
 
-build: clean
-	python3 setup.py bdist_wheel
+dist/%.whl:
+	$(PYTHON_PATH) setup.py bdist_wheel
 
-clean:
-	@rm -rf build
-	@rm -rf dist
-	@rm -rf "$(APP_NAME).egg-info"
-	@echo "Cleaned package build artefacts."
+venv:	 $(VENV_PATH)/reqs_installed
+build:	dist/%.whl
+
+lint:	$(VENV_PATH)
+	VENV=$(VENV_PATH) ../utils/pre-commit-wrapper.py
+
 
 publish:
 	s3cmd put dist/*.whl s3://pypi.tubularlabs.net/__new/
-	curl -XPOST -u c4urself:4d15bedea98f2887b37fad3fb5f8627a http://ci.tubularlabs.net/job/pypi-reindex/build
+	curl -XPOST -u jenkins:b181da5db5de16a53bc3cd2139f601d8 http://ci.tubularlabs.net/job/pypi-reindex/build
 
 test:
 	docker-compose build sparkle
@@ -20,4 +25,15 @@ test:
 run_test:
 	tox tests
 
-.PHONY: build
+$(VENV_PATH):
+	pip install virtualenv
+	virtualenv -p $(shell which python3) -q $(VENV_PATH)
+
+clean:
+	@rm -rf $(VENV_PATH)
+	@rm -rf build
+	@rm -rf dist
+	@rm -rf "$(APP_NAME).egg-info"
+	@echo "Cleaned package build artefacts."
+
+.PHONY: test clean lint
