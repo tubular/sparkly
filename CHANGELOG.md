@@ -1,3 +1,6 @@
+## 0.1.9
+* Hql get_create_table_statement bug fixes when creating nested complex types
+
 ## 0.1.8
 * Hql utils: create_table, get_all_tables, table_exists, get_table_property, set_table_property
 

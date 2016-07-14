@@ -1,5 +1,9 @@
+import logging
 from pyspark.sql import DataFrame
 from pyspark.sql.types import StructType
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_all_tables(hc):
@@ -117,6 +121,7 @@ def get_create_table_statement(table_name, schema, location, partition_by=None, 
     columns = []
     partitions_map = {}
     for field in schema['fields']:
+        logger.debug('Analyzing :: {} :: '.format(field['name']))
         if field['name'] in partition_by:
             partitions_map[field['name']] = '`{}` {}'.format(field['name'], _type_to_hql(field))
         else:
@@ -154,38 +159,64 @@ _type_map = {
 }
 
 
-def _type_to_hql(schema):
+def _type_to_hql(schema, level_=0):
     """Converts dataframe type definition to hive type definition.
 
     Args:
-        schema (dict)
+        schema (dict) pyspark type definition.
+        level_ (int) level of nesting, debug only,
+                     no need to specify this parameter explicitly.
 
     Returns:
-        (str)
+        (str) hive type definition.
     """
     if isinstance(schema, str):
+        logger.debug('{} {}'.format(':' * level_, schema))
         if schema not in _type_map:
-            raise NotImplementedError
+            raise NotImplementedError('{} is not supported in this place'.format(schema))
         else:
             return _type_map[schema]
 
     type_ = schema['type']
 
     if type_ == 'struct':
+        logger.debug('{} STRUCT'.format(':' * level_))
         definitions = []
         for field in schema['fields']:
-            definitions.append('`{}`:{}'.format(field['name'], _type_to_hql(field)))
+            logger.debug('{} STRUCT FIELD {}'.format(':' * level_, field['name']))
+            definitions.append('`{}`:{}'.format(
+                field['name'],
+                _type_to_hql(field, level_=level_ + 2)
+            ))
 
         return 'struct<{}>'.format(','.join(definitions))
 
+    elif type_ == 'array':
+        logger.debug('{} ARRAY'.format(':' * level_))
+        return 'array<{}>'.format(_type_to_hql(schema['elementType'], level_=level_ + 2))
+
+    elif type_ == 'map':
+        logger.debug('{} MAP'.format(':' * level_))
+        return 'map<{},{}>'.format(_type_to_hql(schema['keyType'], level_=level_ + 2),
+                                   _type_to_hql(schema['valueType'], level_=level_ + 2))
+
     elif isinstance(type_, dict):
-        if type_['type'] == 'map':
-            return 'map<{},{}>'.format(_type_to_hql(type_['keyType']),
-                                       _type_to_hql(type_['valueType']))
-        elif type_['type'] == 'array':
-            return 'array<{}>'.format(_type_to_hql(type_['elementType']))
-        else:
-            return _type_to_hql(type_)
+        return _type_to_hql(type_)
 
     else:
-        return _type_to_hql(type_)
+        logger.debug('{} RECURSE'.format(':' * level_))
+        return _type_to_hql(type_, level_=level_ + 2)
+
+
+if __name__ == '__main__':
+    from sparkle import SparkleContext
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    class Cnx(SparkleContext):
+        packages = ['datastax:spark-cassandra-connector:1.5.0-M3-s_2.10',
+                    'org.elasticsearch:elasticsearch-spark_2.10:2.3.0',
+                    'org.apache.spark:spark-streaming-kafka_2.10:1.6.1',
+                    ]
+
+    sql = Cnx()
