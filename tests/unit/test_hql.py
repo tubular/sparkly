@@ -186,3 +186,44 @@ class TestHqlCreateTableStatement(TestCase):
         self.assertEqual(res,
                          "CREATE EXTERNAL TABLE `test` (`f1` string) "
                          "STORED AS PARQUET LOCATION 's3://test/'")
+
+    def test_ci_topics_case(self):
+        schema = {
+            'metadata': {},
+            'type': {
+                'elementType': {
+                    'elementType': {
+                        'fields': [{
+                            'metadata': {},
+                            'type': 'float',
+                            'nullable': True,
+                            'name': 'relevance_score'
+                        }, {
+                            'metadata': {},
+                            'type': 'string',
+                            'nullable': True,
+                            'name': 'title'
+                        }, {
+                            'metadata': {},
+                            'type': 'string',
+                            'nullable': True,
+                            'name': 'topic_id'
+                        }],
+                        'type': 'struct'
+                    },
+                    'type': 'array',
+                    'containsNull': True
+                },
+                'type': 'array',
+                'containsNull': True
+            },
+            'nullable': True,
+            'name': 'topics'
+        }
+        self.assertEqual(_type_to_hql(schema),
+                         'array<'
+                         'array<'
+                         'struct<'
+                         '`relevance_score`:float,'
+                         '`title`:string,'
+                         '`topic_id`:string>>>')
