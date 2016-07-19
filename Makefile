@@ -20,7 +20,7 @@ publish:
 
 test:
 	docker-compose build sparkle
-	docker-compose run sparkle make run_test
+	docker-compose run sparkle make run_test ; retcode="$$?" ; docker-compose down ; exit $$retcode
 
 run_test:
 	tox tests
