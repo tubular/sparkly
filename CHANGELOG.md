@@ -1,3 +1,6 @@
+## 0.1.11
+* More hql utils: replace_table, and get_all_table_properties
+
 ## 0.1.10
 * Kafka reader
 

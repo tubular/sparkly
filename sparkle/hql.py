@@ -30,7 +30,10 @@ def table_exists(hc, table_name):
     return table_name in get_all_tables(hc)
 
 
-def create_table(hc, table_name, df, location, partition_by=None, table_format=None):
+def create_table(hc, table_name, df, location,
+                 partition_by=None,
+                 table_format=None,
+                 properties=None):
     """Creates table by DataFrame.
 
     Args:
@@ -39,9 +42,7 @@ def create_table(hc, table_name, df, location, partition_by=None, table_format=N
         df (pyspark.sql.dataframe.DataFrame)
         partition_by (list)
         output_path (str)
-
-    Returns:
-        None
+        properties (dict): properties to assign to the table.
     """
     create_table_sql = get_create_table_statement(
         table_name,
@@ -52,6 +53,10 @@ def create_table(hc, table_name, df, location, partition_by=None, table_format=N
     )
 
     hc.sql(create_table_sql)
+
+    if properties:
+        for key, val in properties.items():
+            set_table_property(hc, table_name, key, val)
 
     if partition_by:
         hc.sql('MSCK REPAIR TABLE {}'.format(table_name))
@@ -91,6 +96,54 @@ def get_table_property(hc, table, property, to_type=None):
 
     if 'does not have property' not in prop_val:
         return to_type(prop_val)
+
+
+def replace_table(hc, table_name, schema, location, partition_by=None, table_format=None):
+    """Replaces table `table_name` with data represented by schema, location."""
+    old_table = '{}_OLD'.format(table_name)
+    temp_table = '{}_NEW'.format(table_name)
+
+    old_table_props = get_all_table_properties(hc, table_name)
+
+    create_table(
+        hc,
+        temp_table,
+        schema,
+        location=location,
+        partition_by=partition_by,
+        properties=old_table_props,
+    )
+
+    hc.sql("""
+      ALTER TABLE {} RENAME TO {}
+    """.format(table_name, old_table))
+
+    hc.sql("""
+      ALTER TABLE {} RENAME TO {}
+    """.format(temp_table, table_name))
+
+    hc.sql("""
+      DROP TABLE {}
+    """.format(old_table))
+
+
+def get_all_table_properties(hc, table_name):
+    """Returns all table properties names.
+
+    Args:
+        hc (HiveContext): hive context.
+        table_name (str): table name.
+
+    Returns:
+        (dict)
+    """
+    res = hc.sql("""
+        SHOW TBLPROPERTIES {}
+    """.format(table_name)).collect()
+
+    return dict([
+        item.result.split() for item in res
+    ])
 
 
 def get_create_table_statement(table_name, schema, location, partition_by=None, table_format=None):
