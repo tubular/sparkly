@@ -99,7 +99,7 @@ import sparkle.write
 
 
 class MyProjectContext(sparkle.SparkleContext):
-    packages = ['com.databricks:spark-csv_2.10:1.4.0']
+    packages = ['org.elasticsearch:elasticsearch-spark_2.10:2.2.0']
 
 
 hc = MyProjectContext()
@@ -112,45 +112,38 @@ df = sparkle.read.elastic(
 sparkle.write.elastic(df, 'natural.elastic.tubularlabs.net', 'natural', 'facebook_videos')
 ```
 
-#### Parquet files
-  
-```
-import sparkle
-
-hc = sparkle.SparkleContext()
-hc.read.parquet('/path/to/the/parquet/file')
-```
-
-#### JSON files
-
-```
-import sparkle
-
-hc = sparkle.SparkleContext()
-hc.read.json('/path/to/the/json/file')
-```
-
 #### Mysql database
 
 ```
-
 import sparkle
-df = sparkle.read.mysql(hc, 'localhost', 'database', 'table',
-                        options={'user': 'root', 'password': ''})
 
+df = sparkle.read.mysql(hc, 'localhost', 'database', 'table',
+                        options={'user': 'root', 'password': 'pass'})
 ```
 
 
 #### Generic reader
 
+The main idea of the generic reader is to provide a unified way to define data sources.
+The most popular use-case is to path urls as CLI arguments to your program, e.g.:
+```
+# To use a parquet file on S3 as an input
+./my_program.py --input=parquet:s3://....
+
+# To use a cassandra table as an input
+./my_program.py --input=cassandra://...
 ```
 
-import sparkle
+Supported formats: 
+```
+import sparkle.read
 
-mysql_df = sparkle.read.by_url('mysql://localhost/db_name/table_name?user=root&password=pass')
-cassandra_df = sparkle.read.by_url('cassandra://localhost/key_space/table_name?consistency=ONE')
+metastore_df = sparkle.read.by_url('table://my_hive_metastore_table')
+parquet_df = sparkle.read.by_url('parquet:s3://some_bucket/some_parquet/')
+csv_df = sparkle.read.by_url('csv:s3://some_bucket/some.csv')
 elastic_df = sparkle.read.by_url('elastic://localhost/index_name/type_name?q=name:*Johhny*')
-
+cassandra_df = sparkle.read.by_url('cassandra://localhost/key_space/table_name?consistency=ONE')
+mysql_df = sparkle.read.by_url('mysql://localhost/db_name/table_name?user=root&password=pass')
 ```
 
 ### Utils for testing

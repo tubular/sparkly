@@ -12,12 +12,36 @@ from sparkle.utils import context_has_package, config_reader_writer
 def by_url(hc, url):
     """Create dataframe from data specified by URL.
 
-    URL could point to csv file, cassandra table or elastic type.
+    The main idea behind this method is to unify data access interface for different
+    formats and locations. A generic schema looks like:
+        format:[protocol:]//host[/location][?configuration]
+
+    Supported formats:
+        - Hive Metastore Table (table://)
+        - Parquet (parquet://)
+        - CSV (csv://)
+        - Elastic (elastic://)
+        - Cassandra (cassandra://)
+        - MySQL (mysql://)
+        - Kafka (kafka://)
+
+    Examples:
+        - `table://table_name`
+        - `csv:s3://some-bucket/some_directory?header=true`
+        - `csv://path/on/local/file/system?header=false`
+        - `parquet:s3://some-bucket/some_directory`
+        - `elastic://elasticsearch.host/es_index/es_type?parallelism=8`
+        - `cassandra://cassandra.host/keyspace/table?consistency=QUORUM`
+        - `mysql://mysql.host/database/table`
+        - `kafka://kafka.host/topic`
+
+    TODO (drudim):
+        - The method gets messy. Formats should be plugable.
+        - I don't like how kafka url looks like.
 
     Args:
         hc (sparkle.SparkleContext): Spark Context.
         url (str): describes data source.
-        parallelism (int): desired level of parallelism.
 
     Returns:
         pyspark.sql.DataFrame
@@ -26,7 +50,25 @@ def by_url(hc, url):
     host = inp.netloc
     options = dict([item.split('=', 1) for item in inp.query.split('&')]) if inp.query else {}
 
-    if inp.scheme == 'cassandra':
+    if inp.scheme == 'table':
+        return hc.table(host)
+
+    elif inp.scheme == 'parquet':
+        return hc.read.parquet(inp.path)
+
+    elif inp.scheme == 'csv':
+        kwargs = {}
+
+        header = options.pop('header', None)
+        if header is not None:
+            kwargs['header'] = header == 'true'
+
+        if options:
+            kwargs['options'] = options
+
+        return csv(hc, inp.path, **kwargs)
+
+    elif inp.scheme == 'cassandra':
         _, keyspace, table = inp.path.split('/')
         kwargs = {
             'options': options
@@ -58,9 +100,6 @@ def by_url(hc, url):
         return elastic(hc, host, es_index, es_type,
                        query=query, fields=fields,
                        parallelism=parallelism, options=options)
-
-    elif inp.scheme == 'csv':
-        return csv(hc, inp.path, options=options)
 
     elif inp.scheme == 'mysql':
         db, table = inp.path[1:].split('/', 1)
@@ -226,16 +265,3 @@ def kafka(hc, brokers, offset_ranges):
                                valueDecoder=_default_decoder)
 
     return rdd
-
-
-if __name__ == '__main__':
-    from sparkle import SparkleContext
-
-    class TestContext(SparkleContext):
-        packages = ['datastax:spark-cassandra-connector:1.5.0-M3-s_2.10',
-                    'org.elasticsearch:elasticsearch-spark_2.10:2.3.0',
-                    'com.databricks:spark-csv_2.10:1.4.0',
-                    'org.apache.spark:spark-streaming-kafka_2.10:1.6.1',
-                    ]
-
-    cnx = TestContext()
