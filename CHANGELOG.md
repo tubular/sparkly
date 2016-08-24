@@ -1,3 +1,6 @@
+## 0.1.12
+* Add support for CSV, Parquet and Hive Metastore tables in `sparkle.read.by_url`.
+
 ## 0.1.11
 * More hql utils: replace_table, and get_all_table_properties
 
