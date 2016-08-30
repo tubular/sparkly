@@ -7,3 +7,4 @@
 --use-wheel
 
 pyspark==1.6.0
+ujson==1.33
