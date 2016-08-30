@@ -1,3 +1,6 @@
+## 0.1.13
+* Switch json to ujson
+
 ## 0.1.12
 * Add support for CSV, Parquet and Hive Metastore tables in `sparkle.read.by_url`.
 

@@ -1,4 +1,4 @@
-import json
+import ujson as json
 from pyspark.streaming.kafka import KafkaUtils, OffsetRange
 
 try:
