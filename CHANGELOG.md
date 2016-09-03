@@ -1,3 +1,6 @@
+## 0.1.14
+* udfs could be specified in SparkleContext.
+
 ## 0.1.13
 * Switch json to ujson
 

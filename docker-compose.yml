@@ -18,6 +18,11 @@ services:
 
   cassandra:
     image: cassandra:2.1.13
+    mem_limit: 500M
+    memswap_limit: 600M
+    environment:
+      MAX_HEAP_SIZE: 500M
+      HEAP_NEWSIZE: 200M
 
   mysql:
     image: mysql
