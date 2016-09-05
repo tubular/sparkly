@@ -38,10 +38,11 @@ def create_table(hc, table_name, df, location,
 
     Args:
         hc (pyspark.sql.context.HiveContext)
-        table_name (str)
-        df (pyspark.sql.dataframe.DataFrame)
-        partition_by (list)
-        output_path (str)
+        table_name (str): name of new table.
+        df (pyspark.sql.dataframe.DataFrame): data source.
+        location (str): location of data.
+        partition_by (list): partitioning columns.
+        table_format (str): default is parquet.
         properties (dict): properties to assign to the table.
     """
     create_table_sql = get_create_table_statement(

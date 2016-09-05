@@ -1,5 +1,6 @@
-## 0.1.14
-* udfs could be specified in SparkleContext.
+## 0.2.0
+* Udfs could be specified in SparkleContext.
+* Removed default hardcoded jars (breaking change).
 
 ## 0.1.13
 * Switch json to ujson

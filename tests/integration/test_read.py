@@ -4,7 +4,8 @@ import uuid
 
 import os
 from kafka import KafkaProducer
-from sparkle import absolute_path
+from sparkle.utils import absolute_path
+
 from sparkle.read import elastic, csv, cassandra, mysql, kafka
 from sparkle.test import SparkleTest
 from tests.integration.base import _TestContext

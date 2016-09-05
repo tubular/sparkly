@@ -1,15 +1,5 @@
-from pyspark.sql.types import StringType
-
-from sparkle import SparkleContext
 from sparkle.test import SparkleTest
-
-
-class _TestContext(SparkleContext):
-
-    udfs = {
-        'collect_max': 'brickhouse.udf.collect.CollectMaxUDAF',
-        'length_of_text': (lambda text: len(text), StringType())
-    }
+from tests.integration.base import _TestContext
 
 
 class TestSparkleContext(SparkleTest):
