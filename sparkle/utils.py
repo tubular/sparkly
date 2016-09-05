@@ -44,6 +44,19 @@ def context_has_package(hc, package_prefix):
     return any(package for package in hc.packages if package.startswith(package_prefix))
 
 
+def context_has_jar(hc, jar_name):
+    """Check if SparkleContext has a particular package.
+
+    Args:
+        hc (sparkle.SparkleContext)
+        jar_name (str): E.g. "mysql-connector-java"
+
+    Returns:
+        bool
+    """
+    return any(jar for jar in hc.jars if jar_name in jar)
+
+
 def config_reader_writer(reader_or_writer, options):
     """Set options for Spark DataFrameReader or DataFrameWriter.
 
@@ -65,6 +78,9 @@ def absolute_path(file_path, *rel_path):
     """Returns absolute path to file.
 
     Usage:
+        >>> absolute_path('/my/current/dir/x.txt', '..', 'x.txt')
+        '/my/current/x.txt'
+
         >>> absolute_path('/my/current/dir/x.txt', 'relative', 'path')
         '/my/current/dir/relative/path'
 
@@ -79,4 +95,11 @@ def absolute_path(file_path, *rel_path):
     Returns:
         str
     """
-    return os.path.join(os.path.dirname(os.path.realpath(file_path)), *rel_path)
+    return os.path.abspath(
+        os.path.join(
+            os.path.dirname(
+                os.path.realpath(file_path)
+            ),
+            *rel_path
+        )
+    )

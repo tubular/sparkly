@@ -1,7 +1,6 @@
 import os
 
 from pyspark import SparkConf, SparkContext, HiveContext
-from sparkle.utils import absolute_path
 
 
 class SparkleContext(HiveContext):
@@ -20,10 +19,6 @@ class SparkleContext(HiveContext):
 
     packages = []
     jars = []
-    _default_jars = [
-        absolute_path(__file__, 'resources', 'mysql-connector-java-5.1.39-bin.jar'),
-        absolute_path(__file__, 'resources', 'brickhouse-0.7.1.jar'),
-    ]
     options = {}
     udfs = {}
 
@@ -32,7 +27,7 @@ class SparkleContext(HiveContext):
         if self.packages:
             packages_args = '--packages {}'.format(','.join(self.packages))
 
-        jars_args = '--jars {}'.format(','.join(self._default_jars + self.jars))
+        jars_args = '--jars {}'.format(','.join(self.jars))
 
         os.environ['PYSPARK_SUBMIT_ARGS'] = '{} {} pyspark-shell'.format(packages_args, jars_args)
 

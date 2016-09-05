@@ -6,7 +6,7 @@ try:
 except ImportError:
     from urlparse import urlparse
 
-from sparkle.utils import context_has_package, config_reader_writer
+from sparkle.utils import context_has_package, config_reader_writer, context_has_jar
 
 
 def by_url(hc, url):
@@ -231,6 +231,8 @@ def mysql(hc, host, database, table, options=None):
     Returns:
         pyspark.sql.DataFrame
     """
+    assert context_has_jar(hc, 'mysql-connector-java')
+
     reader = config_reader_writer(hc.read.format('jdbc'), {
         'url': 'jdbc:mysql://{}:3306/{}'.format(host, database),
         'driver': 'com.mysql.jdbc.Driver',
