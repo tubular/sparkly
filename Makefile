@@ -44,7 +44,7 @@ lint:	$(VENV_PATH)
 
 test:
 	docker-compose build sparkle
-	docker-compose run sparkle make run_test ; retcode="$$?" ; docker-compose down ; exit $$retcode
+	docker-compose run sparkle make run_test ; retcode="$$?" ; docker-compose down -v ; exit $$retcode
 
 run_test:
 	tox tests
