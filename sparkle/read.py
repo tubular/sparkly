@@ -236,7 +236,7 @@ def mysql(hc, host, database, table, options=None):
     reader = config_reader_writer(hc.read.format('jdbc'), {
         'url': 'jdbc:mysql://{}:3306/{}'.format(host, database),
         'driver': 'com.mysql.jdbc.Driver',
-        'dbtable': table
+        'dbtable': table,
     })
     return config_reader_writer(reader, options).load()
 

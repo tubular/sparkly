@@ -2,13 +2,12 @@ import json
 import unittest
 import uuid
 
-import os
 from kafka import KafkaProducer
-from sparkle.utils import absolute_path
 
+from sparkle.utils import absolute_path
 from sparkle.read import elastic, csv, cassandra, mysql, kafka
 from sparkle.test import SparkleTest
-from tests.integration.base import _TestContext
+from tests.integration.base import _TestContext, BaseMysqlTest, BaseElasticTest, BaseCassandraTest
 
 
 class TestReadCsv(SparkleTest):
@@ -51,30 +50,7 @@ class TestReadCsv(SparkleTest):
                            'fl_site_limit': 190724.4}])
 
 
-class TestReadCassandra(SparkleTest):
-
-    context = _TestContext
-
-    def setUp(self):
-        super(TestReadCassandra, self).setUp()
-        self.c_host = 'cassandra'
-        self._setup_data()
-
-    def tearDown(self):
-        super(TestReadCassandra, self).tearDown()
-        self._clear_data()
-
-    def _setup_data(self):
-        os.system('source venv2/bin/activate && cqlsh -f {} {}'.format(
-            absolute_path(__file__, 'resources', 'cassandra_setup.cql'),
-            self.c_host))
-
-    def _clear_data(self):
-        os.system('source venv2/bin/activate && cqlsh -f {} {}'.format(
-            absolute_path(__file__,
-                          'resources',
-                          'cassandra_teardown.cql'),
-            self.c_host))
+class TestReadCassandra(BaseCassandraTest):
 
     def test_read_cassandra(self):
         reader = cassandra(self.hc, self.c_host, 'sparkle_test', 'test', consistency='ONE')
@@ -89,28 +65,7 @@ class TestReadCassandra(SparkleTest):
               'uid': '9', 'created': '1234567891'}])
 
 
-class TestReadElastic(SparkleTest):
-
-    context = _TestContext
-
-    def setUp(self):
-        super(TestReadElastic, self).setUp()
-        self.es_host = 'elastic'
-        self._setup_data()
-
-    def tearDown(self):
-        super(TestReadElastic, self).tearDown()
-        self._clear_data()
-
-    def _setup_data(self):
-        data_file = absolute_path(__file__, 'resources', 'elastic_setup.json')
-
-        os.system('curl -XPOST \'http://{}:9200/_bulk\' --data-binary @{}'.format(
-            self.es_host,
-            data_file))
-
-    def _clear_data(self):
-        os.system('curl -XDELETE \'http://{}:9200/sparkle_test/test')
+class TestReadElastic(BaseElasticTest):
 
     def test_read_elastic(self):
         reader = elastic(self.hc, self.es_host, 'sparkle_test', 'test',
@@ -142,26 +97,7 @@ class TestReadElastic(SparkleTest):
         )
 
 
-class TestReadMysql(SparkleTest):
-
-    context = _TestContext
-
-    def setUp(self):
-        super(TestReadMysql, self).setUp()
-        self.mysql_host = 'mysql'
-        self._setup_data()
-
-    def tearDown(self):
-        super(TestReadMysql, self).tearDown()
-        self._clear_data()
-
-    def _setup_data(self):
-        data_file = absolute_path(__file__, 'resources', 'mysql_setup.sql')
-        os.system('mysql -hmysql -uroot < {}'.format(data_file))
-
-    def _clear_data(self):
-        data_file = absolute_path(__file__, 'resources', 'mysql_teardown.sql')
-        os.system('mysql -hmysql -uroot < {}'.format(data_file))
+class TestReadMysql(BaseMysqlTest):
 
     def test_read_mysql(self):
         reader = mysql(self.hc, self.mysql_host, 'sparkle_test', 'test',
