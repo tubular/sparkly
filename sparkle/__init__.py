@@ -27,7 +27,10 @@ class SparkleContext(HiveContext):
         if self.packages:
             packages_args = '--packages {}'.format(','.join(self.packages))
 
-        jars_args = '--jars {}'.format(','.join(self.jars))
+        if self.jars:
+            jars_args = '--jars {}'.format(','.join(self.jars))
+        else:
+            jars_args = ''
 
         os.environ['PYSPARK_SUBMIT_ARGS'] = '{} {} pyspark-shell'.format(packages_args, jars_args)
 

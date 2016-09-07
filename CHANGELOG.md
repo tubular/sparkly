@@ -1,3 +1,6 @@
+## 0.2.1
+* Fix empty context initialization bug.
+
 ## 0.2.0
 * Udfs could be specified in SparkleContext.
 * Removed default hardcoded jars (breaking change).
