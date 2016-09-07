@@ -9,119 +9,6 @@ except ImportError:
 from sparkle.utils import context_has_package, config_reader_writer, context_has_jar
 
 
-def by_url(hc, url):
-    """Create dataframe from data specified by URL.
-
-    The main idea behind this method is to unify data access interface for different
-    formats and locations. A generic schema looks like:
-        format:[protocol:]//host[/location][?configuration]
-
-    Supported formats:
-        - Hive Metastore Table (table://)
-        - Parquet (parquet://)
-        - CSV (csv://)
-        - Elastic (elastic://)
-        - Cassandra (cassandra://)
-        - MySQL (mysql://)
-        - Kafka (kafka://)
-
-    Examples:
-        - `table://table_name`
-        - `csv:s3://some-bucket/some_directory?header=true`
-        - `csv://path/on/local/file/system?header=false`
-        - `parquet:s3://some-bucket/some_directory`
-        - `elastic://elasticsearch.host/es_index/es_type?parallelism=8`
-        - `cassandra://cassandra.host/keyspace/table?consistency=QUORUM`
-        - `mysql://mysql.host/database/table`
-        - `kafka://kafka.host/topic`
-
-    TODO (drudim):
-        - The method gets messy. Formats should be plugable.
-        - I don't like how kafka url looks like.
-
-    Args:
-        hc (sparkle.SparkleContext): Spark Context.
-        url (str): describes data source.
-
-    Returns:
-        pyspark.sql.DataFrame
-    """
-    inp = urlparse(url)
-    host = inp.netloc
-    options = dict([item.split('=', 1) for item in inp.query.split('&')]) if inp.query else {}
-
-    if inp.scheme == 'table':
-        return hc.table(host)
-
-    elif inp.scheme == 'parquet':
-        return hc.read.parquet(inp.path)
-
-    elif inp.scheme == 'csv':
-        kwargs = {}
-
-        header = options.pop('header', None)
-        if header is not None:
-            kwargs['header'] = header == 'true'
-
-        if options:
-            kwargs['options'] = options
-
-        return csv(hc, inp.path, **kwargs)
-
-    elif inp.scheme == 'cassandra':
-        _, keyspace, table = inp.path.split('/')
-        kwargs = {
-            'options': options
-        }
-        consistency = options.pop('consistency', None)
-        if consistency:
-            kwargs['consistency'] = consistency
-
-        parallelism = options.pop('parallelism', None)
-        if parallelism:
-            kwargs['parallelism'] = int(parallelism)
-
-        return cassandra(hc, host, keyspace, table, **kwargs)
-
-    elif inp.scheme == 'elastic':
-        host = inp.netloc
-        q = options.pop('q', None)
-        query = '?q={}'.format(q) if q else ''
-
-        fields = options.pop('fields', None)
-        if fields:
-            fields = fields.split(',')
-
-        parallelism = options.pop('parallelism', None)
-        if parallelism:
-            parallelism = int(parallelism)
-
-        es_index, es_type = inp.path.lstrip('/').split('/', 1)
-        return elastic(hc, host, es_index, es_type,
-                       query=query, fields=fields,
-                       parallelism=parallelism, options=options)
-
-    elif inp.scheme == 'mysql':
-        db, table = inp.path[1:].split('/', 1)
-        return mysql(hc, host, db, table, options=options)
-
-    elif inp.scheme == 'kafka':
-        offset_ranges = []
-        for item in inp.path[1:].split('/'):
-            if not item:
-                continue
-
-            topic, partition, start_offset, end_offset = item.split(',')
-            offset_ranges.append(
-                (topic, int(partition), int(start_offset), int(end_offset))
-            )
-
-        return kafka(hc, host.split(','), offset_ranges)
-
-    else:
-        raise NotImplementedError('{} is not supproted'.format(inp.scheme))
-
-
 def cassandra(hc, host, keyspace, table, consistency='QUORUM', parallelism=None, options=None):
     """Create dataframe from the cassandra table.
 
@@ -267,3 +154,143 @@ def kafka(hc, brokers, offset_ranges):
                                valueDecoder=_default_decoder)
 
     return rdd
+
+
+def by_url(hc, url):
+    """Create dataframe from data specified by URL.
+
+    The main idea behind this method is to unify data access interface for different
+    formats and locations. A generic schema looks like:
+        format:[protocol:]//host[/location][?configuration]
+
+    Supported formats:
+        - Hive Metastore Table (table://)
+        - Parquet (parquet://)
+        - CSV (csv://)
+        - Elastic (elastic://)
+        - Cassandra (cassandra://)
+        - MySQL (mysql://)
+        - Kafka (kafka://)
+
+    Examples:
+        - `table://table_name`
+        - `csv:s3://some-bucket/some_directory?header=true`
+        - `csv://path/on/local/file/system?header=false`
+        - `parquet:s3://some-bucket/some_directory`
+        - `elastic://elasticsearch.host/es_index/es_type?parallelism=8`
+        - `cassandra://cassandra.host/keyspace/table?consistency=QUORUM`
+        - `mysql://mysql.host/database/table`
+        - `kafka://kafka.host/topic`
+
+    TODO (drudim):
+        - The method gets messy. Formats should be plugable.
+        - I don't like how kafka url looks like.
+
+    Args:
+        hc (sparkle.SparkleContext): Spark Context.
+        url (str): describes data source.
+
+    Returns:
+        pyspark.sql.DataFrame
+    """
+    scheme = urlparse(url).scheme
+    try:
+        return _by_url_registry[scheme](hc, url)
+    except KeyError:
+        raise NotImplemented('Data source is not supported: {}'.format(url))
+
+
+def _cassandra_resolver(hc, url):
+    inp, options = _to_parsed_url_and_options(url)
+
+    _, keyspace, table = inp.path.split('/')
+    kwargs = {
+        'options': options
+    }
+    consistency = options.pop('consistency', None)
+    if consistency:
+        kwargs['consistency'] = consistency
+
+    parallelism = options.pop('parallelism', None)
+    if parallelism:
+        kwargs['parallelism'] = int(parallelism)
+
+    return cassandra(hc, inp.netloc, keyspace, table, **kwargs)
+
+
+def _elastic_resolver(hc, url):
+    inp, options = _to_parsed_url_and_options(url)
+    host = inp.netloc
+    q = options.pop('q', None)
+    query = '?q={}'.format(q) if q else ''
+
+    fields = options.pop('fields', None)
+    if fields:
+        fields = fields.split(',')
+
+    parallelism = options.pop('parallelism', None)
+    if parallelism:
+        parallelism = int(parallelism)
+
+    es_index, es_type = inp.path.lstrip('/').split('/', 1)
+    return elastic(hc, host, es_index, es_type,
+                   query=query, fields=fields,
+                   parallelism=parallelism, options=options)
+
+
+def _table_resolver(hc, url):
+    inp, options = _to_parsed_url_and_options(url)
+    return hc.table(inp.netloc)
+
+
+def _fs_resolver(hc, url):
+    inp, options = _to_parsed_url_and_options(url)
+    return hc.read.format(inp.netloc).options(**options).load(inp.path)
+
+
+def _mysql_resolver(hc, url):
+    inp, options = _to_parsed_url_and_options(url)
+    db, table = inp.path[1:].split('/', 1)
+    return mysql(hc, inp.netloc, db, table, options=options)
+
+
+def _kafka_resolver(hc, url):
+    inp, options = _to_parsed_url_and_options(url)
+    offset_ranges = []
+    for item in inp.path[1:].split('/'):
+        if not item:
+            continue
+
+        topic, partition, start_offset, end_offset = item.split(',')
+        offset_ranges.append(
+            (topic, int(partition), int(start_offset), int(end_offset))
+        )
+
+    return kafka(hc, inp.netloc.split(','), offset_ranges)
+
+
+_by_url_registry = {
+    # scheme: resolver
+}
+
+
+def _to_parsed_url_and_options(url):
+    """Returns parsed url and options."""
+    inp = urlparse(url)
+    options = dict([item.split('=', 1) for item in inp.query.split('&')]) if inp.query else {}
+    return inp, options
+
+
+def _register_by_resolver(scheme, resolver):
+    if scheme in _by_url_registry:
+        raise Exception('The scheme {} already have a resolver'.format(scheme))
+
+    _by_url_registry[scheme] = resolver
+
+
+_register_by_resolver('parquet', _fs_resolver)
+_register_by_resolver('csv', _fs_resolver)
+_register_by_resolver('cassandra', _cassandra_resolver)
+_register_by_resolver('mysql', _mysql_resolver)
+_register_by_resolver('elastic', _elastic_resolver)
+_register_by_resolver('kafka', _kafka_resolver)

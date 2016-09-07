@@ -135,7 +135,10 @@ def by_url(df, url):
         url (str): url of destination.
     """
     scheme = urlparse(url).scheme
-    _by_url_registry[scheme](df, url)
+    try:
+        _by_url_registry[scheme](df, url)
+    except KeyError:
+        raise NotImplemented('Destination specified in url is not supported: {}'.format(url))
 
 
 def _fs_resolver(df, url):
