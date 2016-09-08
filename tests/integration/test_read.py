@@ -1,6 +1,6 @@
 import json
-import unittest
 import uuid
+from time import sleep
 
 from kafka import KafkaProducer
 
@@ -52,6 +52,14 @@ class TestReadCsv(SparkleTest):
 
 class TestReadCassandra(BaseCassandraTest):
 
+    cql_setup_files = [
+        absolute_path(__file__, 'resources', 'cassandra_setup.cql'),
+    ]
+
+    cql_teardown_files = [
+        absolute_path(__file__, 'resources', 'cassandra_teardown.cql'),
+    ]
+
     def test_read_cassandra(self):
         reader = cassandra(self.hc, self.c_host, 'sparkle_test', 'test', consistency='ONE')
         res = reader.take(3)
@@ -67,7 +75,13 @@ class TestReadCassandra(BaseCassandraTest):
 
 class TestReadElastic(BaseElasticTest):
 
+    elastic_setup_files = [
+        absolute_path(__file__, 'resources', 'elastic_setup.json'),
+    ]
+    elastic_teardown_indexes = ['sparkle_test']
+
     def test_read_elastic(self):
+        sleep(5)  # hack to let it index the stuff
         reader = elastic(self.hc, self.es_host, 'sparkle_test', 'test',
                          query='?q=name:*Smith*',
                          options={'es.read.field.as.array.include': 'topics'})
@@ -99,6 +113,14 @@ class TestReadElastic(BaseElasticTest):
 
 class TestReadMysql(BaseMysqlTest):
 
+    sql_setup_files = [
+        absolute_path(__file__, 'resources', 'mysql_setup.sql'),
+    ]
+
+    sql_teardown_files = [
+        absolute_path(__file__, 'resources', 'mysql_teardown.sql'),
+    ]
+
     def test_read_mysql(self):
         reader = mysql(self.hc, self.mysql_host, 'sparkle_test', 'test',
                        options={'user': 'root', 'password': ''})
@@ -118,10 +140,11 @@ class TestReadKafka(SparkleTest):
 
     def setUp(self):
         super(TestReadKafka, self).setUp()
+        self.kafka_host = 'kafka.docker'
         self._setup_data()
 
     def _setup_data(self):
-        producer = KafkaProducer(bootstrap_servers='kafka:9092')
+        producer = KafkaProducer(bootstrap_servers='{}:9092'.format(self.kafka_host))
         self.test_topic = 'test_topic_{}'.format(uuid.uuid4().hex[:10])
         self.test_topic_2 = 'test_topic_2_{}'.format(uuid.uuid4().hex[:10])
         for i in range(5):
@@ -139,7 +162,7 @@ class TestReadKafka(SparkleTest):
 
     def test_simple_read(self):
         df = kafka(self.hc,
-                   brokers=['kafka:9092'],
+                   brokers=['{}:9092'.format(self.kafka_host)],
                    offset_ranges=[(self.test_topic, 0, 0, 2)],
                    )
         res = df.collect()
@@ -150,7 +173,7 @@ class TestReadKafka(SparkleTest):
 
     def test_read_multiple_topics(self):
         df = kafka(self.hc,
-                   brokers=['kafka:9092'],
+                   brokers=['{}:9092'.format(self.kafka_host)],
                    offset_ranges=[(self.test_topic, 0, 0, 2),
                                   (self.test_topic_2, 0, 0, 2)],
                    )
@@ -161,6 +184,3 @@ class TestReadKafka(SparkleTest):
             (None, {'count': 0, 'name': 'johnny'}),
             (None, {'count': 1, 'name': 'johnny'}),
         ], res)
-
-if __name__ == '__main__':
-    unittest.main()

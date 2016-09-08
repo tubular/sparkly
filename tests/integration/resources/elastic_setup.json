@@ -4,3 +4,5 @@
 { "name" : "Smith3", "topics": [1, 4, 5], "age": 31, "demo": { "age_30": 110, "age_10": 50 } }
 { "index" : { "_index" : "sparkle_test", "_type" : "test", "_id": "3" } }
 { "name" : "Smith4", "topics": [4, 5], "age": 12, "demo": { "age_30": 20, "age_10": 1 } }
+{ "index" : { "_index" : "sparkle_test", "_type" : "test_writer", "_id": "1111" } }
+{ "video_uid": "1111", "account_uid": "111", "title": "xxxx", "description": "xxxx", "views": 1111, "published": "20120305T142153Z" }

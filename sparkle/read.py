@@ -1,6 +1,8 @@
 import ujson as json
 from pyspark.streaming.kafka import KafkaUtils, OffsetRange
 
+from sparkle.schema_parser import generate_structure_type, parse_schema
+
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -58,7 +60,7 @@ def csv(hc, path, custom_schema=None, header=True, options=None):
 
     reader = config_reader_writer(hc.read.format('com.databricks.spark.csv'), {
         'header': str(header).lower(),
-        'inferSchema': str(not custom_schema).lower(),
+        'inferSchema': 'false' if custom_schema else 'true',
     })
 
     if custom_schema:
@@ -197,7 +199,7 @@ def by_url(hc, url):
     try:
         return _by_url_registry[scheme](hc, url)
     except KeyError:
-        raise NotImplemented('Data source is not supported: {}'.format(url))
+        raise NotImplementedError('Data source is not supported: {}'.format(url))
 
 
 def _cassandra_resolver(hc, url):
@@ -245,7 +247,7 @@ def _table_resolver(hc, url):
 
 def _fs_resolver(hc, url):
     inp, options = _to_parsed_url_and_options(url)
-    return hc.read.format(inp.netloc).options(**options).load(inp.path)
+    return hc.read.format(inp.scheme).options(**options).load(inp.path)
 
 
 def _mysql_resolver(hc, url):
@@ -269,6 +271,25 @@ def _kafka_resolver(hc, url):
     return kafka(hc, inp.netloc.split(','), offset_ranges)
 
 
+def _csv_resolver(hc, url):
+    inp, options = _to_parsed_url_and_options(url)
+    kwargs = {}
+
+    header = options.pop('header', None)
+    if header is not None:
+        kwargs['header'] = header == 'true'
+
+    custom_schema = options.pop('custom_schema', None)
+    if custom_schema:
+        custom_schema = generate_structure_type(parse_schema(custom_schema))
+        kwargs['custom_schema'] = custom_schema
+
+    if options:
+        kwargs['options'] = options
+
+    return csv(hc, inp.path, **kwargs)
+
+
 _by_url_registry = {
     # scheme: resolver
 }
@@ -289,8 +310,9 @@ def _register_by_resolver(scheme, resolver):
 
 
 _register_by_resolver('parquet', _fs_resolver)
-_register_by_resolver('csv', _fs_resolver)
+_register_by_resolver('csv', _csv_resolver)
 _register_by_resolver('cassandra', _cassandra_resolver)
 _register_by_resolver('mysql', _mysql_resolver)
 _register_by_resolver('elastic', _elastic_resolver)
 _register_by_resolver('kafka', _kafka_resolver)
+_register_by_resolver('table', _table_resolver)

@@ -29,10 +29,12 @@ class _TestContext(SparkleContext):
 class BaseCassandraTest(SparkleTest):
 
     context = _TestContext
+    cql_setup_files = []
+    cql_teardown_files = []
 
     def setUp(self):
         super(BaseCassandraTest, self).setUp()
-        self.c_host = 'cassandra'
+        self.c_host = 'cassandra.docker'
         self._setup_data()
 
     def tearDown(self):
@@ -40,25 +42,33 @@ class BaseCassandraTest(SparkleTest):
         self._clear_data()
 
     def _setup_data(self):
-        os.system('source venv2/bin/activate && cqlsh -f {} {}'.format(
-            absolute_path(__file__, 'resources', 'cassandra_setup.cql'),
-            self.c_host))
+        for file_path in self.cql_setup_files:
+            os.system(
+                'source venv2/bin/activate && cqlsh -f {} {}'.format(
+                    file_path,
+                    self.c_host
+                )
+            )
 
     def _clear_data(self):
-        os.system('source venv2/bin/activate && cqlsh -f {} {}'.format(
-            absolute_path(__file__,
-                          'resources',
-                          'cassandra_teardown.cql'),
-            self.c_host))
+        for file_path in self.cql_teardown_files:
+            os.system(
+                'source venv2/bin/activate && cqlsh -f {} {}'.format(
+                    file_path,
+                    self.c_host
+                )
+            )
 
 
 class BaseElasticTest(SparkleTest):
 
     context = _TestContext
+    elastic_setup_files = []
+    elastic_teardown_indexes = []
 
     def setUp(self):
         super(BaseElasticTest, self).setUp()
-        self.es_host = 'elastic'
+        self.es_host = 'elastic.docker'
         self._setup_data()
 
     def tearDown(self):
@@ -66,25 +76,31 @@ class BaseElasticTest(SparkleTest):
         self._clear_data()
 
     def _setup_data(self):
-        data_file = absolute_path(__file__, 'resources', 'elastic_setup.json')
-
-        os.system('curl -XPOST \'http://{}:9200/_bulk\' --data-binary @{}'.format(
-            self.es_host,
-            data_file))
+        for file_path in self.elastic_setup_files:
+            os.system(
+                'curl -XPOST \'http://{}:9200/_bulk\' --data-binary @{}'.format(
+                    self.es_host,
+                    file_path
+                )
+            )
 
     def _clear_data(self):
-        os.system('curl -XDELETE \'http://{}:9200/sparkle_test/test'.format(
-            self.es_host
-        ))
+        for index in self.elastic_teardown_indexes:
+            os.system('curl -XDELETE \'http://{}:9200/{}\''.format(
+                index,
+                self.es_host
+            ))
 
 
 class BaseMysqlTest(SparkleTest):
 
     context = _TestContext
+    sql_setup_files = []
+    sql_teardown_files = []
 
     def setUp(self):
         super(BaseMysqlTest, self).setUp()
-        self.mysql_host = 'mysql'
+        self.mysql_host = 'mysql.docker'
         self._setup_data()
 
     def tearDown(self):
@@ -92,9 +108,9 @@ class BaseMysqlTest(SparkleTest):
         self._clear_data()
 
     def _setup_data(self):
-        data_file = absolute_path(__file__, 'resources', 'mysql_setup.sql')
-        os.system('mysql -h{} -uroot < {}'.format(self.mysql_host, data_file))
+        for file_path in self.sql_setup_files:
+            os.system('mysql -h{} -uroot < {}'.format(self.mysql_host, file_path))
 
     def _clear_data(self):
-        data_file = absolute_path(__file__, 'resources', 'mysql_teardown.sql')
-        os.system('mysql -h{} -uroot < {}'.format(self.mysql_host, data_file))
+        for file_path in self.sql_teardown_files:
+            os.system('mysql -h{} -uroot < {}'.format(self.mysql_host, file_path))
