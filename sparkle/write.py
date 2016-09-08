@@ -1,3 +1,5 @@
+import copy
+
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -11,7 +13,7 @@ def fs(df, path, partition_by=None, mode=None, format=None, options=None):
 
     Args:
         df (pyspark.sql.DataFrame):
-        path (str): s3 path.
+        path (str): s3 or local fs path.
         partition_by (list): fields to partition by.
         format (str|None): output files format.
     """
@@ -63,7 +65,7 @@ def csv(df, path, header=False, mode='error', options=None):
         'header': str(header).lower(),
     })
 
-    return config_reader_writer(writer, options).mode(mode).save(path)
+    config_reader_writer(writer, options).mode(mode).save(path)
 
 
 def elastic(df, host, es_index, es_type, mode=None, options=None):
@@ -83,12 +85,12 @@ def elastic(df, host, es_index, es_type, mode=None, options=None):
         'es.nodes': host,
     })
 
-    return config_reader_writer(writer, options).\
+    config_reader_writer(writer, options).\
         mode(mode or 'append').\
         save('{}/{}'.format(es_index, es_type))
 
 
-def mysql(df, host, database, table, mode='append', options=None):
+def mysql(df, host, database, table, mode=None, options=None):
     """Writes dataframe into mysql table.
 
     Args:
@@ -101,14 +103,15 @@ def mysql(df, host, database, table, mode='append', options=None):
     """
     assert context_has_jar(df.sql_ctx, 'mysql-connector-java')
 
-    writer = config_reader_writer(df.write.format('jdbc'), {
-        'url': 'jdbc:mysql://{}:3306/{}'.format(host, database),
-        'driver': 'com.mysql.jdbc.Driver',
-        'dbtable': table,
-        'mode': mode,
-    })
+    options = copy.deepcopy(options)
+    options['driver'] = 'com.mysql.jdbc.Driver'
 
-    return config_reader_writer(writer, options).save()
+    df.write.jdbc(
+        'jdbc:mysql://{}:3306/{}'.format(host, database),
+        table,
+        mode=mode or 'append',
+        properties=options,
+    )
 
 
 def by_url(df, url):
@@ -138,7 +141,7 @@ def by_url(df, url):
     try:
         _by_url_registry[scheme](df, url)
     except KeyError:
-        raise NotImplemented('Destination specified in url is not supported: {}'.format(url))
+        raise NotImplementedError('Destination specified in url is not supported: {}'.format(url))
 
 
 def _fs_resolver(df, url):

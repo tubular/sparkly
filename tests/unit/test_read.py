@@ -1,5 +1,4 @@
 import unittest
-
 try:
     from unittest import mock
 except ImportError:
@@ -7,6 +6,7 @@ except ImportError:
 
 import pyspark.sql
 
+from sparkle.schema_parser import generate_structure_type, parse_schema
 import sparkle
 import sparkle.read
 
@@ -25,12 +25,14 @@ class TestReadByUrl(unittest.TestCase):
         self.hc.table.assert_called_with('some_hive_table')
 
     def test_parquet(self):
-        self.hc.read.parquet.return_value = self.fake_df
+        self.hc.read.format.return_value.options.return_value.load.return_value = self.fake_df
 
         df = sparkle.read.by_url(self.hc, 'parquet:s3://my-bucket/path/to/parquet')
 
         self.assertEqual(df, self.fake_df)
-        self.hc.read.parquet.assert_called_with('s3://my-bucket/path/to/parquet')
+        self.hc.read.format.return_value.options.return_value.load.assert_called_with(
+            's3://my-bucket/path/to/parquet'
+        )
 
     @mock.patch('sparkle.read.csv')
     def test_csv(self, csv_mock):
@@ -43,12 +45,21 @@ class TestReadByUrl(unittest.TestCase):
 
     @mock.patch('sparkle.read.csv')
     def test_csv_on_local_file_system(self, csv_mock):
+        self.hc.read.format.return_value.options.return_value.load.return_value = self.fake_df
+
         csv_mock.return_value = self.fake_df
 
-        df = sparkle.read.by_url(self.hc, 'csv:///path/on/file/system?header=false')
+        schema = 'name:string|age:long|l:list[long]|s:struct[name:string,age:long]'
+        df = sparkle.read.by_url(self.hc, 'csv:///path/on/file/system?header=false&custom_schema='
+                                          '{}'.format(schema))
 
         self.assertEqual(df, self.fake_df)
-        csv_mock.assert_called_with(self.hc, '/path/on/file/system', header=False)
+        csv_mock.assert_called_with(
+            self.hc,
+            '/path/on/file/system',
+            header=False,
+            custom_schema=generate_structure_type(parse_schema(schema)),
+        )
 
     @mock.patch('sparkle.read.elastic')
     def test_elastic(self, elastic_mock):

@@ -1,8 +1,9 @@
 import os
-import unittest
 import uuid
 from shutil import rmtree
 from tempfile import mkdtemp
+
+from sparkle.utils import absolute_path
 
 from sparkle import read
 from sparkle.write import fs, cassandra, elastic, mysql
@@ -32,7 +33,7 @@ class TestWriteFS(SparkleTest):
         dest_path = '{}/test_csv'.format(temp_dir)
         try:
             fs(df,
-               'file://{}'.format(dest_path),
+               dest_path,
                partition_by=['video_uid'],
                format='csv',
                mode='overwrite',
@@ -67,39 +68,72 @@ class TestWriteFS(SparkleTest):
 
 class TestWriteCassandra(BaseCassandraTest):
 
+    cql_setup_files = [
+        absolute_path(__file__, 'resources', 'cassandra_setup.cql'),
+    ]
+    cql_teardown_files = [
+        absolute_path(__file__, 'resources', 'cassandra_teardown.cql'),
+    ]
+
     def test_write_cassandra(self):
         df = self.hc.createDataFrame(TEST_DATA, TEST_COLUMNS)
 
-        cassandra(df, 'cassandra', 'sparkle_test', 'test_writer',
+        cassandra(df, self.c_host, 'sparkle_test', 'test_writer',
                   consistency='ONE', mode='overwrite')
 
-        df = read.by_url(self.hc, 'cassandra://cassandra/sparkle_test/test_writer?consistency=ONE')
+        df = read.by_url(
+            self.hc,
+            'cassandra://{}/sparkle_test/test_writer?consistency=ONE'.format(self.c_host)
+        )
         self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
 
 
 class TestWriteElastic(BaseElasticTest):
 
+    elastic_setup_files = [
+        absolute_path(__file__, 'resources', 'elastic_setup.json')
+    ]
+    elastic_teardown_indexes = ['sparkle_test']
+
     def test_write_elastic(self):
         df = self.hc.createDataFrame(TEST_DATA, TEST_COLUMNS)
 
-        elastic(df, self.es_host, 'sparkle_test', 'test')
+        elastic(
+            df,
+            self.es_host,
+            'sparkle_test',
+            'test_writer',
+            mode='overwrite',
+            options={
+                'es.mapping.id': 'video_uid',
+            }
+        )
 
         df = read.by_url(self.hc,
-                         'elastic://{}/sparkle_test/test'.format(self.es_host))
+                         'elastic://{}/sparkle_test/test_writer'.format(self.es_host))
         self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
 
 
 class TestWriteMysql(BaseMysqlTest):
 
-    def test_read_mysql(self):
+    sql_setup_files = [
+        absolute_path(__file__, 'resources', 'mysql_setup.sql'),
+    ]
+
+    sql_teardown_files = [
+        absolute_path(__file__, 'resources', 'mysql_teardown.sql'),
+    ]
+
+    def test_write_mysql(self):
         df = self.hc.createDataFrame(TEST_DATA, TEST_COLUMNS)
 
-        mysql(df, self.mysql_host, 'sparkle_test', 'test',
+        mysql(df, self.mysql_host, 'sparkle_test', 'test_writer',
+              mode='overwrite',
               options={'user': 'root', 'password': ''})
 
-        df = read.by_url(self.hc, 'mysql://{}/sparkle_test/test'.format(self.mysql_host))
+        df = read.by_url(
+            self.hc,
+            'mysql://{}/sparkle_test/test_writer?'
+            'user=root&password='.format(self.mysql_host)
+        )
         self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
-
-
-if __name__ == '__main__':
-    unittest.main()
