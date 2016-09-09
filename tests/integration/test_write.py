@@ -69,10 +69,10 @@ class TestWriteFS(SparkleTest):
 class TestWriteCassandra(BaseCassandraTest):
 
     cql_setup_files = [
-        absolute_path(__file__, 'resources', 'cassandra_setup.cql'),
+        absolute_path(__file__, 'resources', 'test_write', 'cassandra_setup.cql'),
     ]
     cql_teardown_files = [
-        absolute_path(__file__, 'resources', 'cassandra_teardown.cql'),
+        absolute_path(__file__, 'resources', 'test_write', 'cassandra_teardown.cql'),
     ]
 
     def test_write_cassandra(self):
@@ -91,7 +91,7 @@ class TestWriteCassandra(BaseCassandraTest):
 class TestWriteElastic(BaseElasticTest):
 
     elastic_setup_files = [
-        absolute_path(__file__, 'resources', 'elastic_setup.json')
+        absolute_path(__file__, 'resources', 'test_write', 'elastic_setup.json')
     ]
     elastic_teardown_indexes = ['sparkle_test']
 
@@ -117,11 +117,11 @@ class TestWriteElastic(BaseElasticTest):
 class TestWriteMysql(BaseMysqlTest):
 
     sql_setup_files = [
-        absolute_path(__file__, 'resources', 'mysql_setup.sql'),
+        absolute_path(__file__, 'resources', 'test_write', 'mysql_setup.sql'),
     ]
 
     sql_teardown_files = [
-        absolute_path(__file__, 'resources', 'mysql_teardown.sql'),
+        absolute_path(__file__, 'resources', 'test_write', 'mysql_teardown.sql'),
     ]
 
     def test_write_mysql(self):

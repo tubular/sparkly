@@ -44,16 +44,21 @@ COMPLEX_TYPES = {
 def _process_type(field_type):
     """Generate schema recursively by string definition.
 
+    It supports basic types: string, integer, long, float, boolean.
+    And complex types in any combinations: dict, struct, list.
+
     Usages:
-        >>> _process_type('struct[a:dict[long,dict[string,long]],'
-        ...               'c:dict[long,string]]').simpleString()
-        'struct<a:map<bigint,map<string,bigint>>,c:map<bigint,string>>'
-        >>> _process_type('dict[string,struct[a:dict[long,string]]]').simpleString()
-        'map<string,struct<a:map<bigint,string>>>'
+        >>> _process_type('string').simpleString()
+        'string'
         >>> _process_type('list[dict[string,string]]').simpleString()
         'array<map<string,string>>'
         >>> _process_type('struct[a:struct[a:string]]').simpleString()
         'struct<a:struct<a:string>>'
+        >>> _process_type('dict[string,struct[a:dict[long,string]]]').simpleString()
+        'map<string,struct<a:map<bigint,string>>>'
+        >>> _process_type('struct[a:dict[long,dict[string,long]],'
+        ...               'c:dict[long,string]]').simpleString()
+        'struct<a:map<bigint,map<string,bigint>>,c:map<bigint,string>>'
         >>> _process_type('map[string,long]')
         Traceback (most recent call last):
         ...
@@ -87,6 +92,9 @@ def _process_type(field_type):
 
 def generate_structure_type(fields_and_types):
     """Generate a StructType from the dict of fields & types.
+
+    Schema definition supports basic types: string, integer, long, float, boolean.
+    And complex types in any combinations: dict, struct, list.
 
     Usages:
         >>> generate_structure_type({'field_a': 'long'}).simpleString()
