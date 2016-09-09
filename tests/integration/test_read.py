@@ -1,6 +1,5 @@
 import json
 import uuid
-from time import sleep
 
 from kafka import KafkaProducer
 
@@ -15,7 +14,7 @@ class TestReadCsv(SparkleTest):
     context = _TestContext
 
     def test_csv(self):
-        csv_filepath = absolute_path(__file__, 'resources', 'test.csv')
+        csv_filepath = absolute_path(__file__, 'resources', 'test_read', 'test.csv')
 
         reader = csv(self.hc, csv_filepath)
 
@@ -53,11 +52,11 @@ class TestReadCsv(SparkleTest):
 class TestReadCassandra(BaseCassandraTest):
 
     cql_setup_files = [
-        absolute_path(__file__, 'resources', 'cassandra_setup.cql'),
+        absolute_path(__file__, 'resources', 'test_read', 'cassandra_setup.cql'),
     ]
 
     cql_teardown_files = [
-        absolute_path(__file__, 'resources', 'cassandra_teardown.cql'),
+        absolute_path(__file__, 'resources', 'test_read', 'cassandra_teardown.cql'),
     ]
 
     def test_read_cassandra(self):
@@ -76,12 +75,11 @@ class TestReadCassandra(BaseCassandraTest):
 class TestReadElastic(BaseElasticTest):
 
     elastic_setup_files = [
-        absolute_path(__file__, 'resources', 'elastic_setup.json'),
+        absolute_path(__file__, 'resources', 'test_read', 'elastic_setup.json'),
     ]
     elastic_teardown_indexes = ['sparkle_test']
 
     def test_read_elastic(self):
-        sleep(5)  # hack to let it index the stuff
         reader = elastic(self.hc, self.es_host, 'sparkle_test', 'test',
                          query='?q=name:*Smith*',
                          options={'es.read.field.as.array.include': 'topics'})
@@ -114,11 +112,11 @@ class TestReadElastic(BaseElasticTest):
 class TestReadMysql(BaseMysqlTest):
 
     sql_setup_files = [
-        absolute_path(__file__, 'resources', 'mysql_setup.sql'),
+        absolute_path(__file__, 'resources', 'test_read', 'mysql_setup.sql'),
     ]
 
     sql_teardown_files = [
-        absolute_path(__file__, 'resources', 'mysql_teardown.sql'),
+        absolute_path(__file__, 'resources', 'test_read', 'mysql_teardown.sql'),
     ]
 
     def test_read_mysql(self):

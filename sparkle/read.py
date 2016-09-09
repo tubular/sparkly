@@ -185,7 +185,6 @@ def by_url(hc, url):
         - `kafka://kafka.host/topic`
 
     TODO (drudim):
-        - The method gets messy. Formats should be plugable.
         - I don't like how kafka url looks like.
 
     Args:
