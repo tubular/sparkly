@@ -1,6 +1,6 @@
-## 0.2.2
-* write.by_url
-* refactored read.by_url
+## 0.3.0
+* Add generic writer `write.by_url`.
+* Refactored `read.by_url`.
 
 ## 0.2.1
 * Fix empty context initialization bug.

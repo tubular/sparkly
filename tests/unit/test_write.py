@@ -1,10 +1,8 @@
 import unittest
-
 try:
     from unittest import mock
 except ImportError:
     import mock
-
 import sparkle
 import sparkle.write
 
@@ -22,7 +20,7 @@ class TestWriteByUrl(unittest.TestCase):
             df,
             's3://my-bucket/path/to/parquet',
             partition_by=['x', 'y', 'z'],
-            format='parquet',
+            output_format='parquet',
             mode='append',
             options={
                 'additional': '1',
@@ -39,7 +37,7 @@ class TestWriteByUrl(unittest.TestCase):
         fs_mock.assert_called_with(
             df,
             '/my-bucket/path/to/csv',
-            format='csv',
+            output_format='csv',
             mode=None,
             options={},
             partition_by=None,

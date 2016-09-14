@@ -1,10 +1,7 @@
-import os
-import uuid
 from shutil import rmtree
 from tempfile import mkdtemp
 
 from sparkle.utils import absolute_path
-
 from sparkle import read
 from sparkle.write import fs, cassandra, elastic, mysql
 from sparkle.test import SparkleTest
@@ -26,44 +23,44 @@ class TestWriteFS(SparkleTest):
 
     context = _TestContext
 
-    def test_write_to_local_csv(self):
+    def setUp(self):
+        self.temp_dir = mkdtemp()
+
+    def tearDown(self):
+        rmtree(self.temp_dir)
+
+    def test_write_csv(self):
+        dest_path = '{}/test_csv'.format(self.temp_dir)
         df = self.hc.createDataFrame(TEST_DATA, TEST_COLUMNS)
 
-        temp_dir = mkdtemp()
-        dest_path = '{}/test_csv'.format(temp_dir)
-        try:
-            fs(df,
-               dest_path,
-               partition_by=['video_uid'],
-               format='csv',
-               mode='overwrite',
-               options={'header': 'true'},
-               )
+        fs(df,
+           dest_path,
+           partition_by=['video_uid'],
+           output_format='csv',
+           mode='overwrite',
+           options={'header': 'true'},
+           )
 
-            df = read.by_url(self.hc, 'csv://{}'.format(dest_path))
-            self.assertDataframeEqual(
-                df,
-                TEST_DATA,
-                TEST_COLUMNS,
-            )
-        finally:
-            rmtree(temp_dir)
+        df = read.by_url(self.hc, 'csv://{}'.format(dest_path))
+        self.assertDataframeEqual(
+            df,
+            TEST_DATA,
+            TEST_COLUMNS,
+        )
 
-    def test_write_s3_parquet(self):
+    def test_write_parquet(self):
+        dest_path = '{}/test_parquet'.format(self.temp_dir)
         df = self.hc.createDataFrame(TEST_DATA, TEST_COLUMNS)
-        dest_path = 's3://tubular-tests/sparkle/{}'.format(uuid.uuid4().hex)
 
-        try:
-            fs(df,
-               path=dest_path,
-               partition_by=['video_uid'],
-               mode='overwrite',
-               )
+        fs(df,
+           path=dest_path,
+           output_format='parquet',
+           partition_by=['video_uid'],
+           mode='overwrite',
+           )
 
-            df = read.by_url(self.hc, 'parquet:{}'.format(dest_path))
-            self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
-        finally:
-            os.system('aws s3 rm --recursive {}'.format(dest_path))
+        df = read.by_url(self.hc, 'parquet:{}'.format(dest_path))
+        self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
 
 
 class TestWriteCassandra(BaseCassandraTest):

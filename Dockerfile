@@ -16,4 +16,4 @@ RUN yum install -y python-virtualenv && virtualenv -p python2 venv2 && venv2/bin
 RUN yum install -y mysql
 
 # Sparkle installation
-ADD . /opt/sparkle/
+COPY . /opt/sparkle/
