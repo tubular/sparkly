@@ -6,9 +6,9 @@ except ImportError:
 
 import pyspark.sql
 
-from sparkle.schema_parser import generate_structure_type, parse_schema
 import sparkle
 import sparkle.read
+from sparkle.schema_parser import generate_structure_type, parse_schema
 
 
 class TestReadByUrl(unittest.TestCase):

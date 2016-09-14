@@ -1,5 +1,10 @@
 import logging
 import os
+try:
+    from urllib.parse import urlparse
+except ImportError:
+    from urlparse import urlparse
+
 
 logger = logging.getLogger(__name__)
 
@@ -103,3 +108,17 @@ def absolute_path(file_path, *rel_path):
             *rel_path
         )
     )
+
+
+def to_parsed_url_and_options(url):
+    """Returns parsed url and options.
+
+    Args:
+        url (str)
+
+    Returns:
+        (tuple[ParseResult, dict]): Returns parsed url and GET parameters as dict.
+    """
+    inp = urlparse(url)
+    options = dict(item.split('=', 1) for item in inp.query.split('&')) if inp.query else {}
+    return inp, options

@@ -8,7 +8,8 @@ try:
 except ImportError:
     from urlparse import urlparse
 
-from sparkle.utils import context_has_package, config_reader_writer, context_has_jar
+from sparkle.utils import (context_has_package, config_reader_writer,
+                           context_has_jar, to_parsed_url_and_options)
 
 
 def cassandra(hc, host, keyspace, table, consistency='QUORUM', parallelism=None, options=None):
@@ -19,8 +20,8 @@ def cassandra(hc, host, keyspace, table, consistency='QUORUM', parallelism=None,
         host (str)
         keyspace (str)
         table (str)
-        consistency (str)
-        parallelism (str): desired level of parallelism
+        consistency (str): Read consitency level: ONE, QUORUM, ALL, etc.
+        parallelism (str): Desired level of parallelism.
         options (dict[str,str]): Additional options for `org.apache.spark.sql.cassandra` format.
 
     Returns:
@@ -77,7 +78,7 @@ def elastic(hc, host, es_index, es_type, query='', fields=None, parallelism=None
         host (str)
         es_index (str)
         es_type (str)
-        query (str): pre-filter es documents, e.g. '?q=views:>10'.
+        query (str): Pre-filter es documents, e.g. '?q=views:>10'.
         fields (list[str]): Select only specified fields.
         options (dict[str,str]): Additional options for `org.elasticsearch.spark.sql` format.
 
@@ -111,10 +112,10 @@ def mysql(hc, host, database, table, options=None):
     Options should at least contain user and password.
 
     Args:
-        hc (sparkle.SparkleContext): Hive context
-        host (str): Server address
-        database (str): Database to connect to
-        table (str): Table to read rows from
+        hc (sparkle.SparkleContext): Hive context.
+        host (str): Server address.
+        database (str): Database to connect to.
+        table (str): Table to read rows from.
         options (dict[str,str]): Additional options for `org.elasticsearch.spark.sql` format.
 
     Returns:
@@ -135,9 +136,9 @@ def kafka(hc, brokers, offset_ranges):
 
     Args:
         hc (HiveContext):
-        brokers (list): additional kafka parameters, see KafkaUtils.createRDD docs
-        offset_ranges (list[(str, int, int, int)]): list of partition ranges
-            [(topic, partition, start_offset, end_offset)]
+        brokers (list): Additional kafka parameters, see KafkaUtils.createRDD docs.
+        offset_ranges (list[(str, int, int, int)]): List of partition ranges
+            [(topic, partition, start_offset, end_offset)].
 
     Returns:
         pyspark.rdd.RDD
@@ -194,6 +195,16 @@ def by_url(hc, url):
     Returns:
         pyspark.sql.DataFrame
     """
+    _by_url_registry = {
+        'parquet': _fs_resolver,
+        'csv': _csv_resolver,
+        'cassandra': _cassandra_resolver,
+        'mysql': _mysql_resolver,
+        'elastic': _elastic_resolver,
+        'kafka': _kafka_resolver,
+        'table': _table_resolver,
+    }
+
     scheme = urlparse(url).scheme
     try:
         return _by_url_registry[scheme](hc, url)
@@ -202,7 +213,7 @@ def by_url(hc, url):
 
 
 def _cassandra_resolver(hc, url):
-    inp, options = _to_parsed_url_and_options(url)
+    inp, options = to_parsed_url_and_options(url)
 
     _, keyspace, table = inp.path.split('/')
     kwargs = {
@@ -220,7 +231,7 @@ def _cassandra_resolver(hc, url):
 
 
 def _elastic_resolver(hc, url):
-    inp, options = _to_parsed_url_and_options(url)
+    inp, options = to_parsed_url_and_options(url)
     host = inp.netloc
     q = options.pop('q', None)
     query = '?q={}'.format(q) if q else ''
@@ -240,23 +251,23 @@ def _elastic_resolver(hc, url):
 
 
 def _table_resolver(hc, url):
-    inp, options = _to_parsed_url_and_options(url)
+    inp, options = to_parsed_url_and_options(url)
     return hc.table(inp.netloc)
 
 
 def _fs_resolver(hc, url):
-    inp, options = _to_parsed_url_and_options(url)
+    inp, options = to_parsed_url_and_options(url)
     return hc.read.format(inp.scheme).options(**options).load(inp.path)
 
 
 def _mysql_resolver(hc, url):
-    inp, options = _to_parsed_url_and_options(url)
+    inp, options = to_parsed_url_and_options(url)
     db, table = inp.path[1:].split('/', 1)
     return mysql(hc, inp.netloc, db, table, options=options)
 
 
 def _kafka_resolver(hc, url):
-    inp, options = _to_parsed_url_and_options(url)
+    inp, options = to_parsed_url_and_options(url)
     offset_ranges = []
     for item in inp.path[1:].split('/'):
         if not item:
@@ -271,7 +282,7 @@ def _kafka_resolver(hc, url):
 
 
 def _csv_resolver(hc, url):
-    inp, options = _to_parsed_url_and_options(url)
+    inp, options = to_parsed_url_and_options(url)
     kwargs = {}
 
     header = options.pop('header', None)
@@ -287,31 +298,3 @@ def _csv_resolver(hc, url):
         kwargs['options'] = options
 
     return csv(hc, inp.path, **kwargs)
-
-
-_by_url_registry = {
-    # scheme: resolver
-}
-
-
-def _to_parsed_url_and_options(url):
-    """Returns parsed url and options."""
-    inp = urlparse(url)
-    options = dict([item.split('=', 1) for item in inp.query.split('&')]) if inp.query else {}
-    return inp, options
-
-
-def _register_by_resolver(scheme, resolver):
-    if scheme in _by_url_registry:
-        raise Exception('The scheme {} already have a resolver'.format(scheme))
-
-    _by_url_registry[scheme] = resolver
-
-
-_register_by_resolver('parquet', _fs_resolver)
-_register_by_resolver('csv', _csv_resolver)
-_register_by_resolver('cassandra', _cassandra_resolver)
-_register_by_resolver('mysql', _mysql_resolver)
-_register_by_resolver('elastic', _elastic_resolver)
-_register_by_resolver('kafka', _kafka_resolver)
-_register_by_resolver('table', _table_resolver)

@@ -6,6 +6,62 @@ from pyspark.sql.types import (StructType, StringType, LongType, IntegerType,
 from sparkle.exceptions import UnsupportedDataType
 
 
+def generate_structure_type(fields_and_types):
+    """Generate a StructType from the dict of fields & types.
+
+    Schema definition supports basic types: string, integer, long, float, boolean.
+    And complex types in any combinations: dict, struct, list.
+
+    Usages:
+        >>> generate_structure_type({'field_a': 'long'}).simpleString()
+        'struct<field_a:bigint>'
+        >>> generate_structure_type({'field_a': 'dict[string,long]'}).simpleString()
+        'struct<field_a:map<string,bigint>>'
+        >>> generate_structure_type({'field_a': 'loooong'})
+        Traceback (most recent call last):
+        ...
+        sparkle.exceptions.UnsupportedDataType: Unsupported type field_a for field loooong
+
+    Args:
+        fields_and_types (dict[str, str]): Field - type associations.
+            Possible types are string, integer, long, float, boolean, dict, struct.
+
+    Returns:
+        StructType
+
+    Raises:
+        UnsupportedDataType: In case of unsupported data type.
+    """
+    struct = StructType()
+    for field_name, field_type in fields_and_types.items():
+        try:
+            struct.add(field_name, _process_type(field_type))
+        except UnsupportedDataType:
+            message = 'Unsupported type {} for field {}'.format(field_type, field_name)
+            raise UnsupportedDataType(message)
+
+    return struct
+
+
+def parse_schema(schema):
+    """Converts schema string to dict: field_name -> type definition string.
+
+    Note:
+        We need an OrderedDict here because ordering matters in Dataframe definition
+        when I try to apply it to RDD, this is what we do when read kafka RDD.
+
+    Example:
+        name:string|age:int -> {'name': 'string', 'age': 'int'}
+
+    Args:
+        schema (str): schema as string
+
+    Returns:
+        (OrderedDict)
+    """
+    return OrderedDict(x.split(':', 1) for x in schema.strip('|').split('|'))
+
+
 TYPES = {
     'string': StringType,
     'integer': IntegerType,
@@ -88,59 +144,3 @@ def _process_type(field_type):
 
     message = 'Cannot parse type from string: "{}"'.format(field_type)
     raise UnsupportedDataType(message)
-
-
-def generate_structure_type(fields_and_types):
-    """Generate a StructType from the dict of fields & types.
-
-    Schema definition supports basic types: string, integer, long, float, boolean.
-    And complex types in any combinations: dict, struct, list.
-
-    Usages:
-        >>> generate_structure_type({'field_a': 'long'}).simpleString()
-        'struct<field_a:bigint>'
-        >>> generate_structure_type({'field_a': 'dict[string,long]'}).simpleString()
-        'struct<field_a:map<string,bigint>>'
-        >>> generate_structure_type({'field_a': 'loooong'})
-        Traceback (most recent call last):
-        ...
-        sparkle.exceptions.UnsupportedDataType: Unsupported type field_a for field loooong
-
-    Args:
-        fields_and_types (dict[str, str]): Field - type associations.
-            Possible types are string, integer, long, float, boolean, dict, struct.
-
-    Returns:
-        StructType
-
-    Raises:
-        UnsupportedDataType: In case of unsupported data type.
-    """
-    struct = StructType()
-    for field_name, field_type in fields_and_types.items():
-        try:
-            struct.add(field_name, _process_type(field_type))
-        except UnsupportedDataType:
-            message = 'Unsupported type {} for field {}'.format(field_type, field_name)
-            raise UnsupportedDataType(message)
-
-    return struct
-
-
-def parse_schema(schema):
-    """Converts schema string to dict: field_name -> type definition string.
-
-    Note:
-        We need an OrderedDict here because ordering matters in Dataframe definition
-        when I try to apply it to RDD, this is what we do when read kafka RDD.
-
-    Example:
-        name:string|age:int -> {'name': 'string', 'age': 'int'}
-
-    Args:
-        schema (str): schema as string
-
-    Returns:
-        (OrderedDict)
-    """
-    return OrderedDict(x.split(':', 1) for x in schema.strip('|').split('|'))
