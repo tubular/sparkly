@@ -35,7 +35,6 @@ class TestWriteFS(SparkleTest):
 
         fs(df,
            dest_path,
-           partition_by=['video_uid'],
            output_format='csv',
            mode='overwrite',
            options={'header': 'true'},

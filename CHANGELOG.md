@@ -1,3 +1,7 @@
+## 0.3.1
+* Fix: when no partitioning specified for file system writer.
+* Fix: remove default values from cassandra reader
+
 ## 0.3.0
 * Add generic writer `write.by_url`.
 * Refactored `read.by_url`.

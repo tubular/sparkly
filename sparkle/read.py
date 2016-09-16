@@ -1,3 +1,4 @@
+import copy
 import ujson as json
 from pyspark.streaming.kafka import KafkaUtils, OffsetRange
 
@@ -12,7 +13,7 @@ from sparkle.utils import (context_has_package, config_reader_writer,
                            context_has_jar, to_parsed_url_and_options)
 
 
-def cassandra(hc, host, keyspace, table, consistency='QUORUM', parallelism=None, options=None):
+def cassandra(hc, host, keyspace, table, consistency=None, parallelism=None, options=None):
     """Create dataframe from the cassandra table.
 
     Args:
@@ -29,14 +30,19 @@ def cassandra(hc, host, keyspace, table, consistency='QUORUM', parallelism=None,
     """
     assert context_has_package(hc, 'datastax:spark-cassandra-connector')
 
-    reader = config_reader_writer(hc.read.format('org.apache.spark.sql.cassandra'), {
-        'spark_cassandra_connection_host': host,
-        'spark_cassandra_input_consistency_level': consistency,
-        'keyspace': keyspace,
-        'table': table,
-    })
+    options = options or {}
+    options = copy.deepcopy(options)
 
-    reader = config_reader_writer(reader, options).load()
+    options['spark_cassandra_connection_host'] = host
+    options['keyspace'] = keyspace
+    options['table'] = table
+
+    if consistency:
+        options['spark_cassandra_input_consistency_level'] = consistency
+
+    reader = config_reader_writer(
+        hc.read.format('org.apache.spark.sql.cassandra'), options
+    ).load()
 
     if parallelism:
         reader = reader.coalesce(parallelism)
