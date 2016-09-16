@@ -20,7 +20,7 @@ def fs(df, path, partition_by=None, mode=None, output_format=None, options=None)
     """
     writer = df.write\
         .mode(mode)\
-        .partitionBy(*partition_by)\
+        .partitionBy(*(partition_by or []))\
         .format(output_format)
     config_reader_writer(writer, options).save(path)
 
@@ -40,14 +40,18 @@ def cassandra(df, host, keyspace, table, consistency=None, mode=None, options=No
     """
     assert context_has_package(df.sql_ctx, 'datastax:spark-cassandra-connector')
 
-    writer = config_reader_writer(df.write.format('org.apache.spark.sql.cassandra'), {
-        'spark_cassandra_connection_host': host,
-        'spark_cassandra_output_consistency_level': consistency,
-        'keyspace': keyspace,
-        'table': table,
-    })
+    options = options or {}
+    options = copy.deepcopy(options)
+    options['spark_cassandra_connection_host'] = host
+    options['keyspace'] = keyspace
+    options['table'] = table
 
-    config_reader_writer(writer, options).mode(mode).save()
+    if consistency:
+        options['spark_cassandra_output_consistency_level'] = consistency
+
+    config_reader_writer(
+        df.write.format('org.apache.spark.sql.cassandra'), options
+    ).mode(mode).save()
 
 
 def csv(df, path, header=False, mode=None, options=None):
@@ -104,6 +108,7 @@ def mysql(df, host, database, table, mode=None, options=None):
     """
     assert context_has_jar(df.sql_ctx, 'mysql-connector-java')
 
+    options = options or {}
     options = copy.deepcopy(options)
     options['driver'] = 'com.mysql.jdbc.Driver'
 
