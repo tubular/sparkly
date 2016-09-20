@@ -1,5 +1,3 @@
-import copy
-
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -40,17 +38,20 @@ def cassandra(df, host, keyspace, table, consistency=None, mode=None, options=No
     """
     assert context_has_package(df.sql_ctx, 'datastax:spark-cassandra-connector')
 
-    options = options or {}
-    options = copy.deepcopy(options)
-    options['spark_cassandra_connection_host'] = host
-    options['keyspace'] = keyspace
-    options['table'] = table
+    default_options = {
+        'spark_cassandra_connection_host': host,
+        'keyspace': keyspace,
+        'table': table,
+    }
+
+    if options:
+        default_options.update(options)
 
     if consistency:
-        options['spark_cassandra_output_consistency_level'] = consistency
+        default_options['spark_cassandra_output_consistency_level'] = consistency
 
     config_reader_writer(
-        df.write.format('org.apache.spark.sql.cassandra'), options
+        df.write.format('org.apache.spark.sql.cassandra'), default_options
     ).mode(mode).save()
 
 
@@ -108,15 +109,18 @@ def mysql(df, host, database, table, mode=None, options=None):
     """
     assert context_has_jar(df.sql_ctx, 'mysql-connector-java')
 
-    options = options or {}
-    options = copy.deepcopy(options)
-    options['driver'] = 'com.mysql.jdbc.Driver'
+    default_options = {
+        'driver': 'com.mysql.jdbc.Driver'
+    }
+
+    if options:
+        default_options.update(options)
 
     df.write.jdbc(
         'jdbc:mysql://{}:3306/{}'.format(host, database),
         table,
         mode=mode,
-        properties=options,
+        properties=default_options,
     )
 
 
