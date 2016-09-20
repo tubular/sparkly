@@ -5,8 +5,8 @@ from kafka import KafkaProducer
 
 from sparkle.utils import absolute_path
 from sparkle.read import elastic, csv, cassandra, mysql, kafka
-from sparkle.test import SparkleTest
-from tests.integration.base import _TestContext, BaseMysqlTest, BaseElasticTest, BaseCassandraTest
+from sparkle.test import SparkleTest, BaseCassandraTest, BaseElasticTest, BaseMysqlTest
+from tests.integration.base import _TestContext
 
 
 class TestReadCsv(SparkleTest):
@@ -51,6 +51,8 @@ class TestReadCsv(SparkleTest):
 
 class TestReadCassandra(BaseCassandraTest):
 
+    context = _TestContext
+
     cql_setup_files = [
         absolute_path(__file__, 'resources', 'test_read', 'cassandra_setup.cql'),
     ]
@@ -74,13 +76,15 @@ class TestReadCassandra(BaseCassandraTest):
 
 class TestReadElastic(BaseElasticTest):
 
+    context = _TestContext
+
     elastic_setup_files = [
         absolute_path(__file__, 'resources', 'test_read', 'elastic_setup.json'),
     ]
     elastic_teardown_indexes = ['sparkle_test']
 
     def test_read_elastic(self):
-        reader = elastic(self.hc, self.es_host, 'sparkle_test', 'test',
+        reader = elastic(self.hc, self.elastic_host, 'sparkle_test', 'test',
                          query='?q=name:*Smith*',
                          options={'es.read.field.as.array.include': 'topics'})
 
@@ -110,6 +114,8 @@ class TestReadElastic(BaseElasticTest):
 
 
 class TestReadMysql(BaseMysqlTest):
+
+    context = _TestContext
 
     sql_setup_files = [
         absolute_path(__file__, 'resources', 'test_read', 'mysql_setup.sql'),

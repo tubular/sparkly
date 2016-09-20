@@ -1,14 +1,12 @@
-import copy
-import ujson as json
-from pyspark.streaming.kafka import KafkaUtils, OffsetRange
-
-from sparkle.schema_parser import generate_structure_type, parse_schema
-
 try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
 
+import ujson as json
+from pyspark.streaming.kafka import KafkaUtils, OffsetRange
+
+from sparkle.schema_parser import generate_structure_type, parse_schema
 from sparkle.utils import (context_has_package, config_reader_writer,
                            context_has_jar, to_parsed_url_and_options)
 
@@ -30,18 +28,20 @@ def cassandra(hc, host, keyspace, table, consistency=None, parallelism=None, opt
     """
     assert context_has_package(hc, 'datastax:spark-cassandra-connector')
 
-    options = options or {}
-    options = copy.deepcopy(options)
+    default_options = {
+        'spark_cassandra_connection_host': host,
+        'keyspace': keyspace,
+        'table': table,
+    }
 
-    options['spark_cassandra_connection_host'] = host
-    options['keyspace'] = keyspace
-    options['table'] = table
+    if options:
+        default_options.update(options)
 
     if consistency:
-        options['spark_cassandra_input_consistency_level'] = consistency
+        default_options['spark_cassandra_input_consistency_level'] = consistency
 
     reader = config_reader_writer(
-        hc.read.format('org.apache.spark.sql.cassandra'), options
+        hc.read.format('org.apache.spark.sql.cassandra'), default_options
     ).load()
 
     if parallelism:

@@ -1,6 +1,7 @@
 ## 0.3.1
+* Improvement: moved base test classes inside package for reuse in dependant packages.
 * Fix: when no partitioning specified for file system writer.
-* Fix: remove default values from cassandra reader
+* Fix: remove default values from cassandra reader.
 
 ## 0.3.0
 * Add generic writer `write.by_url`.

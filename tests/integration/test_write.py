@@ -4,8 +4,8 @@ from tempfile import mkdtemp
 from sparkle.utils import absolute_path
 from sparkle import read
 from sparkle.write import fs, cassandra, elastic, mysql
-from sparkle.test import SparkleTest
-from tests.integration.base import _TestContext, BaseMysqlTest, BaseElasticTest, BaseCassandraTest
+from sparkle.test import SparkleTest, BaseCassandraTest, BaseElasticTest, BaseMysqlTest
+from tests.integration.base import _TestContext
 
 TEST_COLUMNS = [
     'video_uid', 'account_uid', 'title', 'description', 'views', 'published'
@@ -64,6 +64,8 @@ class TestWriteFS(SparkleTest):
 
 class TestWriteCassandra(BaseCassandraTest):
 
+    context = _TestContext
+
     cql_setup_files = [
         absolute_path(__file__, 'resources', 'test_write', 'cassandra_setup.cql'),
     ]
@@ -86,6 +88,8 @@ class TestWriteCassandra(BaseCassandraTest):
 
 class TestWriteElastic(BaseElasticTest):
 
+    context = _TestContext
+
     elastic_setup_files = [
         absolute_path(__file__, 'resources', 'test_write', 'elastic_setup.json')
     ]
@@ -96,7 +100,7 @@ class TestWriteElastic(BaseElasticTest):
 
         elastic(
             df,
-            self.es_host,
+            self.elastic_host,
             'sparkle_test',
             'test_writer',
             mode='overwrite',
@@ -106,11 +110,13 @@ class TestWriteElastic(BaseElasticTest):
         )
 
         df = read.by_url(self.hc,
-                         'elastic://{}/sparkle_test/test_writer'.format(self.es_host))
+                         'elastic://{}/sparkle_test/test_writer'.format(self.elastic_host))
         self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
 
 
 class TestWriteMysql(BaseMysqlTest):
+
+    context = _TestContext
 
     sql_setup_files = [
         absolute_path(__file__, 'resources', 'test_write', 'mysql_setup.sql'),
