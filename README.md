@@ -159,3 +159,13 @@ class MyProjectTest(sparkle.test.SparkleTest):
         self.hc.read.parquet('...')
         ...
 ```
+
+
+### Documentation
+
+#### Build
+```
+make docs
+open docs/build/index.html
+```
+

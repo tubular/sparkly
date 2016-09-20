@@ -3,6 +3,7 @@ APP_PATH := $(shell pwd)
 VENV_PATH := $(APP_PATH)/venv3_$(APP_NAME)
 PIP_PATH := $(VENV_PATH)/bin/pip
 PYTHON_PATH := $(VENV_PATH)/bin/python
+SPHINX_PATH := $(VENV_PATH)/bin/sphinx-build
 
 #
 # Build
@@ -49,5 +50,8 @@ test:
 run_test:
 	tox tests
 
+docs:	$(VENV_PATH)/reqs_installed
+	$(PIP_PATH) install Sphinx==1.4.6 sphinxcontrib-napoleon==0.5.3 sphinx-rtd-theme==0.1.9
+	$(SPHINX_PATH) -b html docs/source docs/build
 
-.PHONY: test clean lint
+.PHONY: test clean lint docs
