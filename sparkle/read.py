@@ -170,7 +170,7 @@ def by_url(hc, url):
 
     The main idea behind this method is to unify data access interface for different
     formats and locations. A generic schema looks like:
-        format:[protocol:]//host[/location][?configuration]
+    format:[protocol:]//host[/location][?configuration]
 
     Supported formats:
         - Hive Metastore Table (table://)

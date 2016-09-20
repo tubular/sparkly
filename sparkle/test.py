@@ -9,6 +9,16 @@ class SparkleTest(TestCase):
     """Base test for spark scrip tests.
 
     Initializes and shuts down Context specified in `context` param.
+
+    Example:
+
+           >>> class MyTestCase(SparkleTest):
+           >>>      def test(self):
+           >>>          self.assertDataframeEqual(
+           >>>              self.hc.sql('SELECT 1 as one').collect(),
+           >>>              (1,), ['one']
+           >>>          )
+
     """
 
     context = SparkleContext
@@ -60,6 +70,17 @@ class BaseCassandraTest(SparkleTest):
     Notes:
         * assumes `cqlsh` available in runtime environment.
         * cqlsh is currently only available for py2 so there is venv hack (you can override it).
+
+    Examples:
+
+           >>> class MyTestCase(BaseCassandraTest):
+           >>>
+           >>>      cql_setup_files = [absolute_path(__file__, 'resources', 'setup.cql')]
+           >>>      cql_setup_files = [absolute_path(__file__, 'resources', 'teardown.cql')]
+           >>>
+           >>>      def test(self):
+           >>>          pass
+
     """
     cql_setup_files = []
     cql_teardown_files = []
@@ -99,6 +120,18 @@ class BaseElasticTest(SparkleTest):
     """Base test class for elastic integration tests.
 
     Notes: assumes `curl` available in runtime environment.
+
+    Examples:
+
+           >>> class MyTestCase(BaseElasticTest):
+           >>>
+           >>>      elastic_host = 'test.elastic.host.net'
+           >>>      elastic_setup_files = [absolute_path(__file__, 'resources', 'setup.json')]
+           >>>      elastic_teardown_indexes = ['my_test_index']
+           >>>
+           >>>      def test(self):
+           >>>          pass
+
     """
 
     elastic_setup_files = []
@@ -134,6 +167,19 @@ class BaseMysqlTest(SparkleTest):
     """Base test class for mysql integration tests.
 
     Notes: assumes mysql cli available in runtime environment.
+
+    Examples:
+
+           >>> class MyTestCase(BaseElasticTest):
+           >>>
+           >>>      mysql_host = 'test.mysql.host.net'
+           >>>      sql_setup_files = [absolute_path(__file__, 'resources', 'setup.sql')]
+           >>>      sql_teardown_files = [absolute_path(__file__, 'resources', 'teardown.sql')]
+           >>>      mysql_user = 'root'
+           >>>      mysql_password = 'root'
+           >>>
+           >>>      def test(self):
+           >>>          pass
     """
 
     sql_setup_files = []
