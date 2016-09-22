@@ -1,3 +1,6 @@
+## 0.3.2
+* Fix: hql.create_table works with decimal and date fields.
+
 ## 0.3.1
 * Improvement: moved base test classes inside package for reuse in dependant packages.
 * Fix: when no partitioning specified for file system writer.

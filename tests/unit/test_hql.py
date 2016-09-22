@@ -1,135 +1,104 @@
 from unittest import TestCase
 
-from pyspark.sql.types import StructType, StringType, StructField
+from pyspark.sql.types import (StructType, StringType, StructField,
+                               DecimalType, DateType, ArrayType,
+                               FloatType, TimestampType, BooleanType,
+                               LongType, IntegerType, DoubleType, MapType)
 from sparkle.hql import _type_to_hql, get_create_table_statement
 
 
 class TestHqlCreateTableStatement(TestCase):
 
-    def test_type_to_hql(self):
-        res = _type_to_hql({
-            'fields': [{
-                'metadata': {},
-                'name': 'uid',
-                'nullable': True,
-                'type': 'string'
-            }, {
-                'metadata': {},
-                'name': 'countries',
-                'nullable': True,
-                'type': {
-                    'keyType': 'string',
-                    'type': 'map',
-                    'valueContainsNull': True,
-                    'valueType': 'long'
-                }
-            }, {
-                'metadata': {},
-                'name': 'created_at',
-                'nullable': True,
-                'type': 'timestamp'
-            }, {
-                'metadata': {},
-                'name': 'date',
-                'nullable': True,
-                'type': 'string'
-            }, {
-                'metadata': {},
-                'name': 'by_countries',
-                'nullable': True,
-                'type': {
-                    'containsNull': True,
-                    'elementType': {
-                        'fields': [{
-                            'metadata': {},
-                            'name': 'country',
-                            'nullable': True,
-                            'type': 'string'
-                        }, {
-                            'metadata': {},
-                            'name': 'views',
-                            'nullable': True,
-                            'type': 'long'
-                        }],
-                        'type': 'struct'
-                    },
-                    'type': 'array'
-                }
-            }],
-            'type': 'struct'
-        })
-
+    def test_string(self):
         self.assertEqual(
-            res,
-            'struct<'
-            '`uid`:string,'
-            '`countries`:map<string,bigint>,'
-            '`created_at`:timestamp,'
-            '`date`:string,'
-            '`by_countries`:array<struct<`country`:string,`views`:bigint>>>'
+            _type_to_hql(StringType().jsonValue()),
+            'string',
         )
 
-    def test_get_create_table_sql(self):
-        result = get_create_table_statement(
-            table_name='facebook_storyteller',
-            schema={
-                'fields': [{
-                    'metadata': {},
-                    'name': 'uid',
-                    'nullable': True,
-                    'type': 'string'
-                }, {
-                    'metadata': {},
-                    'name': 'countries',
-                    'nullable': True,
-                    'type': {
-                        'keyType': 'string',
-                        'type': 'map',
-                        'valueContainsNull': True,
-                        'valueType': 'long'
-                    }
-                }, {
-                    'metadata': {},
-                    'name': 'created_at',
-                    'nullable': True,
-                    'type': 'long'
-                }, {
-                    'metadata': {},
-                    'name': 'date',
-                    'nullable': True,
-                    'type': 'string'
-                }, {
-                    'metadata': {},
-                    'name': 'by_countries',
-                    'nullable': True,
-                    'type': {
-                        'containsNull': True,
-                        'elementType': {
-                            'fields': [{
-                                'metadata': {},
-                                'name': 'country',
-                                'nullable': True,
-                                'type': 'string'
-                            }, {
-                                'metadata': {},
-                                'name': 'views',
-                                'nullable': True,
-                                'type': 'long'
-                            }],
-                            'type': 'struct'
-                        },
-                        'type': 'array'
-                    }
-                }],
-                'type': 'struct'
-            }, location='s3://fb-storyteller-bucket')
-
+    def test_long(self):
         self.assertEqual(
-            result,
-            "CREATE EXTERNAL TABLE `facebook_storyteller` "
-            "(`uid` string, `countries` map<string,bigint>, `created_at` bigint, `date` string, "
-            "`by_countries` array<struct<`country`:string,`views`:bigint>>) "
-            "STORED AS PARQUET LOCATION 's3://fb-storyteller-bucket'"
+            _type_to_hql(LongType().jsonValue()),
+            'bigint',
+        )
+
+    def test_integer(self):
+        self.assertEqual(
+            _type_to_hql(IntegerType().jsonValue()),
+            'int',
+        )
+
+    def test_double(self):
+        self.assertEqual(
+            _type_to_hql(DoubleType().jsonValue()),
+            'double',
+        )
+
+    def test_boolean(self):
+        self.assertEqual(
+            _type_to_hql(BooleanType().jsonValue()),
+            'boolean',
+        )
+
+    def test_timestamp(self):
+        self.assertEqual(
+            _type_to_hql(StructField('value', TimestampType(), True).jsonValue()),
+            'timestamp',
+        )
+
+    def test_decimal(self):
+        self.assertEqual(
+            _type_to_hql(StructField('value', DecimalType(19, 4), True).jsonValue()),
+            'decimal(19,4)',
+        )
+
+    def test_date(self):
+        self.assertEqual(
+            _type_to_hql(StructField('value', DateType(), False).jsonValue()),
+            'date',
+        )
+
+    def test_array(self):
+        self.assertEqual(
+            _type_to_hql(ArrayType(DateType(), False).jsonValue()),
+            'array<date>',
+        )
+
+    def test_map(self):
+        self.assertEqual(
+            _type_to_hql(
+                MapType(StringType(), DateType()).jsonValue()
+            ),
+            'map<string,date>',
+        )
+
+    def test_struct(self):
+        self.assertEqual(
+            _type_to_hql(
+                StructType([
+                    StructField('name', StringType()),
+                    StructField('age', DateType())
+                ]).jsonValue()
+            ),
+            'struct<`name`:string,`age`:date>',
+        )
+
+    def test_nesting(self):
+        self.assertEqual(
+            _type_to_hql(
+                StructType([
+                    StructField(
+                        'name',
+                        StructType([
+                            StructField(
+                                'arr',
+                                ArrayType(
+                                    MapType(StringType(), DateType())
+                                )
+                            )
+                        ])),
+                ]).jsonValue()
+            ),
+            'struct<`name`:struct<`arr`:array<map<string,date>>>>',
         )
 
     def test_get_create_table_sql_partition_by(self):
@@ -188,42 +157,18 @@ class TestHqlCreateTableStatement(TestCase):
                          "STORED AS PARQUET LOCATION 's3://test/'")
 
     def test_ci_topics_case(self):
-        schema = {
-            'metadata': {},
-            'type': {
-                'elementType': {
-                    'elementType': {
-                        'fields': [{
-                            'metadata': {},
-                            'type': 'float',
-                            'nullable': True,
-                            'name': 'relevance_score'
-                        }, {
-                            'metadata': {},
-                            'type': 'string',
-                            'nullable': True,
-                            'name': 'title'
-                        }, {
-                            'metadata': {},
-                            'type': 'string',
-                            'nullable': True,
-                            'name': 'topic_id'
-                        }],
-                        'type': 'struct'
-                    },
-                    'type': 'array',
-                    'containsNull': True
-                },
-                'type': 'array',
-                'containsNull': True
-            },
-            'nullable': True,
-            'name': 'topics'
-        }
-        self.assertEqual(_type_to_hql(schema),
-                         'array<'
-                         'array<'
-                         'struct<'
+        schema = ArrayType(
+            ArrayType(
+                StructType([
+                    StructField('relevance_score', FloatType()),
+                    StructField('title', StringType()),
+                    StructField('topic_id', StringType()),
+                ])
+            )
+        )
+        self.assertEqual(_type_to_hql(schema.jsonValue()),
+                         'array<array<struct<'
                          '`relevance_score`:float,'
                          '`title`:string,'
-                         '`topic_id`:string>>>')
+                         '`topic_id`:string'
+                         '>>>')
