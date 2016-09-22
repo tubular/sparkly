@@ -1,6 +1,10 @@
 import logging
+import re
+
 from pyspark.sql import DataFrame
 from pyspark.sql.types import StructType
+
+from sparkle.utils import absolute_path
 
 
 logger = logging.getLogger(__name__)
@@ -210,26 +214,40 @@ _type_map = {
     'integer': 'int',
     'timestamp': 'timestamp',
     'boolean': 'boolean',
+    'date': 'date',
 }
+
+
+_type_map_re = [
+    # input regexp, output template
+    (re.compile(r'decimal\((?P<precision>[0-9]+),(?P<scale>[0-9]+)\)', re.IGNORECASE),
+     'decimal({precision},{scale})'),
+]
 
 
 def _type_to_hql(schema, level_=0):
     """Converts dataframe type definition to hive type definition.
 
     Args:
-        schema (dict) pyspark type definition.
-        level_ (int) level of nesting, debug only,
-                     no need to specify this parameter explicitly.
+        schema (dict): Pyspark type definition.
+        level_ (int): Level of nesting, debug only,
+            no need to specify this parameter explicitly.
 
     Returns:
         (str) hive type definition.
     """
     if isinstance(schema, str):
         logger.debug('{} {}'.format(':' * level_, schema))
-        if schema not in _type_map:
-            raise NotImplementedError('{} is not supported in this place'.format(schema))
-        else:
+
+        if schema in _type_map:
             return _type_map[schema]
+
+        for regex, template in _type_map_re:
+            match = regex.match(schema)
+            if match:
+                return template.format(**match.groupdict())
+
+        raise NotImplementedError('{} is not supported in this place'.format(schema))
 
     type_ = schema['type']
 
@@ -271,6 +289,12 @@ if __name__ == '__main__':
         packages = ['datastax:spark-cassandra-connector:1.5.0-M3-s_2.10',
                     'org.elasticsearch:elasticsearch-spark_2.10:2.3.0',
                     'org.apache.spark:spark-streaming-kafka_2.10:1.6.1',
+
                     ]
+        jars = [
+            absolute_path(__file__, '..', 'tests',
+                          'integration', 'resources',
+                          'mysql-connector-java-5.1.39-bin.jar'),
+        ]
 
     sql = Cnx()
