@@ -8,9 +8,7 @@ SPHINX_PATH := $(VENV_PATH)/bin/sphinx-build
 #
 # Build
 #
-build:	dist/%.whl
-
-dist/%.whl:	 $(VENV_PATH)/reqs_installed
+dist:	 $(VENV_PATH)/reqs_installed
 	$(PYTHON_PATH) setup.py bdist_wheel
 
 publish:
