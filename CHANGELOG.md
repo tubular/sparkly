@@ -1,3 +1,6 @@
+## 0.4.0
+* Add `parallelism` option for writers to control a load on data storages.
+
 ## 0.3.2
 * Fix: hql.create_table works with decimal and date fields.
 
