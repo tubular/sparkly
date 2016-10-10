@@ -1,5 +1,7 @@
 FROM registry.tubularlabs.net/emr:4.3.0
 
+ENV SPARK_TESTING true
+
 # testing
 RUN pip3 install tox==2.3.1
 

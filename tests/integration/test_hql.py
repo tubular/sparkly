@@ -18,20 +18,20 @@ class TestHql(SparkleTest):
     def setUpClass(cls):
         super(TestHql, cls).setUpClass()
 
-        cls.s3_base = 's3a://tubular-tests/sparkle/{}'.format(uuid.uuid4().hex)
-        cls.s3_path = '{}/test/'.format(cls.s3_base)
+        cls.base = '/tmp/sparkle/{}'.format(uuid.uuid4().hex)
+        cls.path = '{}/test/'.format(cls.base)
         cls.df = cls.hc.createDataFrame([
             ('Pavlo', 26, '2016-01-01', 'youtube'), ('Johny', 30, '2016-01-01', 'youtube'),
             ('Carl', 69, '2016-01-01', 'facebook'), ('Jessica1', 16, '2016-01-02', 'facebook'),
             ('Jessica2', 15, '2016-01-02', 'facebook'), ('Jessica3', 17, '2016-01-02', 'facebook'),
         ], ['name', 'age', 'date', 'platform'])
-        cls.df.write.parquet(cls.s3_path, partitionBy=['platform', 'date'])
+        cls.df.write.parquet(cls.path, partitionBy=['platform', 'date'])
         create_table(
             cls.hc,
             'test_table',
             cls.df,
             partition_by=['platform', 'date'],
-            location=cls.s3_path,
+            location=cls.path,
             properties={
                 'name': 'johnny',
                 'surname': 'cache',
@@ -40,7 +40,7 @@ class TestHql(SparkleTest):
 
     @classmethod
     def tearDownClass(cls):
-        os.system('aws s3 rm --recursive {}'.format(cls.s3_base))
+        os.system('rm -Rf {}'.format(cls.base))
         super(TestHql, cls).tearDownClass()
 
     def test_get_all_tables(self):
@@ -91,7 +91,7 @@ class TestHql(SparkleTest):
         self.assertEqual(res['age'], '99')
 
     def test_replace_table(self):
-        old_path = '{}/old/'.format(self.s3_base)
+        old_path = '{}/old/'.format(self.base)
         df = self.hc.createDataFrame([
             ('Jess', 36, '2116-01-02', 'facebook'),
         ], ['name', 'age', 'date', 'platform'])
@@ -119,7 +119,7 @@ class TestHql(SparkleTest):
                          {('Jess', 36, '2116-01-02', 'facebook')})
 
         replace_table(self.hc, 'old_table', self.df,
-                      location=self.s3_path,
+                      location=self.path,
                       partition_by=['platform', 'date'],
                       )
 

@@ -4,7 +4,12 @@ from tempfile import mkdtemp
 from sparkle.utils import absolute_path
 from sparkle import read
 from sparkle.write import fs, cassandra, elastic, mysql
-from sparkle.test import SparkleTest, BaseCassandraTest, BaseElasticTest, BaseMysqlTest
+from sparkle.test import (
+    SparkleGlobalContextTest,
+    BaseCassandraTest,
+    BaseElasticTest,
+    BaseMysqlTest,
+)
 from tests.integration.base import _TestContext
 
 TEST_COLUMNS = [
@@ -19,7 +24,7 @@ TEST_DATA = [
 ]
 
 
-class TestWriteFS(SparkleTest):
+class TestWriteFS(SparkleGlobalContextTest):
 
     context = _TestContext
 
@@ -62,7 +67,7 @@ class TestWriteFS(SparkleTest):
         self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
 
 
-class TestWriteCassandra(BaseCassandraTest):
+class TestWriteCassandra(BaseCassandraTest, SparkleGlobalContextTest):
 
     context = _TestContext
 
@@ -86,7 +91,7 @@ class TestWriteCassandra(BaseCassandraTest):
         self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
 
 
-class TestWriteElastic(BaseElasticTest):
+class TestWriteElastic(BaseElasticTest, SparkleGlobalContextTest):
 
     context = _TestContext
 
@@ -114,7 +119,7 @@ class TestWriteElastic(BaseElasticTest):
         self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
 
 
-class TestWriteMysql(BaseMysqlTest):
+class TestWriteMysql(BaseMysqlTest, SparkleGlobalContextTest):
 
     context = _TestContext
 

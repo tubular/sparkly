@@ -1,11 +1,8 @@
-from unittest import TestCase
-
-from sparkle import SparkleContext
-from sparkle.test import SparkleTest
+from sparkle.test import SparkleGlobalContextTest
 from tests.integration.base import _TestContext
 
 
-class TestSparkleContext(SparkleTest):
+class TestSparkleContext(SparkleGlobalContextTest):
 
     context = _TestContext
 
@@ -27,10 +24,3 @@ class TestSparkleContext(SparkleTest):
         """)
 
         self.assertEqual(res.collect()[0][0], {'A': 40, 'B': 16})
-
-
-class TestDefaultContext(TestCase):
-
-    def test_init_context(self):
-        cnx = SparkleContext()
-        cnx._sc.stop()
