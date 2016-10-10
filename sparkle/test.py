@@ -1,8 +1,15 @@
+import logging
 import os
-from unittest import TestCase
 import shutil
+from unittest import TestCase
 
 from sparkle import SparkleContext
+
+
+logger = logging.getLogger()
+
+
+_test_context_cache = None
 
 
 class SparkleTest(TestCase):
@@ -26,6 +33,14 @@ class SparkleTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super(SparkleTest, cls).setUpClass()
+
+        # In case if project has a mix of SparkleTest and SparkleGlobalContextTest-based tests
+        global _test_context_cache
+        if _test_context_cache:
+            logger.info('Found a global context, stopping it %r', _test_context_cache)
+            _test_context_cache._sc.stop()
+            _test_context_cache = None
+
         cls.hc = cls.context()
 
     @classmethod
@@ -62,6 +77,34 @@ class SparkleTest(TestCase):
                     raise AssertionError('{} != {}. Rows: dataframe - {}, data - {}'.format(
                         df_field, data_field, df_row, data_row
                     ))
+
+
+class SparkleGlobalContextTest(SparkleTest):
+    """Base test case that keeps a single instance for the given context class across all tests.
+
+    Integration tests are slow, especially when you have to start/stop Spark context
+    for each test case. This class allows you to reuse Spark context across multiple test cases.
+    """
+    @classmethod
+    def setUpClass(cls):
+        global _test_context_cache
+
+        if _test_context_cache and cls.context == type(_test_context_cache):
+            logger.info('Reusing the global context for %r', cls.context)
+            hc = _test_context_cache
+        else:
+            if _test_context_cache:
+                logger.info('Stopping the previous global context %r', _test_context_cache)
+                _test_context_cache._sc.stop()
+
+            logger.info('Starting the new global context for %r', cls.context)
+            hc = _test_context_cache = cls.context()
+
+        cls.hc = hc
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.hc.clearCache()
 
 
 class BaseCassandraTest(SparkleTest):

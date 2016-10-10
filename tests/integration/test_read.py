@@ -5,11 +5,16 @@ from kafka import KafkaProducer
 
 from sparkle.utils import absolute_path
 from sparkle.read import elastic, csv, cassandra, mysql, kafka
-from sparkle.test import SparkleTest, BaseCassandraTest, BaseElasticTest, BaseMysqlTest
+from sparkle.test import (
+    SparkleGlobalContextTest,
+    BaseCassandraTest,
+    BaseElasticTest,
+    BaseMysqlTest,
+)
 from tests.integration.base import _TestContext
 
 
-class TestReadCsv(SparkleTest):
+class TestReadCsv(SparkleGlobalContextTest):
 
     context = _TestContext
 
@@ -49,7 +54,7 @@ class TestReadCsv(SparkleTest):
                            'fl_site_limit': 190724.4}])
 
 
-class TestReadCassandra(BaseCassandraTest):
+class TestReadCassandra(BaseCassandraTest, SparkleGlobalContextTest):
 
     context = _TestContext
 
@@ -74,7 +79,7 @@ class TestReadCassandra(BaseCassandraTest):
               'uid': '9', 'created': '1234567891'}])
 
 
-class TestReadElastic(BaseElasticTest):
+class TestReadElastic(BaseElasticTest, SparkleGlobalContextTest):
 
     context = _TestContext
 
@@ -113,7 +118,7 @@ class TestReadElastic(BaseElasticTest):
         )
 
 
-class TestReadMysql(BaseMysqlTest):
+class TestReadMysql(BaseMysqlTest, SparkleGlobalContextTest):
 
     context = _TestContext
 
@@ -138,7 +143,7 @@ class TestReadMysql(BaseMysqlTest):
              {'id': 3, 'name': 'john', 'surname': 'ku', 'age': 333}])
 
 
-class TestReadKafka(SparkleTest):
+class TestReadKafka(SparkleGlobalContextTest):
 
     context = _TestContext
 
