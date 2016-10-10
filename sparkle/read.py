@@ -7,8 +7,12 @@ import ujson as json
 from pyspark.streaming.kafka import KafkaUtils, OffsetRange
 
 from sparkle.schema_parser import generate_structure_type, parse_schema
-from sparkle.utils import (context_has_package, config_reader_writer,
-                           context_has_jar, to_parsed_url_and_options)
+from sparkle.utils import (
+    context_has_package,
+    config_reader_writer,
+    context_has_jar,
+    to_parsed_url_and_options,
+)
 
 
 def cassandra(hc, host, keyspace, table, consistency=None, parallelism=None, options=None):
@@ -20,7 +24,9 @@ def cassandra(hc, host, keyspace, table, consistency=None, parallelism=None, opt
         keyspace (str)
         table (str)
         consistency (str): Read consitency level: ONE, QUORUM, ALL, etc.
-        parallelism (str): Desired level of parallelism.
+        parallelism (int|None): The max number of parallel tasks that could be executed
+            during the read stage. Note, we use `coalesce` to reduce a parallelism,
+            see :ref:`control-parallelism`
         options (dict[str,str]): Additional options for `org.apache.spark.sql.cassandra` format.
 
     Returns:
@@ -50,7 +56,7 @@ def cassandra(hc, host, keyspace, table, consistency=None, parallelism=None, opt
     return reader
 
 
-def csv(hc, path, custom_schema=None, header=True, options=None):
+def csv(hc, path, custom_schema=None, header=True, parallelism=None, options=None):
     """Create dataframe from the csv file.
 
     Args:
@@ -58,6 +64,9 @@ def csv(hc, path, custom_schema=None, header=True, options=None):
         path (str): Path to file.
         custom_schema (pyspark.sql.types.DataType): Force custom schema.
         header (bool): First row is a header.
+        parallelism (int|None): The max number of parallel tasks that could be executed
+            during the read stage. Note, we use `coalesce` to reduce a parallelism,
+            see :ref:`control-parallelism`
         options (dict[str,str]): Additional options for `com.databricks.spark.csv` format.
 
     Returns:
@@ -73,7 +82,12 @@ def csv(hc, path, custom_schema=None, header=True, options=None):
     if custom_schema:
         reader = reader.schema(custom_schema)
 
-    return config_reader_writer(reader, options).load(path)
+    reader = config_reader_writer(reader, options).load(path)
+
+    if parallelism:
+        reader = reader.coalesce(parallelism)
+
+    return reader
 
 
 def elastic(hc, host, es_index, es_type, query='', fields=None, parallelism=None, options=None):
@@ -86,6 +100,9 @@ def elastic(hc, host, es_index, es_type, query='', fields=None, parallelism=None
         es_type (str)
         query (str): Pre-filter es documents, e.g. '?q=views:>10'.
         fields (list[str]): Select only specified fields.
+        parallelism (int|None): The max number of parallel tasks that could be executed
+            during the read stage. Note, we use `coalesce` to reduce a parallelism,
+            see :ref:`control-parallelism`
         options (dict[str,str]): Additional options for `org.elasticsearch.spark.sql` format.
 
     Returns:
@@ -111,7 +128,7 @@ def elastic(hc, host, es_index, es_type, query='', fields=None, parallelism=None
     return reader
 
 
-def mysql(hc, host, database, table, options=None):
+def mysql(hc, host, database, table, parallelism=None, options=None):
     """Create dataframe from the mysql table.
 
     Should be usable for rds, aurora, etc.
@@ -122,6 +139,9 @@ def mysql(hc, host, database, table, options=None):
         host (str): Server address.
         database (str): Database to connect to.
         table (str): Table to read rows from.
+        parallelism (int|None): The max number of parallel tasks that could be executed
+            during the read stage. Note, we use `coalesce` to reduce a parallelism,
+            see :ref:`control-parallelism`
         options (dict[str,str]): Additional options for `org.elasticsearch.spark.sql` format.
 
     Returns:
@@ -134,7 +154,12 @@ def mysql(hc, host, database, table, options=None):
         'driver': 'com.mysql.jdbc.Driver',
         'dbtable': table,
     })
-    return config_reader_writer(reader, options).load()
+    reader = config_reader_writer(reader, options).load()
+
+    if parallelism:
+        reader = reader.coalesce(parallelism)
+
+    return reader
 
 
 def kafka(hc, brokers, offset_ranges):
@@ -258,18 +283,39 @@ def _elastic_resolver(hc, url):
 
 def _table_resolver(hc, url):
     inp, options = to_parsed_url_and_options(url)
-    return hc.table(inp.netloc)
+    df = hc.table(inp.netloc)
+
+    parallelism = options.pop('parallelism', None)
+    if parallelism:
+        df = df.coalesce(int(parallelism))
+
+    return df
 
 
 def _fs_resolver(hc, url):
     inp, options = to_parsed_url_and_options(url)
-    return hc.read.format(inp.scheme).options(**options).load(inp.path)
+    df = hc.read.format(inp.scheme).options(**options).load(inp.path)
+
+    parallelism = options.pop('parallelism', None)
+    if parallelism:
+        df = df.coalesce(int(parallelism))
+
+    return df
 
 
 def _mysql_resolver(hc, url):
     inp, options = to_parsed_url_and_options(url)
     db, table = inp.path[1:].split('/', 1)
-    return mysql(hc, inp.netloc, db, table, options=options)
+
+    kwargs = {
+        'options': options,
+    }
+
+    parallelism = options.pop('parallelism', None)
+    if parallelism:
+        kwargs['parallelism'] = int(parallelism)
+
+    return mysql(hc, inp.netloc, db, table, **kwargs)
 
 
 def _kafka_resolver(hc, url):
@@ -302,5 +348,9 @@ def _csv_resolver(hc, url):
 
     if options:
         kwargs['options'] = options
+
+    parallelism = options.pop('parallelism', None)
+    if parallelism:
+        kwargs['parallelism'] = int(parallelism)
 
     return csv(hc, inp.path, **kwargs)

@@ -12,7 +12,8 @@ class TestWriteByUrl(unittest.TestCase):
     @mock.patch('sparkle.write.fs')
     def test_parquet_s3(self, fs_mock):
         df = mock.Mock()
-        path = 'parquet:s3://my-bucket/path/to/parquet?partition_by=x,y,z&mode=append&additional=1'
+        path = 'parquet:s3://my-bucket/path/to/parquet?partition_by=x,y,z&mode=append&' \
+               'additional=1&parallelism=20'
 
         sparkle.write.by_url(df, path)
 
@@ -22,6 +23,7 @@ class TestWriteByUrl(unittest.TestCase):
             partition_by=['x', 'y', 'z'],
             output_format='parquet',
             mode='append',
+            parallelism=20,
             options={
                 'additional': '1',
             }
@@ -40,13 +42,14 @@ class TestWriteByUrl(unittest.TestCase):
             output_format='csv',
             mode=None,
             options={},
+            parallelism=None,
             partition_by=None,
         )
 
     @mock.patch('sparkle.write.cassandra')
     def test_cassandra(self, cassandra_mock):
         df = mock.Mock()
-        path = 'cassandra://host/ks/cf?consistency=ONE&mode=overwrite'
+        path = 'cassandra://host/ks/cf?consistency=ONE&mode=overwrite&parallelism=10'
 
         sparkle.write.by_url(df, path)
 
@@ -57,13 +60,14 @@ class TestWriteByUrl(unittest.TestCase):
             table='cf',
             consistency='ONE',
             mode='overwrite',
+            parallelism=10,
             options={},
         )
 
     @mock.patch('sparkle.write.elastic')
     def test_elastic(self, elastic_mock):
         df = mock.Mock()
-        path = 'elastic://host/index/type'
+        path = 'elastic://host/index/type?parallelism=15'
 
         sparkle.write.by_url(df, path)
 
@@ -73,13 +77,14 @@ class TestWriteByUrl(unittest.TestCase):
             es_index='index',
             es_type='type',
             mode=None,
+            parallelism=15,
             options={},
         )
 
     @mock.patch('sparkle.write.mysql')
     def test_mysql(self, mysql_mock):
         df = mock.Mock()
-        path = 'mysql://host/db/table'
+        path = 'mysql://host/db/table?parallelism=20'
 
         sparkle.write.by_url(df, path)
 
@@ -89,5 +94,6 @@ class TestWriteByUrl(unittest.TestCase):
             database='db',
             table='table',
             mode=None,
+            parallelism=20,
             options={},
         )

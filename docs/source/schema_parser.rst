@@ -1,5 +1,5 @@
-Integration Testing Base Classes
-================================
+Schema management
+=================
 
 .. automodule:: sparkle.schema_parser
     :members:
