@@ -12,8 +12,8 @@ dist:	 $(VENV_PATH)/reqs_installed
 	$(PYTHON_PATH) setup.py bdist_wheel
 
 publish:
-	s3cmd put dist/*.whl s3://pypi.tubularlabs.net/__new/
-	curl -XPOST -u jenkins:b181da5db5de16a53bc3cd2139f601d8 http://ci.tubularlabs.net/job/pypi-reindex/build
+	../utils/publish-wheel
+	
 
 clean:
 	@rm -rf $(VENV_PATH)
