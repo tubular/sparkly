@@ -11,10 +11,6 @@ SPHINX_PATH := $(VENV_PATH)/bin/sphinx-build
 dist:	 $(VENV_PATH)/reqs_installed
 	$(PYTHON_PATH) setup.py bdist_wheel
 
-publish:
-	../utils/publish-wheel
-	
-
 clean:
 	@rm -rf $(VENV_PATH)
 	@rm -rf build
@@ -37,9 +33,6 @@ $(VENV_PATH)/reqs_installed: $(VENV_PATH)
 	$(PIP_PATH) install wheel
 	$(PIP_PATH) install --default-timeout 60 --use-wheel -i https://pypi.tubularlabs.net -r requirements.txt --no-deps
 	touch $(VENV_PATH)/reqs_installed
-
-lint:	$(VENV_PATH)
-	VENV=$(VENV_PATH) ../utils/pre-commit-wrapper.py
 
 test:
 	docker-compose build sparkle
