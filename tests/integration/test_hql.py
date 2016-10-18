@@ -5,7 +5,7 @@ from sparkle.hql import (get_all_tables, create_table,
                          table_exists, set_table_property,
                          get_table_property,
                          get_all_table_properties,
-                         replace_table)
+                         replace_table, table_manager)
 from sparkle.test import SparkleTest
 from tests.integration.base import _TestContext
 
@@ -42,6 +42,78 @@ class TestHql(SparkleTest):
     def tearDownClass(cls):
         os.system('rm -Rf {}'.format(cls.base))
         super(TestHql, cls).tearDownClass()
+
+    def test_table_manager_get_all_tables(self):
+        all_tables = table_manager(self.hc).get_all_tables()
+        self.assertIsInstance(all_tables, list)
+        self.assertIn('test_table', all_tables)
+
+    def test_table_manager_table_exists(self):
+        self.assertTrue(table_manager(self.hc, 'test_table').exists())
+        self.assertFalse(table_manager(self.hc, 'not_test_table').exists())
+
+    def test_table_manager_set_property(self):
+        self.assertEqual(
+            table_manager(self.hc, 'test_table').set_property('xxx', 'yyy').get_property('xxx'),
+            'yyy'
+        )
+
+    def test_table_manager_create_table(self):
+        table_df = table_manager(self.hc, 'new_created_table').create(
+            schema=self.df,
+            location=self.path,
+            partition_by=['platform', 'date'],
+        ).df()
+
+        self.assertDataframeEqual(table_df, [
+            ('Pavlo', 26, '2016-01-01', 'youtube'),
+            ('Johny', 30, '2016-01-01', 'youtube'),
+            ('Carl', 69, '2016-01-01', 'facebook'),
+            ('Jessica1', 16, '2016-01-02', 'facebook'),
+            ('Jessica2', 15, '2016-01-02', 'facebook'),
+            ('Jessica3', 17, '2016-01-02', 'facebook'),
+        ], ['name', 'age', 'date', 'platform'])
+
+    def test_table_manager_replace_table(self):
+        old_path = '{}/manager_old/'.format(self.base)
+        df = self.hc.createDataFrame([
+            ('Jess', 36, '2116-01-02', 'facebook'),
+        ], ['name', 'age', 'date', 'platform'])
+        df.write.parquet(old_path, partitionBy=['platform'])
+
+        create_table(
+            self.hc,
+            'manager_old_table',
+            df,
+            partition_by=['platform'],
+            location=old_path,
+            properties={
+                'name': 'Johnny',
+                'surname': 'Cache',
+            }
+        )
+
+        managed_table = table_manager(self.hc, 'manager_old_table')
+
+        self.assertDataframeEqual(
+            managed_table.df(), [('Jess', 36, '2116-01-02', 'facebook')],
+            ['name', 'age', 'date', 'platform']
+        )
+
+        table_df = managed_table.replace(
+            self.df,
+            self.path,
+            partition_by=['platform', 'date'],
+        ).df()
+
+        self.assertDataframeEqual(table_df, [
+            ('Pavlo', 26, '2016-01-01', 'youtube'),
+            ('Johny', 30, '2016-01-01', 'youtube'),
+            ('Carl', 69, '2016-01-01', 'facebook'),
+            ('Jessica1', 16, '2016-01-02', 'facebook'),
+            ('Jessica2', 15, '2016-01-02', 'facebook'),
+            ('Jessica3', 17, '2016-01-02', 'facebook'),
+        ], ['name', 'age', 'date', 'platform'])
 
     def test_get_all_tables(self):
         self.assertEqual(get_all_tables(self.hc), ['test_table'])
