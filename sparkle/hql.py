@@ -1,5 +1,6 @@
 import logging
 import re
+from copy import deepcopy
 
 from pyspark.sql import DataFrame
 from pyspark.sql.types import StructType
@@ -8,6 +9,140 @@ from sparkle.utils import absolute_path
 
 
 logger = logging.getLogger(__name__)
+
+
+class table_manager(object):
+    """Utility class for more convenient usage of Hive related utils.
+
+    Example:
+
+        >>> table_manager('new_table').create(Schema(...), 's3://path')
+        >>> table_manager('my_table').exists()
+        >>> table_manager('my_table').replace(Schema(...), 's3://path', partition_by=['date'])
+        >>> table_manager('your_table').get_all_properties() == {'propertyA': 'valueA', ...}
+        >>> table_manager('my_table').get_property('help') == 'Hey ho'
+        >>> table_manager('my_table').set_property('help', 'Hey ho')
+    """
+
+    def __init__(self, hc, table_name=None):
+        if isinstance(hc, str):
+            raise ValueError('Looks like you specified table name instead '
+                             'of passing HiveContext as a first parameter')
+
+        self.hc = hc
+        self.table_name = table_name
+
+    def table(self, table_name):
+        cpy = deepcopy(self)
+        cpy.table_name = table_name
+        return cpy
+
+    def get_all_tables(self):
+        """Returns all tables available in metastore.
+
+        Returns:
+            list[str]: list of table names.
+        """
+        return get_all_tables(self.hc)
+
+    def exists(self):
+        """If tables exists.
+
+        Returns:
+            bool
+        """
+        return table_exists(self.hc, self.table_name)
+
+    def create(self, schema, location,
+               partition_by=None,
+               table_format=None,
+               properties=None):
+        """Creates table by DataFrame.
+
+        Args:
+            schema (pyspark.sql.dataframe.DataFrame): schema of data.
+            location (str): location of data.
+            partition_by (list): partitioning columns.
+            table_format (str): default is parquet.
+            properties (dict): properties to assign to the table.
+
+        Returns:
+            table_manager: self.
+        """
+        create_table(
+            self.hc, self.table_name,
+            schema,
+            partition_by=partition_by,
+            location=location,
+            table_format=table_format,
+            properties=properties
+        )
+        return self
+
+    def replace(self, schema, location, partition_by):
+        """Replaces table `table_name` with data represented by schema, location.
+
+        Args:
+            schema (pyspark.sql.dataframe.DataFrame): schema.
+            location (str): data location, ex.: s3://path/tp/data.
+            partition_by (list): fields the data partitioned by.
+
+        Returns:
+            table_manager: self.
+        """
+        replace_table(
+            self.hc, self.table_name,
+            schema=schema,
+            location=location,
+            partition_by=partition_by,
+        )
+        return self
+
+    def set_property(self, name, value):
+        """Sets table property.
+
+        Args:
+            name (str): name of the property.
+            value (str): value of the proporty.
+
+        Returns:
+            table_manager: self.
+        """
+        set_table_property(self.hc, self.table_name, name, value)
+        return self
+
+    def get_property(self, name, to_type=None):
+        """Gets table property.
+
+        Args:
+            name (str): name of the property.
+            to_type (type): type to coarce to, str by default.
+
+        Returns:
+            any
+        """
+        return get_table_property(
+            self.hc,
+            self.table_name,
+            name,
+            to_type=to_type,
+        )
+
+    def get_all_properties(self):
+        """Returns all table properties.
+
+        Returns:
+            dict: property names to values.
+        """
+        return get_all_table_properties(self.hc, self.table_name)
+
+    def df(self):
+        """Returns dataframe for the managed table.
+
+        Returns:
+            pyspark.sql.dataframe.DataFrame
+        """
+        return self.hc.table(self.table_name)
 
 
 def get_all_tables(hc):
@@ -27,6 +162,7 @@ def table_exists(hc, table_name):
 
      Args:
         hc (HiveContext)
+        table_name (str): Name of the table.
 
     Returns:
         (bool)
@@ -43,7 +179,7 @@ def create_table(hc, table_name, df, location,
     Args:
         hc (pyspark.sql.context.HiveContext)
         table_name (str): name of new table.
-        df (pyspark.sql.dataframe.DataFrame): data source.
+        schema (pyspark.sql.dataframe.DataFrame): schema.
         location (str): location of data.
         partition_by (list): partitioning columns.
         table_format (str): default is parquet.
@@ -65,6 +201,43 @@ def create_table(hc, table_name, df, location,
 
     if partition_by:
         hc.sql('MSCK REPAIR TABLE {}'.format(table_name))
+
+
+def replace_table(hc, table_name, schema, location, partition_by=None):
+    """Replaces table `table_name` with data represented by schema, location.
+
+    Args:
+        hc (pyspark.sql.context.HiveContext)
+        table_name (str): table name.
+        schema (pyspark.sql.dataframe.DataFrame): schema.
+        location (str): data location, ex.: s3://path/tp/data.
+        partition_by (list): fields the data partitioned by.
+    """
+    old_table = '{}_OLD'.format(table_name)
+    temp_table = '{}_NEW'.format(table_name)
+
+    old_table_props = get_all_table_properties(hc, table_name)
+
+    create_table(
+        hc,
+        temp_table,
+        schema,
+        location=location,
+        partition_by=partition_by,
+        properties=old_table_props,
+    )
+
+    hc.sql("""
+      ALTER TABLE {} RENAME TO {}
+    """.format(table_name, old_table))
+
+    hc.sql("""
+      ALTER TABLE {} RENAME TO {}
+    """.format(temp_table, table_name))
+
+    hc.sql("""
+      DROP TABLE {}
+    """.format(old_table))
 
 
 def set_table_property(hc, table, property, value):
@@ -101,35 +274,6 @@ def get_table_property(hc, table, property, to_type=None):
 
     if 'does not have property' not in prop_val:
         return to_type(prop_val)
-
-
-def replace_table(hc, table_name, schema, location, partition_by=None, table_format=None):
-    """Replaces table `table_name` with data represented by schema, location."""
-    old_table = '{}_OLD'.format(table_name)
-    temp_table = '{}_NEW'.format(table_name)
-
-    old_table_props = get_all_table_properties(hc, table_name)
-
-    create_table(
-        hc,
-        temp_table,
-        schema,
-        location=location,
-        partition_by=partition_by,
-        properties=old_table_props,
-    )
-
-    hc.sql("""
-      ALTER TABLE {} RENAME TO {}
-    """.format(table_name, old_table))
-
-    hc.sql("""
-      ALTER TABLE {} RENAME TO {}
-    """.format(temp_table, table_name))
-
-    hc.sql("""
-      DROP TABLE {}
-    """.format(old_table))
 
 
 def get_all_table_properties(hc, table_name):
