@@ -161,6 +161,17 @@ class MyProjectTest(sparkle.test.SparkleTest):
 ```
 
 
+### Hql utils
+
+```
+from sparkle import SparkleContext
+from sparkle.hql import table_manager
+
+hc = SparkleContext()
+new_table_df = table_manager(hc, 'my_table').create(df, 's3://path', partition_by=['date']).df()
+table_manager(hc).table('old_table').get_property('last_updated')
+```
+
 ### Documentation
 
 #### Build
