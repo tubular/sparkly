@@ -4,7 +4,7 @@ from pyspark.sql.types import (StructType, StringType, StructField,
                                DecimalType, DateType, ArrayType,
                                FloatType, TimestampType, BooleanType,
                                LongType, IntegerType, DoubleType, MapType)
-from sparkle.hql import _type_to_hql, get_create_table_statement
+from sparkle.hms import _type_to_hql, _get_create_table_statement
 
 
 class TestHqlCreateTableStatement(TestCase):
@@ -102,7 +102,7 @@ class TestHqlCreateTableStatement(TestCase):
         )
 
     def test_get_create_table_sql_partition_by(self):
-        result = get_create_table_statement(
+        result = _get_create_table_statement(
             table_name='test',
             schema={
                 'fields': [{
@@ -149,9 +149,9 @@ class TestHqlCreateTableStatement(TestCase):
         self.assertEqual(res, 'struct<`age_10`:bigint,`age_30`:bigint>')
 
     def test_get_create_table_sql_schema(self):
-        res = get_create_table_statement('test',
-                                         StructType([StructField("f1", StringType(), True)]),
-                                         location='s3://test/')
+        res = _get_create_table_statement('test',
+                                          StructType([StructField("f1", StringType(), True)]),
+                                          location='s3://test/')
         self.assertEqual(res,
                          "CREATE EXTERNAL TABLE `test` (`f1` string) "
                          "STORED AS PARQUET LOCATION 's3://test/'")
