@@ -39,7 +39,7 @@ test:
 	docker-compose run sparkle make run_test ; retcode="$$?" ; docker-compose down -v ; exit $$retcode
 
 run_test:
-	tox tests
+	tox
 
 docs:	$(VENV_PATH)/reqs_installed
 	$(PIP_PATH) install Sphinx==1.4.6 sphinxcontrib-napoleon==0.5.3 sphinx-rtd-theme==0.1.9
