@@ -1,3 +1,6 @@
+## 0.5.0
+* Add managed_table sugar for hql utils.
+
 ## 0.4.0
 * Add `parallelism` option for writers to control a load on data storages.
 
