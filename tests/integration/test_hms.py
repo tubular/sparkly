@@ -1,11 +1,9 @@
 import uuid
 import os
 
-from sparkle.hql import (get_all_tables, create_table,
-                         table_exists, set_table_property,
-                         get_table_property,
-                         get_all_table_properties,
-                         replace_table)
+from sparkle.hms import (get_all_tables, create_table, replace_table)
+
+from sparkle.hms import table
 from sparkle.test import SparkleTest
 from tests.integration.base import _TestContext
 
@@ -43,12 +41,35 @@ class TestHql(SparkleTest):
         os.system('rm -Rf {}'.format(cls.base))
         super(TestHql, cls).tearDownClass()
 
-    def test_get_all_tables(self):
-        self.assertEqual(get_all_tables(self.hc), ['test_table'])
+    def test_get_all_table_properties(self):
+        table_manager = table(self.hc, 'test_table')
 
-    def test_table_exists_zero(self):
-        self.assertFalse(table_exists(self.hc, 'non_existent_table'))
-        self.assertTrue(table_exists(self.hc, 'test_table'))
+        table_manager.set_property('name', 'Johny')
+        table_manager.set_property('surname', 'Cache')
+        table_manager.set_property('age', 99)
+
+        res = table_manager.get_all_properties()
+        self.assertTrue(
+            {'name', 'surname', 'age'}.issubset(set(res.keys()))
+        )
+        self.assertEqual(res['name'], 'Johny')
+        self.assertEqual(res['surname'], 'Cache')
+        self.assertEqual(res['age'], '99')
+
+    def test_get_all_tables(self):
+        all_tables = get_all_tables(self.hc)
+        self.assertIsInstance(all_tables, list)
+        self.assertIn('test_table', all_tables)
+
+    def test_table_exists(self):
+        self.assertTrue(table(self.hc, 'test_table').exists())
+        self.assertFalse(table(self.hc, 'not_test_table').exists())
+
+    def test_set_property(self):
+        self.assertEqual(
+            table(self.hc, 'test_table').set_property('xxx', 'yyy').get_property('xxx'),
+            'yyy'
+        )
 
     def test_create_table(self):
         res = self.hc.sql("""
@@ -64,31 +85,9 @@ class TestHql(SparkleTest):
             ('Jessica3', 17, '2016-01-02', 'facebook'),
         })
 
-        all_props = get_all_table_properties(self.hc, 'test_table')
+        all_props = table(self.hc, 'test_table').get_all_properties()
         self.assertEqual(all_props['name'], 'johnny')
         self.assertEqual(all_props['surname'], 'cache')
-
-    def test_set_get_table_property(self):
-        set_table_property(self.hc, 'test_table', 'name', 'Johny')
-        name = get_table_property(self.hc, 'test_table', 'name')
-        self.assertEqual(name, 'Johny')
-
-        set_table_property(self.hc, 'test_table', 'name', 'Cage')
-        name = get_table_property(self.hc, 'test_table', 'name')
-        self.assertEqual(name, 'Cage')
-
-    def test_get_all_table_properties(self):
-        set_table_property(self.hc, 'test_table', 'name', 'Johny')
-        set_table_property(self.hc, 'test_table', 'surname', 'Cache')
-        set_table_property(self.hc, 'test_table', 'age', 99)
-
-        res = get_all_table_properties(self.hc, 'test_table')
-        self.assertTrue(
-            {'name', 'surname', 'age'}.issubset(set(res.keys()))
-        )
-        self.assertEqual(res['name'], 'Johny')
-        self.assertEqual(res['surname'], 'Cache')
-        self.assertEqual(res['age'], '99')
 
     def test_replace_table(self):
         old_path = '{}/old/'.format(self.base)
@@ -109,7 +108,7 @@ class TestHql(SparkleTest):
             }
         )
 
-        old_props = get_all_table_properties(self.hc, 'old_table')
+        old_props = table(self.hc, 'old_table').get_all_properties()
 
         res = self.hc.sql("""
             SELECT name, age, date, platform FROM old_table
@@ -139,7 +138,7 @@ class TestHql(SparkleTest):
             }
         )
 
-        all_props = get_all_table_properties(self.hc, 'old_table')
+        all_props = table(self.hc, 'old_table').get_all_properties()
         del all_props['last_modified_time']
         del all_props['transient_lastDdlTime']
         del old_props['last_modified_time']

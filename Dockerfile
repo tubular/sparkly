@@ -16,5 +16,11 @@ RUN yum install -y python-virtualenv && virtualenv -p python2 venv2 && venv2/bin
 RUN venv2/bin/pip install --use-wheel --index-url=https://pypi.tubularlabs.net cassandra-driver==2.7.2
 RUN venv2/bin/pip install cqlsh==4.1.1
 
+## Requirements install for local dev
+COPY requirements.txt /opt/requirements.txt
+COPY requirements_dev.txt /opt/requirements_dev.txt
+RUN pip install -r /opt/requirements.txt
+RUN pip install -r /opt/requirements_dev.txt
+
 # Sparkle installation
 COPY . /opt/sparkle/
