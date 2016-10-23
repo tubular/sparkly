@@ -1,6 +1,15 @@
 version: '2'
 services:
-  spark-1.6:
+  dev:
+    build: .
+    volumes:
+      - .:/opt/sparkle/
+    depends_on:
+      - cassandra.docker
+      - elastic.docker
+      - mysql.docker
+
+  test-spark-1.6:
     build: .
     depends_on:
       - cassandra.docker

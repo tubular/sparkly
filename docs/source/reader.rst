@@ -1,5 +1,5 @@
 Read Utils
 ==========
 
-.. automodule:: sparkle.read
+.. automodule:: sparkle.reader
     :members:
