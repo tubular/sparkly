@@ -33,6 +33,12 @@ com.databricks:spark-csv_2.10:1.4.0,\
 datastax:spark-cassandra-connector:1.6.1-s_2.10,\
 org.elasticsearch:elasticsearch-spark_2.10:2.3.0
 
+# Python env
+COPY requirements.txt /tmp/requirements.txt
+COPY requirements_dev.txt /tmp/requirements_dev.txt
+RUN python3 -m pip install -r /tmp/requirements.txt
+RUN python3 -m pip install -r /tmp/requirements_dev.txt
+
 # Provision Sparkle
 ADD . /opt/sparkle/
 WORKDIR /opt/sparkle/
