@@ -1,11 +1,5 @@
-# Hi, you're looking at requirements!! Notice that this file is
-# in alphabetical order and almost all versions are pinned; also
-# subdeps are indented under the main dep and each dep has a
-# corresponding wheel available; now go and do likewise.
-
---index-url https://pypi.tubularlabs.net/
---use-wheel
-
-pytest==2.8.2
 mock==1.3.0
-kafka-python==1.2.2
+pytest==2.8.2
+Sphinx==1.4.6
+sphinxcontrib-napoleon==0.5.3
+sphinx_rtd_theme==0.1.9
