@@ -3,6 +3,7 @@ import os
 from pyspark import SparkConf, SparkContext, HiveContext
 
 from sparkle.reader import SparkleReader
+from sparkle.hive_metastore_manager import SparkleHiveMetastoreManager
 
 
 class SparkleContext(HiveContext):
@@ -60,3 +61,4 @@ class SparkleContext(HiveContext):
                 raise NotImplemented('Incorrect udf definition: {}: {}'.format(name, defn))
 
         self.read_ext = SparkleReader(self)
+        self.hms = SparkleHiveMetastoreManager(self)
