@@ -12,7 +12,7 @@ Contents:
    :maxdepth: 2
 
    reader_and_writer
-   hql
+   hive_metastore_manager
    schema_parser
    utils
    exceptions
