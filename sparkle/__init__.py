@@ -2,6 +2,8 @@ import os
 
 from pyspark import SparkConf, SparkContext, HiveContext
 
+from sparkle.reader import SparkleReader
+
 
 class SparkleContext(HiveContext):
     """Wrapper to simplify packages, jars & options definition.
@@ -56,3 +58,5 @@ class SparkleContext(HiveContext):
                 self.registerFunction(name, *defn)
             else:
                 raise NotImplemented('Incorrect udf definition: {}: {}'.format(name, defn))
+
+        self.read_ext = SparkleReader(self)

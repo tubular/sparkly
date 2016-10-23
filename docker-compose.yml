@@ -2,3 +2,25 @@ version: '2'
 services:
   spark-1.6:
     build: .
+    depends_on:
+      - cassandra.docker
+      - elastic.docker
+      - mysql.docker
+
+  cassandra.docker:
+    image: cassandra:2.1.13
+    mem_limit: 500M
+    memswap_limit: 600M
+    environment:
+      MAX_HEAP_SIZE: 500M
+      HEAP_NEWSIZE: 200M
+
+  elastic.docker:
+    image: elasticsearch:1.7.0
+
+  mysql.docker:
+    image: mysql
+    environment:
+      MYSQL_DATABASE: sparkle_test
+      MYSQL_USER: root
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"

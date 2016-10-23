@@ -127,8 +127,6 @@ class BaseCassandraTest(SparkleTest):
     """
     cql_setup_files = []
     cql_teardown_files = []
-
-    cqlsh_execute_cmd = 'source venv2/bin/activate && cqlsh'
     c_host = 'cassandra.docker'  # Cassandra host to operate on
 
     def setUp(self):
@@ -142,8 +140,7 @@ class BaseCassandraTest(SparkleTest):
     def _setup_data(self):
         for file_path in self.cql_setup_files:
             os.system(
-                '{} -f {} {}'.format(
-                    self.cqlsh_execute_cmd,
+                'bash -c "source /venv2/bin/activate && cqlsh -f {} {}"'.format(
                     file_path,
                     self.c_host
                 )
@@ -152,7 +149,7 @@ class BaseCassandraTest(SparkleTest):
     def _clear_data(self):
         for file_path in self.cql_teardown_files:
             os.system(
-                'source venv2/bin/activate && cqlsh -f {} {}'.format(
+                'bash -c "source /venv2/bin/activate && cqlsh -f {} {}"'.format(
                     file_path,
                     self.c_host
                 )
@@ -201,8 +198,8 @@ class BaseElasticTest(SparkleTest):
     def _clear_data(self):
         for index in self.elastic_teardown_indexes:
             os.system('curl -XDELETE \'http://{}:9200/{}\''.format(
-                index,
                 self.elastic_host,
+                index,
             ))
 
 
