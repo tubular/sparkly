@@ -32,7 +32,7 @@ class SparkleReader(object):
 
         Supported formats:
 
-            - Hive Metastore Table ``table://``
+            - Hive Metastore table ``table://``
             - Parquet ``parquet://``
             - CSV ``csv://``
             - Elastic ``elastic://``

@@ -1,12 +1,14 @@
 from unittest import TestCase
 
+import pytest
 from pyspark.sql.types import (StructType, StringType, StructField,
                                DecimalType, DateType, ArrayType,
                                FloatType, TimestampType, BooleanType,
                                LongType, IntegerType, DoubleType, MapType)
-from sparkle.hms import _type_to_hql, _get_create_table_statement
+from sparkle.hive_metastore_manager import _type_to_hql, _get_create_table_statement
 
 
+@pytest.mark.branch_1_0
 class TestHqlCreateTableStatement(TestCase):
 
     def test_string(self):

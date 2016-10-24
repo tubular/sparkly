@@ -1,42 +1,120 @@
-"""Utilities for more convenient usage of Hive related utils.
-
-Usage:
-
-    >>> sparkle.hms.create_table(Schema(...), 's3://path')
-    >>> sparkle.hms.replace(Schema(...), 's3://path', partition_by=['date'])
-    >>> sparkle.hms.table(hc, 'my_table').exists()
-    >>> sparkle.hms.table(hc, 'your_table').get_all_properties() == {'propertyA': 'valueA', ...}
-    >>> sparkle.hms.table(hc, 'my_table').get_property('help') == 'Hello'
-    >>> sparkle.hms.table(hc, 'my_table').set_property('help', 'Hey ho')
-"""
-
 import logging
 import re
 
 from pyspark.sql import DataFrame
 from pyspark.sql.types import StructType
 
-from sparkle.utils import absolute_path
-
 
 logger = logging.getLogger(__name__)
 
 
-class table(object):
+class SparkleHiveMetastoreManager(object):
+    """A set of tools to interact with HiveMetastore."""
+
+    def __init__(self, hc):
+        self.hc = hc
+
+    def table(self, table_name):
+        return Table(self, table_name)
+
+    def get_all_tables(self):
+        """Returns all tables available in metastore.
+
+        Returns:
+            list
+        """
+        return [o.tableName for o in self.hc.sql("SHOW TABLES").collect()]
+
+    def create_table(self,
+                     table_name,
+                     schema,
+                     location,
+                     partition_by=None,
+                     table_format=None,
+                     properties=None):
+        """Creates table in Hive Metastore.
+
+        Args:
+            table_name (str): name of new Table.
+            schema (pyspark.sql.dataframe.DataFrame): schema.
+            location (str): location of data.
+            partition_by (list): partitioning columns.
+            table_format (str): default is parquet.
+            properties (dict): properties to assign to the table.
+
+        Returns:
+            Table
+        """
+        create_table_sql = _get_create_table_statement(
+            table_name,
+            schema,
+            partition_by=partition_by,
+            location=location,
+            table_format=table_format,
+        )
+
+        self.hc.sql(create_table_sql)
+
+        if properties:
+            table_manager = Table(self, table_name)
+            for key, val in properties.items():
+                table_manager.set_property(key, val)
+
+        if partition_by:
+            self.hc.sql('MSCK REPAIR TABLE {}'.format(table_name))
+
+        return Table(self, table_name)
+
+    def replace_table(self, table_name, schema, location, partition_by=None):
+        """Replaces table `table_name` with data represented by schema, location.
+
+        Args:
+            table_name (str): Table name.
+            schema (pyspark.sql.dataframe.DataFrame): schema.
+            location (str): data location, ex.: s3://path/tp/data.
+            partition_by (list): fields the data partitioned by.
+
+        Returns:
+            Table
+        """
+        old_table = '{}_OLD'.format(table_name)
+        temp_table = '{}_NEW'.format(table_name)
+
+        table_manager = Table(self, table_name)
+        old_table_props = table_manager.get_all_properties()
+
+        self.create_table(
+            temp_table,
+            schema,
+            location=location,
+            partition_by=partition_by,
+            properties=old_table_props,
+        )
+
+        self.hc.sql("""
+          ALTER TABLE {} RENAME TO {}
+        """.format(table_name, old_table))
+
+        self.hc.sql("""
+          ALTER TABLE {} RENAME TO {}
+        """.format(temp_table, table_name))
+
+        self.hc.sql("""
+          DROP TABLE {}
+        """.format(old_table))
+
+        return self.table(old_table)
+
+
+class Table(object):
     """Represents a table in HiveMetastore.
 
-    Provides meta data operations on a table.
-
-    >>> table(hc, 'my_table').exists()
-    >>> table(hc, 'my_table').set_property('prop', 'val')
+    Provides meta data operations on a Table.
     """
 
-    def __init__(self, hc, table_name=None):
-        if isinstance(hc, str):
-            raise ValueError('Looks like you specified table name instead '
-                             'of passing HiveContext as a first parameter')
-
-        self.hc = hc
+    def __init__(self, hms, table_name):
+        self.hms = hms
+        self.hc = hms.hc
         self.table_name = table_name
 
     def exists(self):
@@ -45,17 +123,17 @@ class table(object):
         Returns:
             bool
         """
-        return self.table_name in get_all_tables(self.hc)
+        return self.table_name in self.hms.get_all_tables()
 
     def set_property(self, name, value):
         """Sets table property.
 
         Args:
-            name (str): name of the property.
-            value (str): value of the proporty.
+            name (str): Name of the property.
+            value (str): Value of the proporty.
 
         Returns:
-            table_manager: self.
+            Table: Self.
         """
         self.hc.sql("ALTER TABLE {} SET TBLPROPERTIES ('{}'='{}')".format(
             self.table_name, name, value
@@ -66,8 +144,8 @@ class table(object):
         """Gets table property.
 
         Args:
-            name (str): name of the property.
-            to_type (type): type to coarce to, str by default.
+            name (str): Name of the property.
+            to_type (type): Type to coarce to, str by default.
 
         Returns:
             any
@@ -85,7 +163,7 @@ class table(object):
         """Returns all table properties.
 
         Returns:
-            dict: property names to values.
+            dict: Property names to values.
         """
         res = self.hc.sql("""
             SHOW TBLPROPERTIES {}
@@ -102,107 +180,19 @@ class table(object):
         return self.hc.table(self.table_name)
 
 
-def get_all_tables(hc):
-    """Returns all tables available in metastore.
-
-    Args:
-        hc (HiveContext)
-
-    Returns:
-        (list)
-    """
-    return [o.tableName for o in hc.sql("SHOW TABLES").collect()]
-
-
-def create_table(hc, table_name, df, location,
-                 partition_by=None,
-                 table_format=None,
-                 properties=None):
-    """Creates table by DataFrame.
-
-    Args:
-        hc (pyspark.sql.context.HiveContext)
-        table_name (str): name of new table.
-        schema (pyspark.sql.dataframe.DataFrame): schema.
-        location (str): location of data.
-        partition_by (list): partitioning columns.
-        table_format (str): default is parquet.
-        properties (dict): properties to assign to the table.
-    """
-    create_table_sql = _get_create_table_statement(
-        table_name,
-        df,
-        partition_by=partition_by,
-        location=location,
-        table_format=table_format,
-    )
-
-    hc.sql(create_table_sql)
-
-    if properties:
-        table_manager = table(hc, table_name)
-        for key, val in properties.items():
-            table_manager.set_property(key, val)
-
-    if partition_by:
-        hc.sql('MSCK REPAIR TABLE {}'.format(table_name))
-
-    return table(hc, table_name)
-
-
-def replace_table(hc, table_name, schema, location, partition_by=None):
-    """Replaces table `table_name` with data represented by schema, location.
-
-    Args:
-        hc (pyspark.sql.context.HiveContext)
-        table_name (str): table name.
-        schema (pyspark.sql.dataframe.DataFrame): schema.
-        location (str): data location, ex.: s3://path/tp/data.
-        partition_by (list): fields the data partitioned by.
-    """
-    old_table = '{}_OLD'.format(table_name)
-    temp_table = '{}_NEW'.format(table_name)
-
-    table_manager = table(hc, table_name)
-    old_table_props = table_manager.get_all_properties()
-
-    create_table(
-        hc,
-        temp_table,
-        schema,
-        location=location,
-        partition_by=partition_by,
-        properties=old_table_props,
-    )
-
-    hc.sql("""
-      ALTER TABLE {} RENAME TO {}
-    """.format(table_name, old_table))
-
-    hc.sql("""
-      ALTER TABLE {} RENAME TO {}
-    """.format(temp_table, table_name))
-
-    hc.sql("""
-      DROP TABLE {}
-    """.format(old_table))
-
-    return table(hc, old_table)
-
-
 def _get_create_table_statement(table_name, schema, location, partition_by=None, table_format=None):
     """Converts pyspark schema to hive CREATE TABLE definition.
 
     Args:
-        table_name (str): name of a table.
+        table_name (str): Name of a table.
         schema (dict|pyspark.sql.dataframe.DataFrame|pyspark.sql.types.StructType): \
-            source of schema. Dict should be in format of result of method DataFrame.jsonValue()
-        location (str): table data path, s3 bucket path (or hdfs if you like).
-        partition_by (list|None): list of partitioning fields.
-        format (str): format of tables data files.
+            Source of schema. Dict should be in format of result of method DataFrame.jsonValue()
+        location (str): Table data path, s3 bucket path (or hdfs if you like).
+        partition_by (list|None): List of partitioning fields.
+        format (str): Format of tables data files.
 
     Returns
-        (str) create table statement.
+        str: Create table statement.
     """
     if isinstance(schema, DataFrame):
         schema = schema.schema.jsonValue()
@@ -319,21 +309,4 @@ def _type_to_hql(schema, level_=0):
         return _type_to_hql(type_, level_=level_ + 2)
 
 
-if __name__ == '__main__':
-    from sparkle import SparkleContext
 
-    logging.basicConfig(level=logging.DEBUG)
-
-    class Cnx(SparkleContext):
-        packages = ['datastax:spark-cassandra-connector:1.5.0-M3-s_2.10',
-                    'org.elasticsearch:elasticsearch-spark_2.10:2.3.0',
-                    'org.apache.spark:spark-streaming-kafka_2.10:1.6.1',
-
-                    ]
-        jars = [
-            absolute_path(__file__, '..', 'tests',
-                          'integration', 'resources',
-                          'mysql-connector-java-5.1.39-bin.jar'),
-        ]
-
-    sql = Cnx()
