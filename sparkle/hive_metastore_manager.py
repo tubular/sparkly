@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class SparkleHiveMetastoreManager(object):
-    """Hive metastore management util class."""
+    """A set of tools to interact with HiveMetastore."""
 
     def __init__(self, hc):
         self.hc = hc
@@ -21,25 +21,29 @@ class SparkleHiveMetastoreManager(object):
         """Returns all tables available in metastore.
 
         Returns:
-            (list)
+            list
         """
         return [o.tableName for o in self.hc.sql("SHOW TABLES").collect()]
 
-    def create_table(self, table_name,
-                     schema, location,
+    def create_table(self,
+                     table_name,
+                     schema,
+                     location,
                      partition_by=None,
                      table_format=None,
                      properties=None):
-        """Creates Table by DataFrame.
+        """Creates table in Hive Metastore.
 
         Args:
-            hc (pyspark.sql.context.HiveContext)
             table_name (str): name of new Table.
             schema (pyspark.sql.dataframe.DataFrame): schema.
             location (str): location of data.
             partition_by (list): partitioning columns.
             table_format (str): default is parquet.
-            properties (dict): properties to assign to the Table.
+            properties (dict): properties to assign to the table.
+
+        Returns:
+            Table
         """
         create_table_sql = _get_create_table_statement(
             table_name,
@@ -62,14 +66,16 @@ class SparkleHiveMetastoreManager(object):
         return Table(self, table_name)
 
     def replace_table(self, table_name, schema, location, partition_by=None):
-        """Replaces Table `table_name` with data represented by schema, location.
+        """Replaces table `table_name` with data represented by schema, location.
 
         Args:
-            hc (pyspark.sql.context.HiveContext)
             table_name (str): Table name.
             schema (pyspark.sql.dataframe.DataFrame): schema.
             location (str): data location, ex.: s3://path/tp/data.
             partition_by (list): fields the data partitioned by.
+
+        Returns:
+            Table
         """
         old_table = '{}_OLD'.format(table_name)
         temp_table = '{}_NEW'.format(table_name)
@@ -101,7 +107,7 @@ class SparkleHiveMetastoreManager(object):
 
 
 class Table(object):
-    """Represents a Table in HiveMetastore.
+    """Represents a table in HiveMetastore.
 
     Provides meta data operations on a Table.
     """
@@ -112,7 +118,7 @@ class Table(object):
         self.table_name = table_name
 
     def exists(self):
-        """Checks if Table exists.
+        """Checks if table exists.
 
         Returns:
             bool
@@ -120,14 +126,14 @@ class Table(object):
         return self.table_name in self.hms.get_all_tables()
 
     def set_property(self, name, value):
-        """Sets Table property.
+        """Sets table property.
 
         Args:
-            name (str): name of the property.
-            value (str): value of the proporty.
+            name (str): Name of the property.
+            value (str): Value of the proporty.
 
         Returns:
-            table_manager: self.
+            Table: Self.
         """
         self.hc.sql("ALTER TABLE {} SET TBLPROPERTIES ('{}'='{}')".format(
             self.table_name, name, value
@@ -135,11 +141,11 @@ class Table(object):
         return self
 
     def get_property(self, name, to_type=None):
-        """Gets Table property.
+        """Gets table property.
 
         Args:
-            name (str): name of the property.
-            to_type (type): type to coarce to, str by default.
+            name (str): Name of the property.
+            to_type (type): Type to coarce to, str by default.
 
         Returns:
             any
@@ -154,10 +160,10 @@ class Table(object):
             return to_type(prop_val)
 
     def get_all_properties(self):
-        """Returns all Table properties.
+        """Returns all table properties.
 
         Returns:
-            dict: property names to values.
+            dict: Property names to values.
         """
         res = self.hc.sql("""
             SHOW TBLPROPERTIES {}
@@ -166,7 +172,7 @@ class Table(object):
         return dict([item.result.split() for item in res])
 
     def df(self):
-        """Returns dataframe for the managed Table.
+        """Returns dataframe for the managed table.
 
         Returns:
             pyspark.sql.dataframe.DataFrame
@@ -178,15 +184,15 @@ def _get_create_table_statement(table_name, schema, location, partition_by=None,
     """Converts pyspark schema to hive CREATE TABLE definition.
 
     Args:
-        table_name (str): name of a Table.
+        table_name (str): Name of a table.
         schema (dict|pyspark.sql.dataframe.DataFrame|pyspark.sql.types.StructType): \
-            source of schema. Dict should be in format of result of method DataFrame.jsonValue()
+            Source of schema. Dict should be in format of result of method DataFrame.jsonValue()
         location (str): Table data path, s3 bucket path (or hdfs if you like).
-        partition_by (list|None): list of partitioning fields.
-        format (str): format of tables data files.
+        partition_by (list|None): List of partitioning fields.
+        format (str): Format of tables data files.
 
     Returns
-        (str) create Table statement.
+        str: Create table statement.
     """
     if isinstance(schema, DataFrame):
         schema = schema.schema.jsonValue()

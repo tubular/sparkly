@@ -36,7 +36,7 @@ def fs(df, path, partition_by=None, mode=None, output_format=None, parallelism=N
 
 def cassandra(df, host, keyspace, table, consistency=None, mode=None, parallelism=None,
               options=None):
-    """Write dataframe into the cassandra Table.
+    """Write dataframe into the cassandra table.
 
     Args:
         df (pyspark.sql.DataFrame)
@@ -56,7 +56,7 @@ def cassandra(df, host, keyspace, table, consistency=None, mode=None, parallelis
     default_options = {
         'spark_cassandra_connection_host': host,
         'keyspace': keyspace,
-        'Table': table,
+        'table': table,
     }
 
     if options:
@@ -128,13 +128,13 @@ def elastic(df, host, es_index, es_type, mode=None, parallelism=None, options=No
 
 
 def mysql(df, host, database, table, mode=None, parallelism=None, options=None):
-    """Writes dataframe into mysql Table.
+    """Writes dataframe into mysql table.
 
     Args:
         df (pyspark.sql.DataFrame)
         host (str)
         database (str)
-        table (str): Mysql Table.
+        table (str): Mysql table.
         mode (str|None): Write mode.
         parallelism (int|None): The max number of parallel tasks that could be executed
             during the write stage. Note, we use `coalesce` to reduce a parallelism,
@@ -178,7 +178,7 @@ def by_url(df, url):
         - 'cassandra://tital-ii/natural/youtube_temp?consistency=ONE&mode=append'
         - 'parquet:///var/log/?partition_by=date'
         - 'elastic://elastic.host/es_index/es_type'
-        - 'mysql://mysql.host/database/Table'
+        - 'mysql://mysql.host/database/table'
 
     Args:
         df (pyspark.sql.DataFrame): data to be written.
