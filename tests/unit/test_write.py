@@ -84,7 +84,7 @@ class TestWriteByUrl(unittest.TestCase):
     @mock.patch('sparkle.write.mysql')
     def test_mysql(self, mysql_mock):
         df = mock.Mock()
-        path = 'mysql://host/db/Table?parallelism=20'
+        path = 'mysql://host/db/table?parallelism=20'
 
         sparkle.write.by_url(df, path)
 
@@ -92,7 +92,7 @@ class TestWriteByUrl(unittest.TestCase):
             df,
             'host',
             database='db',
-            table='Table',
+            table='table',
             mode=None,
             parallelism=20,
             options={},
