@@ -1,9 +1,9 @@
 from shutil import rmtree
 from tempfile import mkdtemp
 
+import pytest
+
 from sparkle.utils import absolute_path
-from sparkle import read
-from sparkle.write import fs, cassandra, elastic, mysql
 from sparkle.test import (
     SparkleGlobalContextTest,
     BaseCassandraTest,
@@ -24,8 +24,8 @@ TEST_DATA = [
 ]
 
 
-class TestWriteFS(SparkleGlobalContextTest):
-
+@pytest.mark.branch_1_0
+class TestWriteByURL(SparkleGlobalContextTest):
     context = _TestContext
 
     def setUp(self):
@@ -35,40 +35,26 @@ class TestWriteFS(SparkleGlobalContextTest):
         rmtree(self.temp_dir)
 
     def test_write_csv(self):
-        dest_path = '{}/test_csv'.format(self.temp_dir)
+        dst_path = '{}/test_csv'.format(self.temp_dir)
         df = self.hc.createDataFrame(TEST_DATA, TEST_COLUMNS)
 
-        fs(df,
-           dest_path,
-           output_format='csv',
-           mode='overwrite',
-           options={'header': 'true'},
-           )
+        df.write_ext.by_url('csv://{}?mode=overwrite&header=true'.format(dst_path))
 
-        df = read.by_url(self.hc, 'csv://{}'.format(dest_path))
-        self.assertDataframeEqual(
-            df,
-            TEST_DATA,
-            TEST_COLUMNS,
-        )
+        written_df = self.hc.read_ext.by_url('csv://{}'.format(dst_path))
+        self.assertDataframeEqual(written_df, TEST_DATA, TEST_COLUMNS)
 
     def test_write_parquet(self):
-        dest_path = '{}/test_parquet'.format(self.temp_dir)
+        dst_path = '{}/test_parquet'.format(self.temp_dir)
         df = self.hc.createDataFrame(TEST_DATA, TEST_COLUMNS)
 
-        fs(df,
-           path=dest_path,
-           output_format='parquet',
-           partition_by=['video_uid'],
-           mode='overwrite',
-           )
+        df.write_ext.by_url('parquet://{}?mode=overwrite'.format(dst_path))
 
-        df = read.by_url(self.hc, 'parquet:{}'.format(dest_path))
-        self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
+        written_df = self.hc.read_ext.by_url('parquet://{}'.format(dst_path))
+        self.assertDataframeEqual(written_df, TEST_DATA, TEST_COLUMNS)
 
 
+@pytest.mark.branch_1_0
 class TestWriteCassandra(BaseCassandraTest, SparkleGlobalContextTest):
-
     context = _TestContext
 
     cql_setup_files = [
@@ -81,18 +67,17 @@ class TestWriteCassandra(BaseCassandraTest, SparkleGlobalContextTest):
     def test_write_cassandra(self):
         df = self.hc.createDataFrame(TEST_DATA, TEST_COLUMNS)
 
-        cassandra(df, self.c_host, 'sparkle_test', 'test_writer',
-                  consistency='ONE', mode='overwrite')
+        df.write_ext.cassandra(self.c_host, 'sparkle_test', 'test_writer',
+                               consistency='ONE', mode='overwrite')
 
-        df = read.by_url(
-            self.hc,
+        written_df = self.hc.read_ext.by_url(
             'cassandra://{}/sparkle_test/test_writer?consistency=ONE'.format(self.c_host)
         )
-        self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
+        self.assertDataframeEqual(written_df, TEST_DATA, TEST_COLUMNS)
 
 
+@pytest.mark.branch_1_0
 class TestWriteElastic(BaseElasticTest, SparkleGlobalContextTest):
-
     context = _TestContext
 
     elastic_setup_files = [
@@ -103,8 +88,7 @@ class TestWriteElastic(BaseElasticTest, SparkleGlobalContextTest):
     def test_write_elastic(self):
         df = self.hc.createDataFrame(TEST_DATA, TEST_COLUMNS)
 
-        elastic(
-            df,
+        df.write_ext.elastic(
             self.elastic_host,
             'sparkle_test',
             'test_writer',
@@ -114,11 +98,13 @@ class TestWriteElastic(BaseElasticTest, SparkleGlobalContextTest):
             }
         )
 
-        df = read.by_url(self.hc,
-                         'elastic://{}/sparkle_test/test_writer'.format(self.elastic_host))
+        df = self.hc.read_ext.by_url(
+            'elastic://{}/sparkle_test/test_writer'.format(self.elastic_host)
+        )
         self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
 
 
+@pytest.mark.branch_1_0
 class TestWriteMysql(BaseMysqlTest, SparkleGlobalContextTest):
 
     context = _TestContext
@@ -134,12 +120,11 @@ class TestWriteMysql(BaseMysqlTest, SparkleGlobalContextTest):
     def test_write_mysql(self):
         df = self.hc.createDataFrame(TEST_DATA, TEST_COLUMNS)
 
-        mysql(df, self.mysql_host, 'sparkle_test', 'test_writer',
-              mode='overwrite',
-              options={'user': 'root', 'password': ''})
+        df.write_ext.mysql(self.mysql_host, 'sparkle_test', 'test_writer',
+                           mode='overwrite',
+                           options={'user': 'root', 'password': ''})
 
-        df = read.by_url(
-            self.hc,
+        df = self.hc.read_ext.by_url(
             'mysql://{}/sparkle_test/test_writer?'
             'user=root&password='.format(self.mysql_host)
         )
