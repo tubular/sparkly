@@ -23,7 +23,7 @@ class SparkleReader(object):
         self._hc = hc
 
     def by_url(self, url):
-        """Create a dataframe using URL.
+        """Create a dataframe using `url`.
 
         The main idea behind the method is to unify data access interface for different
         formats and locations. A generic schema looks like::
@@ -32,12 +32,12 @@ class SparkleReader(object):
 
         Supported formats:
 
-            - Hive Metastore table ``table://``
-            - Parquet ``parquet://``
             - CSV ``csv://``
-            - Elastic ``elastic://``
             - Cassandra ``cassandra://``
+            - Elastic ``elastic://``
             - MySQL ``mysql://``
+            - Parquet ``parquet://``
+            - Hive Metastore table ``table://``
 
         Query string arguments are passed as parameters to the relevant reader.\n
         For instance, the next data source URL::
@@ -203,7 +203,7 @@ class SparkleReader(object):
         return reader
 
     def mysql(self, host, database, table, parallelism=None, port=None, options=None):
-        """Create a dataframe from a mysql table.
+        """Create a dataframe from a MySQL table.
 
         Should be usable for rds, aurora, etc.
         Options should include user and password.

@@ -33,7 +33,7 @@ Sparkle relies on the official spark cassandra connector and was successfully te
     # To read data
     df = hc.read_ext.cassandra('localhost', 'my_keyspace', 'my_table')
     # To write data
-    hc.write_ext.cassandra(df, 'localhost', 'my_keyspace', 'my_table')
+    df.write_ext.cassandra('localhost', 'my_keyspace', 'my_table')
 
 .. _csv:
 
@@ -67,7 +67,7 @@ Sparkle relies on the csv connector provided by `Databricks <databricks.com>`_.
     # To read data
     df = hc.read_ext.csv('/path/to/csv/file.csv', header=True)
     # To write data
-    hc.write_ext.csv(df, '/path/to/csv/file.csv', header=False)
+    df.write_ext.csv('/path/to/csv/file.csv', header=False)
 
 .. _elastic:
 
@@ -96,7 +96,7 @@ Sparkle relies on the official elastic spark connector and was successfully test
     # To read data
     df = hc.read_ext.elastic('localhost', 'my_index', 'my_type', query='?q=awesomeness')
     # To write data
-    hc.write_ext.elastic(df, 'localhost', 'my_index', 'my_type')
+    df.write_ext.elastic('localhost', 'my_index', 'my_type')
 
 .. _mysql:
 
@@ -130,7 +130,7 @@ Basically, it's just a high level api on top of the native
     df = hc.read_ext.mysql('localhost', 'my_database', 'my_table',
                            options={'user': 'root', 'password': 'root'})
     # To write data
-    hc.write_ext.mysql(df, 'localhost', 'my_database', 'my_table',
+    df.write_ext.mysql('localhost', 'my_database', 'my_table',
                        options={'user': 'root', 'password': 'root'})
 
 
@@ -168,10 +168,10 @@ To solve the problem, we decided to add the universal api to read/write `DataFra
     df = hc.read_ext.by_url('parquet:hdfs://my.name.node/path/on/hdfs')
 
     # To write data
-    hc.write_ext.by_url(df, 'cassandra://localhost/my_keyspace/my_table?consistency=QUORUM&parallelism=8')
-    hc.write_ext.by_url(df, 'csv:hdfs://my.name.node/path/on/hdfs')
-    hc.write_ext.by_url(df, 'elastic://localhost/my_index/my_type?parallelism=4')
-    hc.write_ext.by_url(df, 'parquet:s3://my-bucket/my-data?header=false')
+    df.write_ext.by_url('cassandra://localhost/my_keyspace/my_table?consistency=QUORUM&parallelism=8')
+    df.write_ext.by_url('csv:hdfs://my.name.node/path/on/hdfs')
+    df.write_ext.by_url('elastic://localhost/my_index/my_type?parallelism=4')
+    df.write_ext.by_url('parquet:s3://my-bucket/my-data?header=false')
 
 
 .. _controlling-the-load:
@@ -201,8 +201,14 @@ we have to retry the whole pack in 100 tasks.
 
 `Read more about coalesce <http://spark.apache.org/docs/latest/programming-guide.html#CoalesceLink>`_
 
-API documentation
-^^^^^^^^^^^^^^^^^
+Reader API documentation
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. automodule:: sparkle.reader
+    :members:
+
+Writer API documentation
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: sparkle.writer
     :members:

@@ -31,7 +31,7 @@ class SparkleReaderCassandraTest(BaseCassandraTest, SparkleGlobalContextTest):
             consistency='ONE',
         )
 
-        self.assertEqual(
+        self.assertCountEqual(
             [row.asDict() for row in df.take(3)],
             [
                 {
@@ -61,7 +61,7 @@ class SparkleReaderCSVTest(SparkleGlobalContextTest):
             path=absolute_path(__file__, 'resources', 'test_read', 'test.csv'),
         )
 
-        self.assertEqual(
+        self.assertCountEqual(
             [row.asDict() for row in df.take(2)],
             [
                 {
@@ -130,7 +130,7 @@ class SparkleReaderElasticTest(BaseElasticTest, SparkleGlobalContextTest):
         for row in rows:
             row['demo'] = row['demo'].asDict()
 
-        self.assertEqual(
+        self.assertCountEqual(
             rows,
             [
                 {
@@ -183,7 +183,7 @@ class SparkleReaderMySQLTest(BaseMysqlTest, SparkleGlobalContextTest):
             }
         )
 
-        self.assertEqual(
+        self.assertCountEqual(
             [row.asDict() for row in df.take(3)],
             [
                 {'id': 1, 'name': 'john', 'surname': 'sk', 'age': 111},
