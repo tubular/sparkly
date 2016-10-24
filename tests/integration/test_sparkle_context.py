@@ -1,7 +1,10 @@
+import pytest
+
 from sparkle.test import SparkleGlobalContextTest
 from tests.integration.base import _TestContext
 
 
+@pytest.mark.branch_1_0
 class TestSparkleContext(SparkleGlobalContextTest):
 
     context = _TestContext
