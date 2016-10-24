@@ -20,15 +20,18 @@ class SparkleTest(TestCase):
     Example:
 
            >>> class MyTestCase(SparkleTest):
-           >>>      def test(self):
-           >>>          self.assertDataframeEqual(
-           >>>              self.hc.sql('SELECT 1 as one').collect(),
-           >>>              (1,), ['one']
-           >>>          )
+           ...      def test(self):
+           ...          self.assertDataframeEqual(
+           ...              self.hc.sql('SELECT 1 as one').collect(),
+           ...              (1,), ['one']
+           ...          )
+           ...
 
     """
 
     context = SparkleContext
+    class_fixtures = []
+    fixtures = []
 
     @classmethod
     def setUpClass(cls):
@@ -42,6 +45,9 @@ class SparkleTest(TestCase):
             _test_context_cache = None
 
         cls.hc = cls.context()
+
+        for fixture in cls.class_fixtures:
+            fixture.setup_data()
 
     @classmethod
     def tearDownClass(cls):
@@ -58,12 +64,24 @@ class SparkleTest(TestCase):
         except OSError:
             pass
 
+        for fixture in cls.class_fixtures:
+            fixture.teardown_data()
+
+    def setUp(self):
+        for fixture in self.fixtures:
+            fixture.setup_data()
+
+    def tearDown(self):
+        for fixture in self.fixtures:
+            fixture.teardown_data()
+
     def assertDataframeEqual(self, df, data, fields):
         """Check equality to dataframe contents.
 
         Args:
             df (pyspark.sql.Dataframe)
-            data (list[tuple]): data to compare with
+            data (list[tuple]): Data to compare with.
+            fields (list): List of field names.
         """
         df_data = sorted([[x[y] for y in fields] for x in df.collect()])
         data = sorted(data)
@@ -102,13 +120,40 @@ class SparkleGlobalContextTest(SparkleTest):
 
         cls.hc = hc
 
+        for fixture in cls.class_fixtures:
+            fixture.setup_data()
+
     @classmethod
     def tearDownClass(cls):
         cls.hc.clearCache()
 
+        for fixture in cls.class_fixtures:
+            fixture.teardown_data()
 
-class BaseCassandraTest(SparkleTest):
-    """Base test class for Cassandra integration tests.
+
+class Fixure(object):
+    """Base class for fixures.
+
+    Fixture is a term borrowed from Django tests, it's data loaded into database for integration testing.
+    """
+
+    def setup_data(self):
+        """Method called to load data into database."""
+        raise NotImplementedError()
+
+    def teardown_data(self):
+        """Method called to remove data from database which was loaded by `setup_data`."""
+        raise NotImplementedError()
+
+    def __enter__(self):
+        self.setup_data()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.teardown_data()
+
+
+class CassandraFixture(object):
+    """Fixture to load data into cassandra.
 
     Notes:
         * assumes `cqlsh` available in runtime environment.
@@ -116,150 +161,156 @@ class BaseCassandraTest(SparkleTest):
 
     Examples:
 
-           >>> class MyTestCase(BaseCassandraTest):
-           >>>
-           >>>      cql_setup_files = [absolute_path(__file__, 'resources', 'setup.cql')]
-           >>>      cql_setup_files = [absolute_path(__file__, 'resources', 'teardown.cql')]
-           >>>
-           >>>      def test(self):
-           >>>          pass
+           >>> class MyTestCase(SparkleTest):
+           ...      fixtures = [
+           ...          CassandraFixture(
+           ...              'cassandra.host',
+           ...              absolute_path(__file__, 'resources', 'setup.cql'),
+           ...              absolute_path(__file__, 'resources', 'teardown.cql'),
+           ...          )
+           ...      ]
+           ...
 
+           >>> class MyTestCase(SparkleTest):
+           ...      data = CassandraFixture(
+           ...          'cassandra.host',
+           ...          absolute_path(__file__, 'resources', 'setup.cql'),
+           ...          absolute_path(__file__, 'resources', 'teardown.cql'),
+           ...      )
+           ...      def setUp(self):
+           ...          data.setup_data()
+           ...      def tearDown(self):
+           ...          data.teardown_data()
+           ...
+
+           >>> def test():
+           ...     fixture = CassandraFixture(...)
+           ...     with fixture:
+           ...        test_stuff()
+           ...
     """
-    cql_setup_files = []
-    cql_teardown_files = []
-    c_host = 'cassandra.docker'  # Cassandra host to operate on
 
-    def setUp(self):
-        super(BaseCassandraTest, self).setUp()
-        self._setup_data()
+    def __init__(self, host, setup_file, teardown_file):
+        self.host = host
+        self.setup_file = setup_file
+        self.teardown_file = teardown_file
 
-    def tearDown(self):
-        super(BaseCassandraTest, self).tearDown()
-        self._clear_data()
-
-    def _setup_data(self):
-        for file_path in self.cql_setup_files:
-            os.system(
-                'bash -c "source /venv2/bin/activate && cqlsh -f {} {}"'.format(
-                    file_path,
-                    self.c_host
-                )
+    def setup_data(self):
+        os.system(
+            'bash -c "source /venv2/bin/activate && cqlsh -f {} {}"'.format(
+                self.setup_file,
+                self.host
             )
+        )
 
-    def _clear_data(self):
-        for file_path in self.cql_teardown_files:
-            os.system(
-                'bash -c "source /venv2/bin/activate && cqlsh -f {} {}"'.format(
-                    file_path,
-                    self.c_host
-                )
+    def teardown_data(self):
+        os.system(
+            'bash -c "source /venv2/bin/activate && cqlsh -f {} {}"'.format(
+                self.teardown_file,
+                self.host
             )
+        )
 
 
-class BaseElasticTest(SparkleTest):
-    """Base test class for elastic integration tests.
+class ElasticFixture(Fixure):
+    """Fixture for elastic integration tests.
 
-    Notes: assumes `curl` available in runtime environment.
+    Notes:
+     - assumes `curl` available in runtime environment.
+     - data upload uses bulk api.
 
     Examples:
 
-           >>> class MyTestCase(BaseElasticTest):
-           >>>
-           >>>      elastic_host = 'test.elastic.host.net'
-           >>>      elastic_setup_files = [absolute_path(__file__, 'resources', 'setup.json')]
-           >>>      elastic_teardown_indexes = ['my_test_index']
-           >>>
-           >>>      def test(self):
-           >>>          pass
-
+           >>> class MyTestCase(SparkleTest):
+           ...      fixtures = [
+           ...          ElasticFixture(
+           ...              'elastic.host',
+           ...              'es_index',
+           ...              'es_type',
+           ...              '/path/to/mapping.json',
+           ...              '/path/to/data.json',
+           ...          )
+           ...      ]
+           ...
     """
 
-    elastic_setup_files = []
-    elastic_teardown_indexes = []
-    elastic_host = 'elastic.docker'
+    def __init__(self, host, es_index, es_type, mapping=None, data=None):
+        self.host = host
+        self.es_index = es_index
+        self.es_type = es_type
+        self.mapping = mapping
+        self.data = data
 
-    def setUp(self):
-        super(BaseElasticTest, self).setUp()
-        self._setup_data()
+    def setup_data(self):
+        if self.mapping:
+            os.system(
+                'curl -XPUT \'http://{}:9200/{}/_mapping/{}\' --data-binary @{}'.format(
+                    self.host,
+                    self.es_index,
+                    self.es_type,
+                    self.mapping,
+                )
+            )
 
-    def tearDown(self):
-        super(BaseElasticTest, self).tearDown()
-        self._clear_data()
-
-    def _setup_data(self):
-        for file_path in self.elastic_setup_files:
+        if self.data:
             os.system(
                 'curl -XPOST \'http://{}:9200/_bulk\' --data-binary @{}'.format(
-                    self.elastic_host,
-                    file_path
+                    self.host,
+                    self.data,
                 )
             )
 
-    def _clear_data(self):
-        for index in self.elastic_teardown_indexes:
-            os.system('curl -XDELETE \'http://{}:9200/{}\''.format(
-                self.elastic_host,
-                index,
-            ))
+    def teardown_data(self):
+        os.system('curl -XDELETE \'http://{}:9200/{}\''.format(
+            self.host,
+            self.es_index,
+        ))
 
 
-class BaseMysqlTest(SparkleTest):
+class MysqlFixture(Fixure):
     """Base test class for mysql integration tests.
 
-    Notes: assumes mysql cli available in runtime environment.
+    Notes:
+     - assumes mysql cli available in runtime environment.
 
     Examples:
 
-           >>> class MyTestCase(BaseElasticTest):
-           >>>
-           >>>      mysql_host = 'test.mysql.host.net'
-           >>>      sql_setup_files = [absolute_path(__file__, 'resources', 'setup.sql')]
-           >>>      sql_teardown_files = [absolute_path(__file__, 'resources', 'teardown.sql')]
-           >>>      mysql_user = 'root'
-           >>>      mysql_password = 'root'
-           >>>
-           >>>      def test(self):
-           >>>          pass
+           >>> class MyTestCase(SparkleTest):
+           ...      fixtures = [MysqlFixture('mysql.host', 'user', 'password', '/path/to/data.sql')]
+           ...      def test(self):
+           ...          pass
+           ...
     """
 
-    sql_setup_files = []
-    sql_teardown_files = []
-    mysql_host = 'mysql.docker'
-    mysql_user = 'root'
-    mysql_password = None
+    def __init__(self, host, user, password=None, data=None, teardown=None):
+        self.host = host
+        self.user = user
+        self.password = password
+        self.data = data
+        self.teardown = teardown
 
-    def setUp(self):
-        super(BaseMysqlTest, self).setUp()
-        self._setup_data()
+    def setup_data(self):
+        if self.password:
+            os.system('mysql -h{} -u{} -p{} < {}'.format(self.host,
+                                                         self.user,
+                                                         self.password,
+                                                         self.data,
+                                                         ))
+        else:
+            os.system('mysql -h{} -u{} < {}'.format(self.host,
+                                                    self.user,
+                                                    self.data,
+                                                    ))
 
-    def tearDown(self):
-        super(BaseMysqlTest, self).tearDown()
-        self._clear_data()
-
-    def _setup_data(self):
-        for file_path in self.sql_setup_files:
-            if self.mysql_password:
-                os.system('mysql -h{} -u{} -p{} < {}'.format(self.mysql_host,
-                                                             self.mysql_user,
-                                                             self.mysql_password,
-                                                             file_path,
+    def teardown_data(self):
+            if self.password:
+                os.system('mysql -h{} -u{} -p{} < {}'.format(self.host,
+                                                             self.user,
+                                                             self.password,
+                                                             self.teardown,
                                                              ))
             else:
-                os.system('mysql -h{} -u{} < {}'.format(self.mysql_host,
-                                                        self.mysql_user,
-                                                        file_path,
-                                                        ))
-
-    def _clear_data(self):
-        for file_path in self.sql_teardown_files:
-            if self.mysql_password:
-                os.system('mysql -h{} -u{} -p{} < {}'.format(self.mysql_host,
-                                                             self.mysql_user,
-                                                             self.mysql_password,
-                                                             file_path,
-                                                             ))
-            else:
-                os.system('mysql -h{} -u{} < {}'.format(self.mysql_host,
-                                                        self.mysql_user,
-                                                        file_path,
+                os.system('mysql -h{} -u{} < {}'.format(self.host,
+                                                        self.user,
+                                                        self.teardown,
                                                         ))
