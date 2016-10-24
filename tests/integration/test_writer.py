@@ -6,9 +6,9 @@ import pytest
 from sparkle.utils import absolute_path
 from sparkle.test import (
     SparkleGlobalContextTest,
-    BaseCassandraTest,
-    BaseElasticTest,
-    BaseMysqlTest,
+    CassandraFixture,
+    ElasticFixture,
+    MysqlFixture,
 )
 from tests.integration.base import _TestContext
 
@@ -54,42 +54,55 @@ class TestWriteByURL(SparkleGlobalContextTest):
 
 
 @pytest.mark.branch_1_0
-class TestWriteCassandra(BaseCassandraTest, SparkleGlobalContextTest):
+class TestWriteCassandra(SparkleGlobalContextTest):
     context = _TestContext
 
-    cql_setup_files = [
-        absolute_path(__file__, 'resources', 'test_write', 'cassandra_setup.cql'),
-    ]
-    cql_teardown_files = [
-        absolute_path(__file__, 'resources', 'test_write', 'cassandra_teardown.cql'),
+    fixtures = [
+        CassandraFixture(
+            'cassandra.docker',
+            absolute_path(__file__, 'resources', 'test_write', 'cassandra_setup.cql'),
+            absolute_path(__file__, 'resources', 'test_write', 'cassandra_teardown.cql'),
+        )
     ]
 
     def test_write_cassandra(self):
         df = self.hc.createDataFrame(TEST_DATA, TEST_COLUMNS)
 
-        df.write_ext.cassandra(self.c_host, 'sparkle_test', 'test_writer',
-                               consistency='ONE', mode='overwrite')
+        df.write_ext.cassandra(
+            'cassandra.docker',
+            'sparkle_test',
+            'test_writer',
+            consistency='ONE',
+            mode='overwrite',
+        )
 
         written_df = self.hc.read_ext.by_url(
-            'cassandra://{}/sparkle_test/test_writer?consistency=ONE'.format(self.c_host)
+            'cassandra://cassandra.docker/'
+            'sparkle_test/test_writer'
+            '?consistency=ONE'
         )
         self.assertDataframeEqual(written_df, TEST_DATA, TEST_COLUMNS)
 
 
 @pytest.mark.branch_1_0
-class TestWriteElastic(BaseElasticTest, SparkleGlobalContextTest):
+class TestWriteElastic(SparkleGlobalContextTest):
     context = _TestContext
 
-    elastic_setup_files = [
-        absolute_path(__file__, 'resources', 'test_write', 'elastic_setup.json')
+    fixtures = [
+        ElasticFixture(
+            'elastic.docker',
+            'sparkle_test',
+            'test',
+            None,
+            absolute_path(__file__, 'resources', 'test_write', 'elastic_setup.json')
+        )
     ]
-    elastic_teardown_indexes = ['sparkle_test']
 
     def test_write_elastic(self):
         df = self.hc.createDataFrame(TEST_DATA, TEST_COLUMNS)
 
         df.write_ext.elastic(
-            self.elastic_host,
+            'elastic.docker',
             'sparkle_test',
             'test_writer',
             mode='overwrite',
@@ -99,33 +112,40 @@ class TestWriteElastic(BaseElasticTest, SparkleGlobalContextTest):
         )
 
         df = self.hc.read_ext.by_url(
-            'elastic://{}/sparkle_test/test_writer'.format(self.elastic_host)
+            'elastic://elastic.docker/sparkle_test/test_writer'
         )
         self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
 
 
 @pytest.mark.branch_1_0
-class TestWriteMysql(BaseMysqlTest, SparkleGlobalContextTest):
+class TestWriteMysql(SparkleGlobalContextTest):
 
     context = _TestContext
 
-    sql_setup_files = [
-        absolute_path(__file__, 'resources', 'test_write', 'mysql_setup.sql'),
-    ]
-
-    sql_teardown_files = [
-        absolute_path(__file__, 'resources', 'test_write', 'mysql_teardown.sql'),
+    fixtures = [
+        MysqlFixture(
+            'mysql.docker',
+            'root',
+            None,
+            absolute_path(__file__, 'resources', 'test_write', 'mysql_setup.sql'),
+            absolute_path(__file__, 'resources', 'test_write', 'mysql_teardown.sql'),
+        )
     ]
 
     def test_write_mysql(self):
         df = self.hc.createDataFrame(TEST_DATA, TEST_COLUMNS)
 
-        df.write_ext.mysql(self.mysql_host, 'sparkle_test', 'test_writer',
-                           mode='overwrite',
-                           options={'user': 'root', 'password': ''})
+        df.write_ext.mysql(
+            'mysql.docker',
+            'sparkle_test',
+            'test_writer',
+            mode='overwrite',
+            options={'user': 'root', 'password': ''}
+        )
 
         df = self.hc.read_ext.by_url(
-            'mysql://{}/sparkle_test/test_writer?'
-            'user=root&password='.format(self.mysql_host)
+            'mysql://mysql.docker/'
+            'sparkle_test/test_writer'
+            '?user=root&password='
         )
         self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)

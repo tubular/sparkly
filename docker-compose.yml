@@ -15,6 +15,10 @@ services:
       - cassandra.docker
       - elastic.docker
       - mysql.docker
+    links:
+      - cassandra.docker
+      - elastic.docker
+      - mysql.docker
 
   cassandra.docker:
     image: cassandra:2.1.13

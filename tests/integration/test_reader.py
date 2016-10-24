@@ -1,31 +1,30 @@
-import unittest
-
 import pytest
 
 from sparkle.test import (
     SparkleGlobalContextTest,
-    BaseCassandraTest,
-    BaseElasticTest,
-    BaseMysqlTest,
+    CassandraFixture,
+    MysqlFixture,
+    ElasticFixture,
 )
 from sparkle.utils import absolute_path
 from tests.integration.base import _TestContext
 
 
 @pytest.mark.branch_1_0
-class SparkleReaderCassandraTest(BaseCassandraTest, SparkleGlobalContextTest):
+class SparkleReaderCassandraTest(SparkleGlobalContextTest):
     context = _TestContext
 
-    cql_setup_files = [
-        absolute_path(__file__, 'resources', 'test_read', 'cassandra_setup.cql'),
-    ]
-    cql_teardown_files = [
-        absolute_path(__file__, 'resources', 'test_read', 'cassandra_teardown.cql'),
+    fixtures = [
+        CassandraFixture(
+            'cassandra.docker',
+            absolute_path(__file__, 'resources', 'test_read', 'cassandra_setup.cql'),
+            absolute_path(__file__, 'resources', 'test_read', 'cassandra_teardown.cql'),
+        )
     ]
 
     def test_cassandra(self):
         df = self.hc.read_ext.cassandra(
-            host=self.c_host,
+            host='cassandra.docker',
             keyspace='sparkle_test',
             table='test',
             consistency='ONE',
@@ -109,77 +108,67 @@ class SparkleReaderCSVTest(SparkleGlobalContextTest):
 
 
 @pytest.mark.branch_1_0
-class SparkleReaderElasticTest(BaseElasticTest, SparkleGlobalContextTest):
+class SparkleReaderElasticTest(SparkleGlobalContextTest):
     context = _TestContext
 
-    elastic_setup_files = [
-        absolute_path(__file__, 'resources', 'test_read', 'elastic_setup.json'),
+    fixtures = [
+        ElasticFixture(
+            'elastic.docker',
+            'sparkle_test',
+            'test',
+            None,
+            absolute_path(__file__, 'resources', 'test_read', 'elastic_setup.json'),
+        )
     ]
-    elastic_teardown_indexes = ['sparkle_test']
 
     def test_elastic(self):
         df = self.hc.read_ext.elastic(
-            host=self.elastic_host,
+            host='elastic.docker',
             es_index='sparkle_test',
             es_type='test',
             query='?q=name:*Smith*',
             options={'es.read.field.as.array.include': 'topics'},
         )
 
-        rows = [row.asDict() for row in df.take(3)]
-        for row in rows:
-            row['demo'] = row['demo'].asDict()
-
-        self.assertCountEqual(
-            rows,
-            [
-                {
-                    '_metadata': {
-                        '_index': 'sparkle_test',
-                        '_id': '2',
-                        '_type': 'test',
-                        '_score': '0.0',
-                    },
-                    'age': 31,
-                    'topics': [1, 4, 5],
-                    'demo': {'age_10': 50, 'age_30': 110},
-                    'name': 'Smith3',
-                },
-                {
-                    '_metadata': {
-                        '_index': 'sparkle_test',
-                        '_id': '3',
-                        '_type': 'test',
-                        '_score': '0.0',
-                    },
-                    'age': 12,
-                    'topics': [4, 5],
-                    'demo': {'age_10': 1, 'age_30': 20},
-                    'name': 'Smith4',
-                }
-            ]
+        self.assertDataframeEqual(
+            df,
+            [(
+                31,
+                [1, 4, 5],
+                {'age_10': 50, 'age_30': 110},
+                'Smith3',
+            ), (
+                12,
+                [4, 5],
+                {'age_10': 1, 'age_30': 20},
+                'Smith4',
+            )],
+            ['age', 'topics', 'demo', 'name']
         )
 
 
 @pytest.mark.branch_1_0
-class SparkleReaderMySQLTest(BaseMysqlTest, SparkleGlobalContextTest):
+class SparkleReaderMySQLTest(SparkleGlobalContextTest):
     context = _TestContext
 
-    sql_setup_files = [
-        absolute_path(__file__, 'resources', 'test_read', 'mysql_setup.sql'),
-    ]
-    sql_teardown_files = [
-        absolute_path(__file__, 'resources', 'test_read', 'mysql_teardown.sql'),
+    fixtures = [
+        MysqlFixture(
+            'mysql.docker',
+            'root',
+            None,
+            absolute_path(__file__, 'resources', 'test_read', 'mysql_setup.sql'),
+            absolute_path(__file__, 'resources', 'test_read', 'mysql_teardown.sql'),
+        )
     ]
 
     def test_read_mysql(self):
         df = self.hc.read_ext.mysql(
-            host=self.mysql_host,
+            host='mysql.docker',
             database='sparkle_test',
             table='test',
             options={
                 'user': 'root',
-                'passowrd': '',
+                'password': '',
             }
         )
 
