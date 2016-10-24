@@ -3,6 +3,7 @@ import os
 from pyspark import SparkConf, SparkContext, HiveContext
 
 from sparkle.reader import SparkleReader
+from sparkle.writer import monkey_patch_dataframe
 from sparkle.hive_metastore_manager import SparkleHiveMetastoreManager
 
 
@@ -62,3 +63,5 @@ class SparkleContext(HiveContext):
 
         self.read_ext = SparkleReader(self)
         self.hms = SparkleHiveMetastoreManager(self)
+
+        monkey_patch_dataframe()

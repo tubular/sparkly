@@ -1,5 +1,5 @@
-Hive Query Language Utils
-=========================
+Hive Metastore Utils
+====================
 
 About Hive Metastore
 ^^^^^^^^^^^^^^^^^^^^
@@ -35,7 +35,7 @@ After this your sparkle context will operate on the configured Hive Metastore.
 Use cases
 ^^^^^^^^^
 
-Check for existance
+Check for existence
 -------------------
 
 **Why:** sometimes logic of your program may depend on existance of a table in a Hive Metastore.
@@ -130,7 +130,7 @@ table properties. We implemented a more convenient interface on top of this.
 data types by yourself.
 
 
-API Documentation
+API documentation
 ^^^^^^^^^^^^^^^^^
 
 .. automodule:: sparkle.hive_metastore_manager
