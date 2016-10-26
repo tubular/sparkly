@@ -42,9 +42,9 @@ Fixtures is term borrowed from testing in Django framework.
 It's a data to be loaded to a database on test execution.
 
 There are couple of databases supported in Sparkle:
- - Mysql
+ - Mysql (requires: `PyMySql`)
  - Elastic
- - Cassandra
+ - Cassandra (requires: `cassandra-driver`)
 
 **Example:**
 
