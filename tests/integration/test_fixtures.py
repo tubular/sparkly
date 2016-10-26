@@ -1,6 +1,6 @@
 import pytest
 
-from sparkle.test import CassandraFixture, MysqlFixture, ElasticFixture, SparkleTest, SparkleGlobalContextTest
+from sparkle.test import CassandraFixture, MysqlFixture, ElasticFixture, SparkleGlobalContextTest
 from sparkle.utils import absolute_path
 from tests.integration.base import _TestContext
 

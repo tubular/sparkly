@@ -69,4 +69,7 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=reqs,
+    extras_require={
+        'test': ['cassandra-driver>=3.7,<3.8', 'PyMySQL>=0.7,<0.8'],
+    },
 )
