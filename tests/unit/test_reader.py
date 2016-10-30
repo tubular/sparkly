@@ -12,7 +12,6 @@ from sparkle.reader import SparkleReader
 from sparkle.schema_parser import generate_structure_type, parse_schema
 
 
-@pytest.mark.branch_1_0
 class TestSparkleReaderByUrl(unittest.TestCase):
     def setUp(self):
         self.hc = mock.Mock(spec=sparkle.SparkleContext)

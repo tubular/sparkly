@@ -1,16 +1,12 @@
-.. sparkle documentation master file, created by
-   sphinx-quickstart on Tue Sep 20 08:46:42 2016.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to sparkle's documentation!
 ===================================
 
-Contents:
+<Place here a good intro to the library with quick examples to highlight the main features>
 
 .. toctree::
    :maxdepth: 2
 
+   context
    reader_and_writer
    hive_metastore_manager
    schema_parser
