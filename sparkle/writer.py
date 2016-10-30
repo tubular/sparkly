@@ -5,12 +5,7 @@ except ImportError:
 
 from pyspark.sql import DataFrame
 
-from sparkle.utils import (
-    context_has_package,
-    config_reader_writer,
-    context_has_jar,
-    to_parsed_url_and_options,
-)
+from sparkle.utils import config_reader_writer, to_parsed_url_and_options
 
 
 class SparkleWriter(object):
@@ -99,7 +94,7 @@ class SparkleWriter(object):
             options (dict[str, str]): Additional options to `org.apache.spark.sql.cassandra`
                 format (see configuration for :ref:`cassandra`).
         """
-        assert context_has_package(self._hc, 'datastax:spark-cassandra-connector')
+        assert self._hc.has_package('datastax:spark-cassandra-connector')
 
         default_options = {
             'spark_cassandra_connection_host': host,
@@ -134,7 +129,7 @@ class SparkleWriter(object):
             options (dict[str, str]): Additional options to `com.databricks.spark.csv`
                 format (see configuration for :ref:`csv`).
         """
-        assert context_has_package(self._hc, 'com.databricks:spark-csv')
+        assert self._hc.has_package('com.databricks:spark-csv')
 
         if parallelism:
             df = self._df.coalesce(parallelism)
@@ -161,7 +156,7 @@ class SparkleWriter(object):
             options (dict[str, str]): Additional options to `org.elasticsearch.spark.sql` format
                 (see configuration for :ref:`elastic`).
         """
-        assert context_has_package(self._hc, 'org.elasticsearch:elasticsearch-spark')
+        assert self._hc.has_package('org.elasticsearch:elasticsearch-spark')
 
         if parallelism:
             df = self._df.coalesce(parallelism)
@@ -193,7 +188,7 @@ class SparkleWriter(object):
             options (dict): Additional options for JDBC writer
                 (see configuration for :ref:`mysql`).
         """
-        assert context_has_jar(self._hc, 'mysql-connector-java')
+        assert self._hc.has_jar('mysql-connector-java')
 
         default_options = {
             'driver': 'com.mysql.jdbc.Driver'
@@ -283,7 +278,7 @@ class SparkleWriter(object):
         )
 
 
-def monkey_patch_dataframe():
+def attach_writer_to_dataframe():
     """A tiny amount of magic to attach `SparkleWriter` to a `DataFrame`."""
     def write_ext(self):
         return SparkleWriter(self)

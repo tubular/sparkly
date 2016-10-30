@@ -36,32 +36,6 @@ def schema_has(dataframe, subset_of_fields):
     return True
 
 
-def context_has_package(hc, package_prefix):
-    """Check if SparkleContext has a particular package.
-
-    Args:
-        hc (sparkle.SparkleContext)
-        package_prefix (str): E.g. "org.elasticsearch:elasticsearch-spark"
-
-    Returns:
-        bool
-    """
-    return any(package for package in hc.packages if package.startswith(package_prefix))
-
-
-def context_has_jar(hc, jar_name):
-    """Check if SparkleContext has a particular package.
-
-    Args:
-        hc (sparkle.SparkleContext)
-        jar_name (str): E.g. "mysql-connector-java"
-
-    Returns:
-        bool
-    """
-    return any(jar for jar in hc.jars if jar_name in jar)
-
-
 def config_reader_writer(reader_or_writer, options):
     """Set options for Spark DataFrameReader or DataFrameWriter.
 

@@ -10,7 +10,6 @@ from sparkle.utils import absolute_path
 from tests.integration.base import _TestContext
 
 
-@pytest.mark.branch_1_0
 class SparkleReaderCassandraTest(SparkleGlobalContextTest):
     context = _TestContext
 
@@ -51,7 +50,6 @@ class SparkleReaderCassandraTest(SparkleGlobalContextTest):
         )
 
 
-@pytest.mark.branch_1_0
 class SparkleReaderCSVTest(SparkleGlobalContextTest):
     context = _TestContext
 
@@ -107,7 +105,6 @@ class SparkleReaderCSVTest(SparkleGlobalContextTest):
         )
 
 
-@pytest.mark.branch_1_0
 class SparkleReaderElasticTest(SparkleGlobalContextTest):
     context = _TestContext
 
@@ -147,7 +144,6 @@ class SparkleReaderElasticTest(SparkleGlobalContextTest):
         )
 
 
-@pytest.mark.branch_1_0
 class SparkleReaderMySQLTest(SparkleGlobalContextTest):
     context = _TestContext
 

@@ -24,7 +24,6 @@ TEST_DATA = [
 ]
 
 
-@pytest.mark.branch_1_0
 class TestWriteByURL(SparkleGlobalContextTest):
     context = _TestContext
 
@@ -53,7 +52,6 @@ class TestWriteByURL(SparkleGlobalContextTest):
         self.assertDataframeEqual(written_df, TEST_DATA, TEST_COLUMNS)
 
 
-@pytest.mark.branch_1_0
 class TestWriteCassandra(SparkleGlobalContextTest):
     context = _TestContext
 
@@ -84,7 +82,6 @@ class TestWriteCassandra(SparkleGlobalContextTest):
         self.assertDataframeEqual(written_df, TEST_DATA, TEST_COLUMNS)
 
 
-@pytest.mark.branch_1_0
 class TestWriteElastic(SparkleGlobalContextTest):
     context = _TestContext
 
@@ -117,7 +114,6 @@ class TestWriteElastic(SparkleGlobalContextTest):
         self.assertDataframeEqual(df, TEST_DATA, TEST_COLUMNS)
 
 
-@pytest.mark.branch_1_0
 class TestWriteMysql(SparkleGlobalContextTest):
 
     context = _TestContext
