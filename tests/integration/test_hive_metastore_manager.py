@@ -3,12 +3,11 @@ import os
 
 import pytest
 
-from sparkle.test import SparkleTest
+from sparkle.test import SparkleGlobalContextTest
 from tests.integration.base import _TestContext
 
 
-@pytest.mark.branch_1_0
-class TestHql(SparkleTest):
+class TestHql(SparkleGlobalContextTest):
 
     context = _TestContext
 
