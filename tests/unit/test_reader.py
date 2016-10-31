@@ -9,7 +9,7 @@ import pyspark.sql
 
 import sparkle
 from sparkle.reader import SparkleReader
-from sparkle.schema_parser import generate_structure_type, parse_schema
+from sparkle.schema_parser import _generate_structure_type, _parse_schema
 
 
 class TestSparkleReaderByUrl(unittest.TestCase):
@@ -56,7 +56,7 @@ class TestSparkleReaderByUrl(unittest.TestCase):
         self.read_ext.csv.assert_called_with(
             '/path/on/file/system',
             header=False,
-            custom_schema=generate_structure_type(parse_schema(schema)),
+            custom_schema=_generate_structure_type(_parse_schema(schema)),
         )
 
     def test_elastic(self):

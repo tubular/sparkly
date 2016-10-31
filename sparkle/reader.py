@@ -3,8 +3,11 @@ try:
 except ImportError:
     from urlparse import urlparse
 
-from sparkle.schema_parser import generate_structure_type, parse_schema
-from sparkle.utils import config_reader_writer, to_parsed_url_and_options
+from sparkle.schema_parser import parse
+from sparkle.utils import (
+    config_reader_writer,
+    to_parsed_url_and_options,
+)
 
 
 class SparkleReader(object):
@@ -314,7 +317,7 @@ class SparkleReader(object):
 
         custom_schema = options.pop('custom_schema', None)
         if custom_schema:
-            custom_schema = generate_structure_type(parse_schema(custom_schema))
+            custom_schema = parse(custom_schema)
             kwargs['custom_schema'] = custom_schema
 
         if options:
