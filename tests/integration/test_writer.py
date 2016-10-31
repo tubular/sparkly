@@ -1,8 +1,6 @@
 from shutil import rmtree
 from tempfile import mkdtemp
 
-import pytest
-
 from sparkle.utils import absolute_path
 from sparkle.test import (
     SparkleGlobalContextTest,
