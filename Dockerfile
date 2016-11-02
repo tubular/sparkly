@@ -18,12 +18,6 @@ ENV SPARK_TESTING true
 RUN apt-get install -y python python3-pip
 RUN python3 -m pip install tox==2.4.1
 
-# Temporary solution to make integration tests
-RUN virtualenv -p python2 venv2 && /venv2/bin/pip install pip==8.1.2
-RUN /venv2/bin/pip install --use-wheel --index-url=https://pypi.tubularlabs.net cassandra-driver==2.7.2
-RUN /venv2/bin/pip install cqlsh==4.1.1
-RUN apt-get install -y mysql-client
-
 # Remove noisy spark logging
 COPY spark.log4j.properties /usr/local/spark/conf/log4j.properties
 

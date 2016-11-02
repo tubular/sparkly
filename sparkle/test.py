@@ -1,8 +1,28 @@
+import json
 import logging
+import sys
 import os
 import shutil
 from unittest import TestCase
+if sys.version_info.major == 3:
+    from http.client import HTTPConnection
+else:
+    from httplib import HTTPConnection
 
+try:
+    from cassandra.cluster import Cluster
+except ImportError:
+    pass
+
+try:
+    import pymysql as connector
+except ImportError:
+    try:
+        import mysql.connector as connector
+    except:
+        pass
+
+from sparkle.exceptions import FixtureError
 from sparkle import SparkleContext
 
 
@@ -131,8 +151,8 @@ class SparkleGlobalContextTest(SparkleTest):
             fixture.teardown_data()
 
 
-class Fixure(object):
-    """Base class for fixures.
+class Fixture(object):
+    """Base class for fixtures.
 
     Fixture is a term borrowed from Django tests, it's data loaded into database for integration testing.
     """
@@ -151,13 +171,18 @@ class Fixure(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.teardown_data()
 
+    @classmethod
+    def read_file(cls, path):
+        with open(path) as f:
+            data = f.read()
+        return data
 
-class CassandraFixture(object):
+
+class CassandraFixture(Fixture):
     """Fixture to load data into cassandra.
 
     Notes:
-        * assumes `cqlsh` available in runtime environment.
-        * cqlsh is currently only available for py2 so there is venv hack (you can override it).
+        * Depends on cassandra-driver.
 
     Examples:
 
@@ -195,29 +220,25 @@ class CassandraFixture(object):
         self.setup_file = setup_file
         self.teardown_file = teardown_file
 
+    def _execute(self, statements):
+        cluster = Cluster([self.host])
+        session = cluster.connect()
+        for statement in statements.split(';'):
+            if bool(statement.strip()):
+                session.execute(statement.strip())
+
     def setup_data(self):
-        os.system(
-            'bash -c "source /venv2/bin/activate && cqlsh -f {} {}"'.format(
-                self.setup_file,
-                self.host
-            )
-        )
+        self._execute(self.read_file(self.setup_file))
 
     def teardown_data(self):
-        os.system(
-            'bash -c "source /venv2/bin/activate && cqlsh -f {} {}"'.format(
-                self.teardown_file,
-                self.host
-            )
-        )
+        self._execute(self.read_file(self.teardown_file))
 
 
-class ElasticFixture(Fixure):
+class ElasticFixture(Fixture):
     """Fixture for elastic integration tests.
 
     Notes:
-     - assumes `curl` available in runtime environment.
-     - data upload uses bulk api.
+     * Data upload uses bulk api.
 
     Examples:
 
@@ -234,8 +255,9 @@ class ElasticFixture(Fixure):
            ...
     """
 
-    def __init__(self, host, es_index, es_type, mapping=None, data=None):
+    def __init__(self, host, es_index, es_type, mapping=None, data=None, port=None):
         self.host = host
+        self.port = port or 9200
         self.es_index = es_index
         self.es_type = es_type
         self.mapping = mapping
@@ -243,35 +265,55 @@ class ElasticFixture(Fixure):
 
     def setup_data(self):
         if self.mapping:
-            os.system(
-                'curl -XPUT \'http://{}:9200/{}/_mapping/{}\' --data-binary @{}'.format(
-                    self.host,
-                    self.es_index,
-                    self.es_type,
-                    self.mapping,
-                )
+            self._request(
+                'PUT',
+                '/{}'.format(self.es_index),
+                json.dumps({
+                    'settings': {
+                        'index': {
+                            'number_of_shards': 1,
+                            'number_of_replicas': 1,
+                        }
+                    }
+                }),
+            )
+            self._request(
+                'PUT',
+                '/{}/_mapping/{}'.format(self.es_index, self.es_type),
+                self.read_file(self.mapping),
             )
 
         if self.data:
-            os.system(
-                'curl -XPOST \'http://{}:9200/_bulk\' --data-binary @{}'.format(
-                    self.host,
-                    self.data,
-                )
+            self._request(
+                'POST',
+                '/_bulk',
+                self.read_file(self.data),
             )
 
     def teardown_data(self):
-        os.system('curl -XDELETE \'http://{}:9200/{}\''.format(
-            self.host,
-            self.es_index,
-        ))
+        self._request(
+            'DELETE',
+            '/{}'.format(self.es_index),
+        )
+
+    def _request(self, method, url, body=None):
+        connection = HTTPConnection(self.host, port=self.port)
+        connection.request(method, url, body)
+        response = connection.getresponse()
+        if sys.version_info.major == 3:
+            code = response.code
+        else:
+            code = response.status
+
+        if code != 200:
+            raise FixtureError('{}: {}'.format(code, response.read()))
 
 
-class MysqlFixture(Fixure):
+class MysqlFixture(Fixture):
     """Base test class for mysql integration tests.
 
     Notes:
-     - assumes mysql cli available in runtime environment.
+     * depends on PyMySql lib.
 
     Examples:
 
@@ -289,28 +331,20 @@ class MysqlFixture(Fixure):
         self.data = data
         self.teardown = teardown
 
+    def _execute(self, statements):
+        cnx = connector.connect(
+            user=self.user,
+            password=self.password,
+            host=self.host,
+        )
+        cursor = cnx.cursor()
+        cursor.execute(statements)
+        cnx.commit()
+        cursor.close()
+        cnx.close()
+
     def setup_data(self):
-        if self.password:
-            os.system('mysql -h{} -u{} -p{} < {}'.format(self.host,
-                                                         self.user,
-                                                         self.password,
-                                                         self.data,
-                                                         ))
-        else:
-            os.system('mysql -h{} -u{} < {}'.format(self.host,
-                                                    self.user,
-                                                    self.data,
-                                                    ))
+        self._execute(self.read_file(self.data))
 
     def teardown_data(self):
-            if self.password:
-                os.system('mysql -h{} -u{} -p{} < {}'.format(self.host,
-                                                             self.user,
-                                                             self.password,
-                                                             self.teardown,
-                                                             ))
-            else:
-                os.system('mysql -h{} -u{} < {}'.format(self.host,
-                                                        self.user,
-                                                        self.teardown,
-                                                        ))
+        self._execute(self.read_file(self.teardown))
