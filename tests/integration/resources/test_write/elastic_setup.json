@@ -1,2 +1,2 @@
 { "index" : { "_index" : "sparkle_test", "_type" : "test_writer", "_id": "1111" } }
-{ "video_uid": "1111", "account_uid": "111", "title": "xxxx", "description": "xxxx", "views": 1111, "published": "20120305T142153Z" }
+{ "uid": "1111", "title": "xxxx", "views": 1111}

@@ -1,6 +1,6 @@
 import pytest
 
-from sparkle.test import SparkleGlobalContextTest
+from sparkle.testing import SparkleGlobalContextTest
 from tests.integration.base import _TestContext
 
 

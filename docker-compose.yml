@@ -1,6 +1,6 @@
 version: '2'
 services:
-  dev:
+  dev-spark-1.6:
     build: .
     volumes:
       - .:/opt/sparkle/
