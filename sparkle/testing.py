@@ -39,19 +39,17 @@ class SparkleTest(TestCase):
 
     Example:
 
-           >>> class MyTestCase(SparkleTest):
-           ...      def test(self):
-           ...          self.assertDataframeEqual(
-           ...              self.hc.sql('SELECT 1 as one').collect(),
-           ...              (1,), ['one']
-           ...          )
-           ...
-
+        >>> class MyTestCase(SparkleTest):
+        ...     def test(self):
+        ...         self.assertDataFrameEqual(
+        ...              self.hc.sql('SELECT 1 as one').collect(),
+        ...              [{'one': 1}],
+        ...         )
     """
-
     context = SparkleContext
     class_fixtures = []
     fixtures = []
+    maxDiff = None
 
     @classmethod
     def setUpClass(cls):
@@ -95,26 +93,25 @@ class SparkleTest(TestCase):
         for fixture in self.fixtures:
             fixture.teardown_data()
 
-    def assertDataframeEqual(self, df, data, fields):
-        """Check equality to dataframe contents.
+    def assertDataFrameEqual(self, actual_df, expected_data, fields=None, ordered=False):
+        """Ensure that DataFrame has the right data inside.
 
         Args:
-            df (pyspark.sql.Dataframe)
-            data (list[tuple]): Data to compare with.
-            fields (list): List of field names.
+            actual_df (pyspark.sql.DataFrame|list[pyspark.sql.Row]): Dataframe to test data in.
+            expected_data (list[dict]): Expected dataframe rows defined as dicts.
+            fields (list[str]): Compare only certain fields.
+            ordered (bool): Does order of rows matter?
         """
-        df_data = sorted([[x[y] for y in fields] for x in df.collect()])
-        data = sorted(data)
-        for df_row, data_row in zip(df_data, data):
-            if len(df_row) != len(data_row):
-                raise AssertionError('Rows have different length '
-                                     'dataframe row: {}, Data row: {}'.format(df_row, data_row))
+        if fields:
+            actual_df = actual_df.select(*fields)
 
-            for df_field, data_field in zip(df_row, data_row):
-                if df_field != data_field:
-                    raise AssertionError('{} != {}. Rows: dataframe - {}, data - {}'.format(
-                        df_field, data_field, df_row, data_row
-                    ))
+        actual_rows = actual_df.collect() if hasattr(actual_df, 'collect') else actual_df
+        actual_data = [row.asDict(recursive=True) for row in actual_rows]
+
+        if ordered:
+            self.assertEqual(actual_data, expected_data)
+        else:
+            self.assertCountEqual(actual_data, expected_data)
 
 
 class SparkleGlobalContextTest(SparkleTest):
@@ -288,6 +285,10 @@ class ElasticFixture(Fixture):
                 'POST',
                 '/_bulk',
                 self.read_file(self.data),
+            )
+            self._request(
+                'POST',
+                '/_refresh',
             )
 
     def teardown_data(self):

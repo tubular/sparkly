@@ -1,4 +1,5 @@
 import os
+import sys
 
 from pyspark import SparkConf, SparkContext, HiveContext
 
@@ -48,6 +49,7 @@ class SparkleContext(HiveContext):
     udfs = {}
 
     def __init__(self, additional_options=None):
+        os.environ['PYSPARK_PYTHON'] = sys.executable
         os.environ['PYSPARK_SUBMIT_ARGS'] = '{packages} {jars} pyspark-shell'.format(
             packages=self._setup_packages(),
             jars=self._setup_jars(),
@@ -106,7 +108,7 @@ class SparkleContext(HiveContext):
         if additional_options:
             options += list(additional_options.items())
 
-        return options
+        return sorted(options)
 
     def _setup_udfs(self):
         for name, defn in self.udfs.items():
@@ -115,4 +117,4 @@ class SparkleContext(HiveContext):
             elif isinstance(defn, tuple):
                 self.registerFunction(name, *defn)
             else:
-                raise NotImplemented('Incorrect UDF definition: {}: {}'.format(name, defn))
+                raise NotImplementedError('Incorrect UDF definition: {}: {}'.format(name, defn))

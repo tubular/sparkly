@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from sparkle.test import SparkleGlobalContextTest
+from sparkle.testing import SparkleGlobalContextTest
 from tests.integration.base import _TestContext
 
 
@@ -22,6 +22,7 @@ class TestHql(SparkleGlobalContextTest):
             ('Jessica2', 15, '2016-01-02', 'facebook'), ('Jessica3', 17, '2016-01-02', 'facebook'),
         ], ['name', 'age', 'date', 'platform'])
         cls.df.write.parquet(cls.path, partitionBy=['platform', 'date'])
+        cls.hc.sql('drop table if exists test_table')
         cls.hc.hms.create_table(
             'test_table',
             cls.df,
@@ -93,6 +94,7 @@ class TestHql(SparkleGlobalContextTest):
         ], ['name', 'age', 'date', 'platform'])
         df.write.parquet(old_path, partitionBy=['platform'])
 
+        self.hc.sql('drop table if exists old_table')
         self.hc.hms.create_table(
             'old_table',
             df,

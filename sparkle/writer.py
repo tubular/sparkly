@@ -1,11 +1,9 @@
 try:
-    from urllib.parse import urlparse
+    from urllib.parse import urlparse, parse_qsl
 except ImportError:
-    from urlparse import urlparse
+    from urlparse import urlparse, parse_qsl
 
 from pyspark.sql import DataFrame
-
-from sparkle.utils import config_reader_writer, to_parsed_url_and_options
 
 
 class SparkleWriter(object):
@@ -55,31 +53,31 @@ class SparkleWriter(object):
 
         More examples::
 
-            csv:s3://some-s3-bucket/some-s3-key?partition_by=date,platform
+            csv:s3://some-s3-bucket/some-s3-key?partitionBy=date,platform
             cassandra://cassandra.host/keyspace/table?consistency=ONE&mode=append
-            parquet:///var/log/?partition_by=date
+            parquet:///var/log/?partitionBy=date
             elastic://elastic.host/es_index/es_type
             mysql://mysql.host/database/table
 
         Args:
             url (str): Destination URL.
         """
-        _by_url_registry = {
-            'parquet': self._fs_resolver,
-            'csv': self._fs_resolver,
-            'cassandra': self._cassandra_resolver,
-            'mysql': self._mysql_resolver,
-            'elastic': self._elastic_resolver,
-        }
-        scheme = urlparse(url).scheme
-        try:
-            return _by_url_registry[scheme](url)
-        except KeyError:
-            raise NotImplementedError(
-                'Destination specified in url is not supported: {}'.format(url))
+        parsed_url = urlparse(url)
+        parsed_qs = dict(parse_qsl(parsed_url.query))
 
-    def cassandra(self, host, keyspace, table, consistency=None, mode=None, parallelism=None,
-                  options=None):
+        # Used across all readers
+        if 'parallelism' in parsed_qs:
+            parsed_qs['parallelism'] = int(parsed_qs['parallelism'])
+
+        try:
+            resolver = getattr(self, '_resolve_{}'.format(parsed_url.scheme))
+        except AttributeError:
+            raise NotImplementedError('Data source is not supported: {}'.format(url))
+        else:
+            return resolver(parsed_url, parsed_qs)
+
+    def cassandra(self, host, keyspace, table, consistency=None, port=None, mode=None,
+                  parallelism=None, options=None):
         """Write a dataframe to a Cassandra table.
 
         Args:
@@ -87,6 +85,7 @@ class SparkleWriter(object):
             keyspace (str): Cassandra keyspace to write to.
             table (str): Cassandra table to write to.
             consistency (str|None): Write consistency level: ``ONE``, ``QUORUM``, ``ALL``, etc.
+            port (int|None): Cassandra server port.
             mode (str|None): Spark save mode,
                 http://spark.apache.org/docs/latest/sql-programming-guide.html#save-modes
             parallelism (int|None): The max number of parallel tasks that could be executed
@@ -96,27 +95,22 @@ class SparkleWriter(object):
         """
         assert self._hc.has_package('datastax:spark-cassandra-connector')
 
-        default_options = {
+        writer_options = {
+            'format': 'org.apache.spark.sql.cassandra',
             'spark_cassandra_connection_host': host,
             'keyspace': keyspace,
             'table': table,
         }
 
-        if options:
-            default_options.update(options)
-
         if consistency:
-            default_options['spark_cassandra_output_consistency_level'] = consistency
+            writer_options['spark_cassandra_output_consistency_level'] = consistency
 
-        if parallelism:
-            df = self._df.coalesce(parallelism)
-        else:
-            df = self._df
+        if port:
+            writer_options['spark_cassandra_connection_port'] = str(port)
 
-        config_reader_writer(df.write.format('org.apache.spark.sql.cassandra'), default_options)\
-            .mode(mode).save()
+        return self._basic_write(writer_options, options, parallelism, mode)
 
-    def csv(self, path, header=False, mode=None, parallelism=None, options=None):
+    def csv(self, path, header=False, mode=None, partitionBy=None, parallelism=None, options=None):
         """Write a dataframe to a CSV file.
 
         Args:
@@ -124,6 +118,7 @@ class SparkleWriter(object):
             header (bool): First row is a header.
             mode (str|None): Spark save mode,
                 http://spark.apache.org/docs/latest/sql-programming-guide.html#save-modes
+            partitionBy (list[str]): Names of partitioning columns.
             parallelism (int|None): The max number of parallel tasks that could be executed
                 during the write stage (see :ref:`controlling-the-load`).
             options (dict[str, str]): Additional options to `com.databricks.spark.csv`
@@ -131,24 +126,24 @@ class SparkleWriter(object):
         """
         assert self._hc.has_package('com.databricks:spark-csv')
 
-        if parallelism:
-            df = self._df.coalesce(parallelism)
-        else:
-            df = self._df
+        writer_options = {
+            'path': path,
+            'format': 'com.databricks.spark.csv',
+            'header': 'true' if header else 'false',
+            'partitionBy': partitionBy,
+        }
 
-        writer = config_reader_writer(df.write.format('com.databricks.spark.csv'), {
-            'header': str(header).lower(),
-        })
+        return self._basic_write(writer_options, options, parallelism, mode)
 
-        config_reader_writer(writer, options).mode(mode).save(path)
-
-    def elastic(self, host, es_index, es_type, mode=None, parallelism=None, options=None):
+    def elastic(self, host, es_index, es_type, port=None, mode=None,
+                parallelism=None, options=None):
         """Write a dataframe into an ElasticSearch index.
 
         Args:
             host (str): Elastic server host.
             es_index (str): Elastic index.
             es_type (str): Elastic type.
+            port (int|None) Elastic server port.
             mode (str|None): Spark save mode,
                 http://spark.apache.org/docs/latest/sql-programming-guide.html#save-modes
             parallelism (int|None): The max number of parallel tasks that could be executed
@@ -158,20 +153,18 @@ class SparkleWriter(object):
         """
         assert self._hc.has_package('org.elasticsearch:elasticsearch-spark')
 
-        if parallelism:
-            df = self._df.coalesce(parallelism)
-        else:
-            df = self._df
-
-        writer = config_reader_writer(df.write.format('org.elasticsearch.spark.sql'), {
+        writer_options = {
+            'path': '{}/{}'.format(es_index, es_type),
+            'format': 'org.elasticsearch.spark.sql',
             'es.nodes': host,
-        })
+        }
 
-        config_reader_writer(writer, options). \
-            mode(mode). \
-            save('{}/{}'.format(es_index, es_type))
+        if port:
+            writer_options['es.port'] = str(port)
 
-    def mysql(self, host, database, table, mode=None, parallelism=None, port=None, options=None):
+        return self._basic_write(writer_options, options, parallelism, mode)
+
+    def mysql(self, host, database, table, port=None, mode=None, parallelism=None, options=None):
         """Write a dataframe to a MySQL table.
 
         Should be usable for rds, aurora, etc.
@@ -190,91 +183,106 @@ class SparkleWriter(object):
         """
         assert self._hc.has_jar('mysql-connector-java')
 
-        default_options = {
-            'driver': 'com.mysql.jdbc.Driver'
-        }
-
-        if options:
-            default_options.update(options)
-
-        if parallelism:
-            df = self._df.coalesce(parallelism)
-        else:
-            df = self._df
-
-        df.write.jdbc(
-            url='jdbc:mysql://{host}{port}/{database}'.format(
+        writer_options = {
+            'format': 'jdbc',
+            'driver': 'com.mysql.jdbc.Driver',
+            'url': 'jdbc:mysql://{host}{port}/{database}'.format(
                 host=host,
                 port=':{}'.format(port) if port else '',
                 database=database,
             ),
-            table=table,
-            mode=mode,
-            properties=default_options,
+            'table': table,
+        }
+
+        return self._basic_write(writer_options, options, parallelism, mode)
+
+    def _basic_write(self, writer_options, additional_options, parallelism, mode):
+        if mode:
+            writer_options['mode'] = mode
+
+        writer_options.update(additional_options or {})
+
+        df = self._df
+        if parallelism:
+            df = df.coalesce(parallelism)
+
+        # For some reason the native `df.write.jdbc` calls `_jwrite` directly
+        # so we can't use `df.write.save` for it.
+        if writer_options['format'] == 'jdbc':
+            return df.write.jdbc(
+                url=writer_options.pop('url'),
+                table=writer_options.pop('table'),
+                mode=writer_options.pop('mode', None),
+                properties=writer_options,
+            )
+        else:
+            return df.write.save(**writer_options)
+
+    def _resolve_cassandra(self, parsed_url, parsed_qs):
+        return self.cassandra(
+            host=parsed_url.netloc,
+            keyspace=parsed_url.path.split('/')[1],
+            table=parsed_url.path.split('/')[2],
+            consistency=parsed_qs.pop('consistency', None),
+            port=parsed_url.port,
+            mode=parsed_qs.pop('mode', None),
+            parallelism=parsed_qs.pop('parallelism', None),
+            options=parsed_qs,
         )
 
-    def _fs_resolver(self, url):
-        inp, options = to_parsed_url_and_options(url)
-        partition_by = options.pop('partition_by', None)
-        output_format = inp.scheme
-        mode = options.pop('mode', None)
-        parallelism = options.pop('parallelism', None)
+    def _resolve_csv(self, parsed_url, parsed_qs):
+        kwargs = {}
 
+        if 'header' in parsed_qs:
+            kwargs['header'] = parsed_qs.pop('header') == 'true'
+
+        if 'partitionBy' in parsed_qs:
+            kwargs['partitionBy'] = parsed_qs.pop('partitionBy').split(',')
+
+        return self.csv(
+            path=parsed_url.path,
+            mode=parsed_qs.pop('mode', None),
+            parallelism=parsed_qs.pop('parallelism', None),
+            options=parsed_qs,
+            **kwargs
+        )
+
+    def _resolve_elastic(self, parsed_url, parsed_qs):
+        return self.elastic(
+            host=parsed_url.netloc,
+            es_index=parsed_url.path.split('/')[1],
+            es_type=parsed_url.path.split('/')[2],
+            port=parsed_url.port,
+            mode=parsed_qs.pop('mode', None),
+            parallelism=parsed_qs.pop('parallelism', None),
+            options=parsed_qs,
+        )
+
+    def _resolve_mysql(self, parsed_url, parsed_qs):
+        return self.mysql(
+            host=parsed_url.netloc,
+            database=parsed_url.path.split('/')[1],
+            table=parsed_url.path.split('/')[2],
+            port=parsed_url.port,
+            mode=parsed_qs.pop('mode', None),
+            parallelism=parsed_qs.pop('parallelism', None),
+            options=parsed_qs,
+        )
+
+    def _resolve_parquet(self, parsed_url, parsed_qs):
+        parallelism = parsed_qs.pop('parallelism', None)
         if parallelism:
             df = self._df.coalesce(int(parallelism))
         else:
             df = self._df
 
+        if 'partitionBy' in parsed_qs:
+            parsed_qs['partitionBy'] = parsed_qs.pop('partitionBy').split(',')
+
         df.write.save(
-            path=inp.path,
-            format=output_format,
-            mode=mode,
-            partitionBy=partition_by.split(',') if partition_by else None,
-            **options,
-        )
-
-    def _cassandra_resolver(self, url):
-        inp, options = to_parsed_url_and_options(url)
-        _, db, table = inp.path.split('/')
-        mode = options.pop('mode', None)
-        consistency = options.pop('consistency', None)
-        parallelism = options.pop('parallelism', None)
-        return self.cassandra(
-            host=inp.netloc,
-            keyspace=db,
-            table=table,
-            mode=mode,
-            consistency=consistency,
-            parallelism=int(parallelism) if parallelism else None,
-            options=options,
-        )
-
-    def _mysql_resolver(self, url):
-        inp, options = to_parsed_url_and_options(url)
-        _, db, table = inp.path.split('/')
-        mode = options.pop('mode', None)
-        parallelism = options.pop('parallelism', None)
-        return self.mysql(
-            host=inp.netloc,
-            database=db,
-            table=table,
-            mode=mode,
-            parallelism=int(parallelism) if parallelism else None,
-            options=options,
-        )
-
-    def _elastic_resolver(self, url):
-        inp, options = to_parsed_url_and_options(url)
-        _, index, type_ = inp.path.split('/')
-        mode = options.pop('mode', None)
-        parallelism = options.pop('parallelism', None)
-        return self.elastic(
-            host=inp.netloc,
-            es_index=index,
-            es_type=type_,
-            mode=mode,
-            parallelism=int(parallelism) if parallelism else None,
-            options=options,
+            path=parsed_url.path,
+            format='parquet',
+            **parsed_qs,
         )
 
 

@@ -9,7 +9,7 @@ import pyspark.sql
 
 import sparkle
 from sparkle.reader import SparkleReader
-from sparkle.schema_parser import _generate_structure_type, _parse_schema
+from sparkle import schema_parser
 
 
 class TestSparkleReaderByUrl(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestSparkleReaderByUrl(unittest.TestCase):
         self.read_ext = SparkleReader(self.hc)
         self.fake_df = mock.Mock(spec=pyspark.sql.DataFrame)
 
-    def test_hive_table(self):
+    def test_table(self):
         self.hc.table.return_value = self.fake_df
 
         df = self.read_ext.by_url('table://some_hive_table')
@@ -27,22 +27,28 @@ class TestSparkleReaderByUrl(unittest.TestCase):
         self.hc.table.assert_called_with('some_hive_table')
 
     def test_parquet(self):
-        self.hc.read.format.return_value.options.return_value.load.return_value = self.fake_df
+        self.hc.read.load.return_value = self.fake_df
 
         df = self.read_ext.by_url('parquet:s3://my-bucket/path/to/parquet')
 
         self.assertEqual(df, self.fake_df)
-        self.hc.read.format.return_value.options.return_value.load.assert_called_with(
-            's3://my-bucket/path/to/parquet'
+        self.hc.read.load.assert_called_with(
+            path='s3://my-bucket/path/to/parquet',
+            format='parquet',
         )
 
     def test_csv(self):
         self.read_ext.csv = mock.Mock(return_value=self.fake_df)
 
-        df = self.read_ext.by_url('csv:s3://my-bucket/path/to/csv?header=false')
+        df = self.read_ext.by_url('csv:s3://my-bucket/path/to/csv?header=true')
 
         self.assertEqual(df, self.fake_df)
-        self.read_ext.csv.assert_called_with('s3://my-bucket/path/to/csv', header=False)
+        self.read_ext.csv.assert_called_with(
+            path='s3://my-bucket/path/to/csv',
+            header=True,
+            parallelism=None,
+            options={},
+        )
 
     def test_csv_on_local_file_system(self):
         self.read_ext.csv = mock.Mock(return_value=self.fake_df)
@@ -54,9 +60,11 @@ class TestSparkleReaderByUrl(unittest.TestCase):
 
         self.assertEqual(df, self.fake_df)
         self.read_ext.csv.assert_called_with(
-            '/path/on/file/system',
+            path='/path/on/file/system',
+            custom_schema=schema_parser.parse(schema),
             header=False,
-            custom_schema=_generate_structure_type(_parse_schema(schema)),
+            parallelism=None,
+            options={},
         )
 
     def test_elastic(self):
@@ -68,9 +76,12 @@ class TestSparkleReaderByUrl(unittest.TestCase):
 
         self.assertEqual(df, self.fake_df)
         self.read_ext.elastic.assert_called_with(
-            'es_host', 'test_index', 'test_type',
+            host='es_host',
+            es_index='test_index',
+            es_type='test_type',
             query='?q=name:*Johnny*',
             fields=['name', 'surname'],
+            port=None,
             parallelism=4,
             options={'es.input.json': 'true'},
         )
@@ -83,7 +94,10 @@ class TestSparkleReaderByUrl(unittest.TestCase):
 
         self.assertEqual(df, self.fake_df)
         self.read_ext.cassandra.assert_called_with(
-            'localhost', 'test_cf', 'test_table',
+            host='localhost',
+            port=None,
+            keyspace='test_cf',
+            table='test_table',
             consistency='ONE',
             parallelism=8,
             options={'query.retry.count': '2'},
@@ -97,6 +111,13 @@ class TestSparkleReaderByUrl(unittest.TestCase):
 
         self.assertEqual(df, self.fake_df)
         self.read_ext.mysql.assert_called_with(
-            'localhost', 'test_database', 'test_table',
+            host='localhost',
+            database='test_database',
+            table='test_table',
+            port=None,
+            parallelism=None,
             options={'user': 'root', 'password': 'pass'},
         )
+
+    def test_unknown_format(self):
+        self.assertRaises(NotImplementedError, self.read_ext.by_url, 'fake://host')

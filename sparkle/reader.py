@@ -1,13 +1,9 @@
 try:
-    from urllib.parse import urlparse
+    from urllib.parse import urlparse, parse_qsl
 except ImportError:
-    from urlparse import urlparse
+    from urlparse import urlparse, parse_qsl
 
-from sparkle.schema_parser import parse
-from sparkle.utils import (
-    config_reader_writer,
-    to_parsed_url_and_options,
-)
+from sparkle import schema_parser
 
 
 class SparkleReader(object):
@@ -71,23 +67,22 @@ class SparkleReader(object):
         Returns:
             pyspark.sql.DataFrame
         """
-        _by_url_registry = {
-            'parquet': self._fs_resolver,
-            'csv': self._csv_resolver,
-            'cassandra': self._cassandra_resolver,
-            'mysql': self._mysql_resolver,
-            'elastic': self._elastic_resolver,
-            'table': self._table_resolver,
-        }
+        parsed_url = urlparse(url)
+        parsed_qs = dict(parse_qsl(parsed_url.query))
 
-        scheme = urlparse(url).scheme
+        # Used across all readers
+        if 'parallelism' in parsed_qs:
+            parsed_qs['parallelism'] = int(parsed_qs['parallelism'])
+
         try:
-            return _by_url_registry[scheme](url)
-        except KeyError:
+            resolver = getattr(self, '_resolve_{}'.format(parsed_url.scheme))
+        except AttributeError:
             raise NotImplementedError('Data source is not supported: {}'.format(url))
+        else:
+            return resolver(parsed_url, parsed_qs)
 
-    def cassandra(self, host, keyspace, table, consistency=None, parallelism=None, port=None,
-                  options=None):
+    def cassandra(self, host, keyspace, table, consistency=None, port=None,
+                  parallelism=None, options=None):
         """Create a dataframe from a Cassandra table.
 
         Args:
@@ -95,9 +90,9 @@ class SparkleReader(object):
             keyspace (str) Cassandra keyspace to read from.
             table (str): Cassandra table to read from.
             consistency (str): Read consistency level: ``ONE``, ``QUORUM``, ``ALL``, etc.
+            port (int|None): Cassandra server port.
             parallelism (int|None): The max number of parallel tasks that could be executed
                 during the read stage (see :ref:`controlling-the-load`).
-            port (int|None): Cassandra server port.
             options (dict[str,str]|None): Additional options for `org.apache.spark.sql.cassandra`
                 format (see configuration for :ref:`cassandra`).
 
@@ -106,29 +101,20 @@ class SparkleReader(object):
         """
         assert self._hc.has_package('datastax:spark-cassandra-connector')
 
-        default_options = {
+        reader_options = {
+            'format': 'org.apache.spark.sql.cassandra',
             'spark_cassandra_connection_host': host,
             'keyspace': keyspace,
             'table': table,
         }
 
-        if options:
-            default_options.update(options)
-
         if consistency:
-            default_options['spark_cassandra_input_consistency_level'] = consistency
+            reader_options['spark_cassandra_input_consistency_level'] = consistency
 
         if port:
-            default_options['spark_cassandra_connection_port'] = str(port)
+            reader_options['spark_cassandra_connection_port'] = str(port)
 
-        reader = config_reader_writer(
-            self._hc.read.format('org.apache.spark.sql.cassandra'), default_options
-        ).load()
-
-        if parallelism:
-            reader = reader.coalesce(parallelism)
-
-        return reader
+        return self._basic_read(reader_options, options, parallelism)
 
     def csv(self, path, custom_schema=None, header=True, parallelism=None, options=None):
         """Create a dataframe from a CSV file.
@@ -147,23 +133,18 @@ class SparkleReader(object):
         """
         assert self._hc.has_package('com.databricks:spark-csv')
 
-        reader = config_reader_writer(self._hc.read.format('com.databricks.spark.csv'), {
-            'header': str(header).lower(),
+        reader_options = {
+            'path': path,
+            'format': 'com.databricks.spark.csv',
+            'schema': custom_schema,
+            'header': 'true' if header else 'false',
             'inferSchema': 'false' if custom_schema else 'true',
-        })
+        }
 
-        if custom_schema:
-            reader = reader.schema(custom_schema)
+        return self._basic_read(reader_options, options, parallelism)
 
-        reader = config_reader_writer(reader, options).load(path)
-
-        if parallelism:
-            reader = reader.coalesce(parallelism)
-
-        return reader
-
-    def elastic(self, host, es_index, es_type, query='', fields=None, parallelism=None, port=None,
-                options=None):
+    def elastic(self, host, es_index, es_type, query='', fields=None, port=None,
+                parallelism=None, options=None):
         """Create a dataframe from an ElasticSearch index.
 
         Args:
@@ -172,9 +153,9 @@ class SparkleReader(object):
             es_type (str): Elastic type.
             query (str): Pre-filter es documents, e.g. '?q=views:>10'.
             fields (list[str]|None): Select only specified fields.
+            port (int|None) Elastic server port.
             parallelism (int|None): The max number of parallel tasks that could be executed
                 during the read stage (see :ref:`controlling-the-load`).
-            port (int|None) Elastic server port.
             options (dict[str,str]): Additional options for `org.elasticsearch.spark.sql` format
                 (see configuration for :ref:`elastic`).
 
@@ -183,24 +164,23 @@ class SparkleReader(object):
         """
         assert self._hc.has_package('org.elasticsearch:elasticsearch-spark')
 
-        reader = config_reader_writer(self._hc.read.format('org.elasticsearch.spark.sql'), {
+        reader_options = {
+            'path': '{}/{}'.format(es_index, es_type),
+            'format': 'org.elasticsearch.spark.sql',
             'es.nodes': host,
             'es.query': query,
             'es.read.metadata': 'true',
-            'es.mapping.date.rich': 'false',
-        })
+        }
 
         if fields:
-            reader = reader.option('es.read.field.include', ','.join(fields))
+            reader_options['es.read.field.include'] = ','.join(fields)
 
-        reader = config_reader_writer(reader, options).load('{}/{}'.format(es_index, es_type))
+        if port:
+            reader_options['es.port'] = str(port)
 
-        if parallelism:
-            reader = reader.coalesce(parallelism)
+        return self._basic_read(reader_options, options, parallelism)
 
-        return reader
-
-    def mysql(self, host, database, table, parallelism=None, port=None, options=None):
+    def mysql(self, host, database, table, port=None, parallelism=None, options=None):
         """Create a dataframe from a MySQL table.
 
         Should be usable for rds, aurora, etc.
@@ -210,9 +190,9 @@ class SparkleReader(object):
             host (str): MySQL server address.
             database (str): Database to connect to.
             table (str): Table to read rows from.
+            port (int|None): MySQL server port.
             parallelism (int|None): The max number of parallel tasks that could be executed
                 during the read stage (see :ref:`controlling-the-load`).
-            port (int|None): MySQL server port.
             options (dict[str,str]|None): Additional options for JDBC reader
                 (see configuration for :ref:`mysql`).
 
@@ -221,110 +201,103 @@ class SparkleReader(object):
         """
         assert self._hc.has_jar('mysql-connector-java')
 
-        reader = config_reader_writer(self._hc.read.format('jdbc'), {
+        reader_options = {
+            'format': 'jdbc',
+            'driver': 'com.mysql.jdbc.Driver',
             'url': 'jdbc:mysql://{host}{port}/{database}'.format(
                 host=host,
                 port=':{}'.format(port) if port else '',
                 database=database,
             ),
-            'driver': 'com.mysql.jdbc.Driver',
             'dbtable': table,
-        })
-        reader = config_reader_writer(reader, options).load()
-
-        if parallelism:
-            reader = reader.coalesce(parallelism)
-
-        return reader
-
-    def _cassandra_resolver(self, url):
-        inp, options = to_parsed_url_and_options(url)
-
-        _, keyspace, table = inp.path.split('/')
-        kwargs = {
-            'options': options
         }
-        consistency = options.pop('consistency', None)
-        if consistency:
-            kwargs['consistency'] = consistency
 
-        parallelism = options.pop('parallelism', None)
+        return self._basic_read(reader_options, options, parallelism)
+
+    def _basic_read(self, reader_options, additional_options, parallelism):
+        reader_options.update(additional_options or {})
+
+        df = self._hc.read.load(**reader_options)
         if parallelism:
-            kwargs['parallelism'] = int(parallelism)
-
-        return self.cassandra(inp.netloc, keyspace, table, **kwargs)
-
-    def _elastic_resolver(self, url):
-        inp, options = to_parsed_url_and_options(url)
-        host = inp.netloc
-        q = options.pop('q', None)
-        query = '?q={}'.format(q) if q else ''
-
-        fields = options.pop('fields', None)
-        if fields:
-            fields = fields.split(',')
-
-        parallelism = options.pop('parallelism', None)
-        if parallelism:
-            parallelism = int(parallelism)
-
-        es_index, es_type = inp.path.lstrip('/').split('/', 1)
-        return self.elastic(host, es_index, es_type,
-                       query=query, fields=fields,
-                       parallelism=parallelism, options=options)
-
-    def _table_resolver(self, url):
-        inp, options = to_parsed_url_and_options(url)
-        df = self._hc.table(inp.netloc)
-
-        parallelism = options.pop('parallelism', None)
-        if parallelism:
-            df = df.coalesce(int(parallelism))
+            df = df.coalesce(parallelism)
 
         return df
 
-    def _fs_resolver(self, url):
-        inp, options = to_parsed_url_and_options(url)
-        df = self._hc.read.format(inp.scheme).options(**options).load(inp.path)
+    def _resolve_cassandra(self, parsed_url, parsed_qs):
+        return self.cassandra(
+            host=parsed_url.netloc,
+            keyspace=parsed_url.path.split('/')[1],
+            table=parsed_url.path.split('/')[2],
+            consistency=parsed_qs.pop('consistency', None),
+            port=parsed_url.port,
+            parallelism=parsed_qs.pop('parallelism', None),
+            options=parsed_qs,
+        )
 
-        parallelism = options.pop('parallelism', None)
-        if parallelism:
-            df = df.coalesce(int(parallelism))
-
-        return df
-
-    def _mysql_resolver(self, url):
-        inp, options = to_parsed_url_and_options(url)
-        db, table = inp.path[1:].split('/', 1)
-
-        kwargs = {
-            'options': options,
-        }
-
-        parallelism = options.pop('parallelism', None)
-        if parallelism:
-            kwargs['parallelism'] = int(parallelism)
-
-        return self.mysql(inp.netloc, db, table, **kwargs)
-
-    def _csv_resolver(self, url):
-        inp, options = to_parsed_url_and_options(url)
+    def _resolve_csv(self, parsed_url, parsed_qs):
         kwargs = {}
 
-        header = options.pop('header', None)
-        if header is not None:
-            kwargs['header'] = header == 'true'
+        if 'custom_schema' in parsed_qs:
+            kwargs['custom_schema'] = schema_parser.parse(parsed_qs.pop('custom_schema'))
 
-        custom_schema = options.pop('custom_schema', None)
-        if custom_schema:
-            custom_schema = parse(custom_schema)
-            kwargs['custom_schema'] = custom_schema
+        if 'header' in parsed_qs:
+            kwargs['header'] = parsed_qs.pop('header') == 'true'
 
-        if options:
-            kwargs['options'] = options
+        return self.csv(
+            path=parsed_url.path,
+            parallelism=parsed_qs.pop('parallelism', None),
+            options=parsed_qs,
+            **kwargs
+        )
 
-        parallelism = options.pop('parallelism', None)
+    def _resolve_elastic(self, parsed_url, parsed_qs):
+        kwargs = {}
+
+        if 'q' in parsed_qs:
+            kwargs['query'] = '?q={}'.format(parsed_qs.pop('q'))
+
+        if 'fields' in parsed_qs:
+            kwargs['fields'] = parsed_qs.pop('fields').split(',')
+
+        return self.elastic(
+            host=parsed_url.netloc,
+            es_index=parsed_url.path.split('/')[1],
+            es_type=parsed_url.path.split('/')[2],
+            port=parsed_url.port,
+            parallelism=parsed_qs.pop('parallelism', None),
+            options=parsed_qs,
+            **kwargs
+        )
+
+    def _resolve_mysql(self, parsed_url, parsed_qs):
+        return self.mysql(
+            host=parsed_url.netloc,
+            database=parsed_url.path.split('/')[1],
+            table=parsed_url.path.split('/')[2],
+            port=parsed_url.port,
+            parallelism=parsed_qs.pop('parallelism', None),
+            options=parsed_qs,
+        )
+
+    def _resolve_parquet(self, parsed_url, parsed_qs):
+        parallelism = parsed_qs.pop('parallelism', None)
+
+        df = self._hc.read.load(
+            path=parsed_url.path,
+            format=parsed_url.scheme,
+            **parsed_qs,
+        )
+
         if parallelism:
-            kwargs['parallelism'] = int(parallelism)
+            df = df.coalesce(int(parallelism))
 
-        return self.csv(inp.path, **kwargs)
+        return df
+
+    def _resolve_table(self, parsed_url, parsed_qs):
+        df = self._hc.table(parsed_url.netloc)
+
+        parallelism = parsed_qs.pop('parallelism', None)
+        if parallelism:
+            df = df.coalesce(int(parallelism))
+
+        return df
