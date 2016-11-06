@@ -5,7 +5,6 @@ from sparkle.utils import absolute_path
 from tests.integration.base import _TestContext
 
 
-@pytest.mark.branch_1_0
 class TestCassandraFixtures(SparkleGlobalContextTest):
 
     context = _TestContext
@@ -35,7 +34,6 @@ class TestCassandraFixtures(SparkleGlobalContextTest):
             self.hc.read_ext.by_url('cassandra://cassandra.docker/sparkle_test/test')
 
 
-@pytest.mark.branch_1_0
 class TestMysqlFixtures(SparkleGlobalContextTest):
 
     context = _TestContext
@@ -59,7 +57,6 @@ class TestMysqlFixtures(SparkleGlobalContextTest):
         )
 
 
-@pytest.mark.branch_1_0
 class TestElasticFixture(SparkleGlobalContextTest):
 
     context = _TestContext

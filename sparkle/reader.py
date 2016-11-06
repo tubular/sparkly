@@ -4,12 +4,7 @@ except ImportError:
     from urlparse import urlparse
 
 from sparkle.schema_parser import generate_structure_type, parse_schema
-from sparkle.utils import (
-    context_has_package,
-    config_reader_writer,
-    context_has_jar,
-    to_parsed_url_and_options,
-)
+from sparkle.utils import config_reader_writer, to_parsed_url_and_options
 
 
 class SparkleReader(object):
@@ -106,7 +101,7 @@ class SparkleReader(object):
         Returns:
             pyspark.sql.DataFrame
         """
-        assert context_has_package(self._hc, 'datastax:spark-cassandra-connector')
+        assert self._hc.has_package('datastax:spark-cassandra-connector')
 
         default_options = {
             'spark_cassandra_connection_host': host,
@@ -147,7 +142,7 @@ class SparkleReader(object):
         Returns:
             pyspark.sql.DataFrame
         """
-        assert context_has_package(self._hc, 'com.databricks:spark-csv')
+        assert self._hc.has_package('com.databricks:spark-csv')
 
         reader = config_reader_writer(self._hc.read.format('com.databricks.spark.csv'), {
             'header': str(header).lower(),
@@ -183,7 +178,7 @@ class SparkleReader(object):
         Returns:
             pyspark.sql.DataFrame
         """
-        assert context_has_package(self._hc, 'org.elasticsearch:elasticsearch-spark')
+        assert self._hc.has_package('org.elasticsearch:elasticsearch-spark')
 
         reader = config_reader_writer(self._hc.read.format('org.elasticsearch.spark.sql'), {
             'es.nodes': host,
@@ -221,7 +216,7 @@ class SparkleReader(object):
         Returns:
             pyspark.sql.DataFrame
         """
-        assert context_has_jar(self._hc, 'mysql-connector-java')
+        assert self._hc.has_jar('mysql-connector-java')
 
         reader = config_reader_writer(self._hc.read.format('jdbc'), {
             'url': 'jdbc:mysql://{host}{port}/{database}'.format(

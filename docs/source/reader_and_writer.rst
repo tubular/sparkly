@@ -1,3 +1,5 @@
+.. _reader_and_writer:
+
 Read/write utilities for DataFrames
 ===================================
 

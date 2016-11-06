@@ -11,7 +11,6 @@ import sparkle
 from sparkle.writer import SparkleWriter
 
 
-@pytest.mark.branch_1_0
 class TestWriteByUrl(unittest.TestCase):
     def setUp(self):
         self.df = mock.Mock(spec=DataFrame)
