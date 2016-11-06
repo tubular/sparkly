@@ -19,7 +19,7 @@ class TestWriteByUrl(unittest.TestCase):
 
     def test_parquet_s3(self):
         self.write_ext.by_url(
-            'parquet:s3://my-bucket/path/to/parquet?partition_by=x,y,z&mode=append&'
+            'parquet:s3://my-bucket/path/to/parquet?partitionBy=x,y,z&mode=append&'
             'additional=1&parallelism=20',
         )
 
@@ -33,13 +33,15 @@ class TestWriteByUrl(unittest.TestCase):
         )
 
     def test_csv_local(self):
+        self.write_ext.csv = mock.Mock()
+
         self.write_ext.by_url('csv:///my-bucket/path/to/csv')
 
-        self.df.write.save.assert_called_once_with(
+        self.write_ext.csv.assert_called_once_with(
             path='/my-bucket/path/to/csv',
-            format='csv',
             mode=None,
-            partitionBy=None,
+            parallelism=None,
+            options={},
         )
 
     def test_cassandra(self):
@@ -53,6 +55,7 @@ class TestWriteByUrl(unittest.TestCase):
             host='host',
             keyspace='ks',
             table='cf',
+            port=None,
             mode='overwrite',
             consistency='ONE',
             parallelism=10,
@@ -68,6 +71,7 @@ class TestWriteByUrl(unittest.TestCase):
             host='host',
             es_index='index',
             es_type='type',
+            port=None,
             mode=None,
             parallelism=15,
             options={},
@@ -82,6 +86,7 @@ class TestWriteByUrl(unittest.TestCase):
             host='host',
             database='db',
             table='table',
+            port=None,
             mode=None,
             parallelism=20,
             options={},

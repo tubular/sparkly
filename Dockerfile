@@ -28,6 +28,7 @@ datastax:spark-cassandra-connector:1.6.1-s_2.10,\
 org.elasticsearch:elasticsearch-spark_2.10:2.3.0
 
 # Python env
+ENV CASS_DRIVER_NO_EXTENSIONS=1
 COPY requirements.txt /tmp/requirements.txt
 COPY requirements_dev.txt /tmp/requirements_dev.txt
 RUN python3 -m pip install -r /tmp/requirements.txt
