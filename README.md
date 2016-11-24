@@ -26,13 +26,13 @@ class MyProjectContext(sparkle.SparkleContext):
     
     # Customise Spark options
     options = {
-        'spark.sql.shuffle.partitions': 10,
+        'spark.sql.shuffle.partitions': '10',
     }
     
 
 hc = MyProjectContext()
 
-hc.read.parquet('path/to/parquet/file')
+hc.read_ext.parquet('path/to/parquet/file')
 ```
 
 ### Accessing data sources
@@ -46,8 +46,6 @@ Package - http://spark-packages.org/package/datastax/spark-cassandra-connector
 Configuration - https://github.com/datastax/spark-cassandra-connector/blob/b1.5/doc/reference.md  
 ```
 import sparkle
-import sparkle.read
-import sparkle.write
 
 
 class MyProjectContext(sparkle.SparkleContext):
@@ -57,10 +55,10 @@ class MyProjectContext(sparkle.SparkleContext):
 hc = MyProjectContext()
 
 # To read data
-df = sparkle.read.cassandra(hc, 'primary.cassandra.tubularlabs.net', 'natural', 'facebook_videos')
+df = sparkle.read_ext.cassandra(hc, 'primary.cassandra.tubularlabs.net', 'natural', 'facebook_videos')
 
 # To write data
-sparkle.write.cassandra(df, 'backup.cassandra.tubularlabs.net', 'natural', 'facebook_videos')
+df.write_ext.cassandra('backup.cassandra.tubularlabs.net', 'natural', 'facebook_videos')
 ```
 
 #### CSV
@@ -69,8 +67,6 @@ Package - http://spark-packages.org/package/databricks/spark-csv
 Configuration - https://github.com/databricks/spark-csv#features  
 ```
 import sparkle
-import sparkle.read
-import sparkle.write
 
 
 class MyProjectContext(sparkle.SparkleContext):
@@ -80,10 +76,10 @@ class MyProjectContext(sparkle.SparkleContext):
 hc = MyProjectContext()
 
 # To read data
-df = sparkle.read.csv(hc, 'path/to/the/csv/file.csv', header=True)
+df = hc.read_ext.csv(hc, 'path/to/the/csv/file.csv', header=True)
 
 # To write data
-sparkle.write.csv(df, 'path/to/the/csv/file.csv', header=False)
+df.write_ext.csv('path/to/the/csv/file.csv', header=False)
 
 ```
 
@@ -94,8 +90,6 @@ Configuration - https://www.elastic.co/guide/en/elasticsearch/hadoop/current/con
 
 ```
 import sparkle
-import sparkle.read
-import sparkle.write
 
 
 class MyProjectContext(sparkle.SparkleContext):
@@ -105,11 +99,10 @@ class MyProjectContext(sparkle.SparkleContext):
 hc = MyProjectContext()
 
 # To read data
-df = sparkle.read.elastic(
-    hc, 'soyuz.elastic.tubularlabs.net', 'intelligence', 'video', fields=['title', 'views'])
+df = hc.read_ext.elastic(hc, 'soyuz.elastic.tubularlabs.net', 'intelligence', 'video', fields=['title', 'views'])
     
 # To write data
-sparkle.write.elastic(df, 'natural.elastic.tubularlabs.net', 'natural', 'facebook_videos')
+df.write_ext.elastic('natural.elastic.tubularlabs.net', 'natural', 'facebook_videos')
 ```
 
 #### Mysql database
@@ -117,8 +110,10 @@ sparkle.write.elastic(df, 'natural.elastic.tubularlabs.net', 'natural', 'faceboo
 ```
 import sparkle
 
-df = sparkle.read.mysql(hc, 'localhost', 'database', 'table',
-                        options={'user': 'root', 'password': 'pass'})
+hc = SparkleContext()
+
+df = hc.read_ext.mysql('localhost', 'database', 'table',
+                       options={'user': 'root', 'password': 'pass'})
 ```
 
 
@@ -136,40 +131,52 @@ The most popular use-case is to path urls as CLI arguments to your program, e.g.
 
 Supported formats: 
 ```
-import sparkle.read
+import sparkle
 
-metastore_df = sparkle.read.by_url('table://my_hive_metastore_table')
-parquet_df = sparkle.read.by_url('parquet:s3://some_bucket/some_parquet/')
-csv_df = sparkle.read.by_url('csv:s3://some_bucket/some.csv')
-elastic_df = sparkle.read.by_url('elastic://localhost/index_name/type_name?q=name:*Johhny*')
-cassandra_df = sparkle.read.by_url('cassandra://localhost/key_space/table_name?consistency=ONE')
-mysql_df = sparkle.read.by_url('mysql://localhost/db_name/table_name?user=root&password=pass')
+hc = SparkleContext()
+
+metastore_df = hc.read_ext.by_url('table://my_hive_metastore_table')
+parquet_df = hc.read_ext.by_url('parquet:s3://some_bucket/some_parquet/')
+csv_df = hc.read_ext.by_url('csv:s3://some_bucket/some.csv')
+elastic_df = hc.read_ext.by_url('elastic://localhost/index_name/type_name?q=name:*Johhny*')
+cassandra_df = hc.read_ext.by_url('cassandra://localhost/key_space/table_name?consistency=ONE')
+mysql_df = hc.read_ext.by_url('mysql://localhost/db_name/table_name?user=root&password=pass')
 ```
 
 ### Utils for testing
 
 ```
-import sparkle.test
+from sparkle.test import MysqlFixture, SparkleTest
 
-
-class MyProjectTest(sparkle.test.SparkleTest):
-    context = MyProjectContext
-    
-    def test_some_method(self):
-        self.hc.read.parquet('...')
-        ...
+class MyTestCase(SparkleTest):
+    ...
+    fixtures = [
+        MysqlFixture('mysql.host',
+                     'user',
+                     'password',
+                     '/path/to/setup_data.sql',
+                     '/path/to/remove_data.sql')
+    ]
+    ...
 ```
 
 
 ### Hql utils
 
 ```
-from sparkle import SparkleContext
-from sparkle.hql import table_manager
-
+from sparkle import SparkeContext
+# input
 hc = SparkleContext()
-new_table_df = table_manager(hc, 'my_table').create(df, 's3://path', partition_by=['date']).df()
-table_manager(hc).table('old_table').get_property('last_updated')
+df = hc.read_ext.by_url('parquet:s3://path/to/data/')
+# operation
+hc.hms.create_table(
+     'new_shiny_table',
+     df,
+     location='s3://path/to/data/',
+     partition_by=['partition', 'fields'],
+     output_format='parquet'
+)
+new_df = hc.read_ext.by_url('table://new_shiny_table')
 ```
 
 ### Documentation
