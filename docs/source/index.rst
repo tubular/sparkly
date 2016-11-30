@@ -21,16 +21,16 @@ A brief tour on Sparkly features by example:
       }
 
 
-   cnx = CustomSparkContext()
+   ctx = CustomSparkContext()
 
    # Operate with easily interchangable URL-like data source definitions,
    # instead of untidy default interface:
-   df = cnx.read_ext.by_url('mysql://<my-sql.host>/my_database/my_database')
+   df = ctx.read_ext.by_url('mysql://<my-sql.host>/my_database/my_database')
    df.write_ext('parquet:s3://<my-bucket>/<path>/data?partition_by=<field_name1>,<field_name1>')
 
    # Operate with Hive Metastore with convenient python api,
    # instead of verbose Hive queries:
-   cnx.hms.create_table(
+   ctx.hms.create_table(
       'my_custom_table',
       df,
       location='s3://<my-bucket>/<path>/data',

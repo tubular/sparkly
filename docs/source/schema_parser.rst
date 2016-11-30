@@ -28,7 +28,7 @@ types could be are easily derived.
     data = ... parse data from file ...
     schema_as_string = 'name:string|age:int'  # Note: you can get this from command line, for example
     spark_schema = generate_structure_type(parse_schema(schema_as_string))
-    df = cnx.createDataframe(data, spark_schema)
+    df = ctx.createDataframe(data, spark_schema)
 
 .. automodule:: sparkly.schema_parser
     :members:

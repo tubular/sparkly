@@ -333,16 +333,16 @@ class MysqlFixture(Fixture):
         self.teardown = teardown
 
     def _execute(self, statements):
-        cnx = connector.connect(
+        ctx = connector.connect(
             user=self.user,
             password=self.password,
             host=self.host,
         )
-        cursor = cnx.cursor()
+        cursor = ctx.cursor()
         cursor.execute(statements)
-        cnx.commit()
+        ctx.commit()
         cursor.close()
-        cnx.close()
+        ctx.close()
 
     def setup_data(self):
         self._execute(self.read_file(self.data))

@@ -47,10 +47,10 @@ We prefer to define Spark options declaratively rather than using getter/setters
         }
 
     # you can also overwrite or add some options at initialisation time.
-    cnx = OwnSparklyContext({ ...initialize-time options... })
+    ctx = OwnSparklyContext({ ...initialize-time options... })
 
     # you still can update options later if you need.
-    cnx.setConf('key', 'value')
+    ctx.setConf('key', 'value')
 
 Installing spark dependencies
 -----------------------------
@@ -72,10 +72,10 @@ your tables.
         ]
 
     # dependencies will be installed in context initialization.
-    cnx = OwnSparklyContext()
+    ctx = OwnSparklyContext()
 
     # Here is how you now can obtain a Dataframe representing yout cassandra table.
-    df = cnx.read_ext.by_url('cassandra://<cassandra-host>'
+    df = ctx.read_ext.by_url('cassandra://<cassandra-host>'
                              '/<db>/<talbe>?consistency=QUORUM&parallelism=16')
 
 
@@ -106,10 +106,10 @@ udfs you wish to use using verbose Hive queries.
         }
 
     # dependencies will be installed in context initialization.
-    cnx = OwnSparklyContext()
+    ctx = OwnSparklyContext()
 
-    cnx.sql('SELECT collect_max(amount) FROM my_data GROUP BY ...')
-    cnx.sql('SELECT my_udf(amount) FROM my_data')
+    ctx.sql('SELECT collect_max(amount) FROM my_data GROUP BY ...')
+    ctx.sql('SELECT my_udf(amount) FROM my_data')
 
 
 .. automodule:: sparkly.context
