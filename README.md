@@ -164,8 +164,9 @@ class MyTestCase(SparkleTest):
 
 ### Hql utils
 
+Create and replace Hive metastore tables using Spark dataframes:
 ```
-from sparkle import SparkeContext
+from sparkle import SparkleContext
 # input
 hc = SparkleContext()
 df = hc.read_ext.by_url('parquet:s3://path/to/data/')
@@ -178,6 +179,21 @@ hc.hms.create_table(
      output_format='parquet'
 )
 new_df = hc.read_ext.by_url('table://new_shiny_table')
+hc.hms.replace_table(
+     'new_shiny_table',
+     df,
+     location='s3://path/to/data/',
+     partition_by=['partition', 'fields'],
+)
+```
+
+Operate on table attributes via python api, not sql queries:
+```
+from sparlke import SparkleContext
+hc = SparkleContext()
+hc.hms.table('my_table').set_property('last_update', '2016-01-01')
+prop_value = hc.hms.table('my_table').get_property('last_update')
+all_properties = hc.hms.table('my_table').get_all_properties()
 ```
 
 ### Documentation

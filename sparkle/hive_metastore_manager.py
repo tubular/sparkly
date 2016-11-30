@@ -65,7 +65,7 @@ class SparkleHiveMetastoreManager(object):
 
         return Table(self, table_name)
 
-    def replace_table(self, table_name, schema, location, partition_by=None):
+    def replace_table(self, table_name, schema, location, partition_by=None, table_format=None):
         """Replaces table `table_name` with data represented by schema, location.
 
         Args:
@@ -89,6 +89,7 @@ class SparkleHiveMetastoreManager(object):
             location=location,
             partition_by=partition_by,
             properties=old_table_props,
+            table_format=table_format,
         )
 
         self.hc.sql("""
