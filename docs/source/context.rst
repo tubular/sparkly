@@ -4,8 +4,8 @@ Sparkle Context
 About Sparkle Context
 ^^^^^^^^^^^^^^^^^^^^^
 
-``SparkleContext`` class is the main class of the Sparkle library. It encompasses all the lib functionality.
-Most of times you want to subclass it to define your usecase needs in class attributes.
+``SparkleContext`` class is the main class of the Sparkle library. It encompasses all of this library's functionality.
+Most of times you want to subclass it to define the various options you desire through class attributes.
 
 Sparkle context have links to other extras of the lib:
 
@@ -16,8 +16,7 @@ Sparkle context have links to other extras of the lib:
 ``hms``          :ref:`hive_metastore_manager`
 ================ ================================
 
-``Dataframe`` pyspark class is also monkey patched with.
-``write_ext`` (:ref:`reader_and_writer`) attribute for convenient writing.
+``Dataframe`` pyspark class is also monkey patched with ``write_ext`` (:ref:`reader_and_writer`) attribute for convenient writing.
 
 Use cases
 ^^^^^^^^^
@@ -26,7 +25,7 @@ Setup Custom options
 --------------------
 
 **Why**: Sometimes you need to customize your spark context more than default.
-We like it defined in declarative way with not boilerplate with setters/getters.
+We prefer to define Spark options declaratively rather than using getter/setters for each option.
 
 **For example**: some useful usecases of this are:
 
@@ -56,7 +55,9 @@ We like it defined in declarative way with not boilerplate with setters/getters.
 Installing spark dependencies
 -----------------------------
 
-**Why**: default mechanism for this is quite uncomfortable `spark-submit`.
+**Why**: The default mechanism requires that dependencies be declared when the spark job is submitted,
+typically on the command line. We prefer a code-first approach where dependencies are actually
+declared as part of the job.
 
 **For example**: You want to install cassandra connector to read data for one of
 your tables.
@@ -82,7 +83,7 @@ Using UDFs
 ----------
 
 **Why**: By default to use udfs in Hive queries you need to add jars and specify which
-ufds you wish to use using verbose Hive queries.
+udfs you wish to use using verbose Hive queries.
 
 **For example**: You want to import udfs from (brickhouse)[https://github.com/klout/brickhouse] Hive udfs lib.
 

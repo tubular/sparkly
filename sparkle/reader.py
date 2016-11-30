@@ -10,7 +10,7 @@ class SparkleReader(object):
     """A set of tools to create DataFrames from the external storages.
 
     Note:
-        We don't expect you to be using the class directly.
+        This is a private class to the library. You should not use it directly.
         The instance of the class is available under `SparkleContext` via `read_ext` attribute.
     """
     def __init__(self, hc):

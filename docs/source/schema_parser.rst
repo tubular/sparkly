@@ -16,8 +16,7 @@ Init Dataframe from data
 **Why**: Sometimes you know the schema of the data,
 but format is not recognized by spark. Then you can
 read it as raw python data and apply the known schema to it.
-Sparkle utility will make schema definition easy and
-no hardcoded your code.
+Sparkle utility will make schema definition easy and not hardcoded.
 
 **For example**: You have custom format file without any type information, but
 types could be are easily derived.

@@ -4,7 +4,7 @@ Read/write utilities for DataFrames
 ===================================
 
 Sparkle isn't trying to replace any of existing storage connectors.
-The goal is to provide a simplified api on top of the official connectors.
+The goal is to provide a simplified and consistent api across a wide array of storage connectors.
 We also added the way to work with :ref:`abstract data sources <universal-reader-and-writer>`,
 so you can keep your code agnostic to the storages you use.
 
@@ -113,8 +113,8 @@ Basically, it's just a high level api on top of the native
 
     Sparkle doesn't contain any jars inside, so you will have to take care of this.
     Java connectors for mysql could be found on https://dev.mysql.com/downloads/connector/j/.
-    We usually place them within our service/package codebase in `resources` directory.
-    Yes, it isn't the best idea to place binaries within a source code, but it's pretty convenient.
+    Place them within our service/package codebase in `resources` directory.
+    It's not the best idea to place binaries within a source code, but it's pretty convenient.
 
 .. code-block:: python
 
@@ -144,7 +144,6 @@ Universal reader/writer
 The `DataFrame` abstraction is really powerful when it comes to transformations.
 You can shape your data from various storages using exactly the same api.
 For instance, you can join data from Cassandra with data from Elasticsearch and write the result to MySQL.
-Awesome, isn't it?
 
 The only problem - you have to explicitly define sources (or destinations) in order to create (or export) a `DataFrame`.
 But the source/destination of data doesn't really change the logic of transformations (if the schema is preserved).
@@ -184,6 +183,8 @@ Controlling the load
 From the official documentation:
 
     | Don’t create too many partitions in parallel on a large cluster; otherwise Spark might crash your external database systems.
+
+    link: <https://spark.apache.org/docs/2.0.1/api/java/org/apache/spark/sql/DataFrameReader.html>
 
 It's a very good advice, but in practice it's hard to track the number of partitions.
 For instance, if you write a result of a join operation to database the number of splits
