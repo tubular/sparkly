@@ -3,7 +3,7 @@
 Read/write utilities for DataFrames
 ===================================
 
-Sparkle isn't trying to replace any of existing storage connectors.
+Sparkly isn't trying to replace any of existing storage connectors.
 The goal is to provide a simplified and consistent api across a wide array of storage connectors.
 We also added the way to work with :ref:`abstract data sources <universal-reader-and-writer>`,
 so you can keep your code agnostic to the storages you use.
@@ -13,7 +13,7 @@ so you can keep your code agnostic to the storages you use.
 Cassandra
 ^^^^^^^^^
 
-Sparkle relies on the official spark cassandra connector and was successfully tested in production using versions 1.5.x and 1.6.x.
+Sparkly relies on the official spark cassandra connector and was successfully tested in production using versions 1.5.x and 1.6.x.
 
 +---------------+----------------------------------------------------------------------------------+
 | Package       | https://spark-packages.org/package/datastax/spark-cassandra-connector            |
@@ -23,10 +23,10 @@ Sparkle relies on the official spark cassandra connector and was successfully te
 
 .. code-block:: python
 
-    from sparkle import SparkleContext
+    from sparkly import SparklyContext
 
 
-    class MyContext(SparkleContext):
+    class MyContext(SparklyContext):
         # Feel free to play with other versions
         packages = ['datastax:spark-cassandra-connector:1.6.1-s_2.10']
 
@@ -42,7 +42,7 @@ Sparkle relies on the official spark cassandra connector and was successfully te
 CSV
 ^^^
 
-Sparkle relies on the csv connector provided by `Databricks <databricks.com>`_.
+Sparkly relies on the csv connector provided by `Databricks <databricks.com>`_.
 
 .. note::
 
@@ -57,10 +57,10 @@ Sparkle relies on the csv connector provided by `Databricks <databricks.com>`_.
 
 .. code-block:: python
 
-    from sparkle import SparkleContext
+    from sparkly import SparklyContext
 
 
-    class MyContext(SparkleContext):
+    class MyContext(SparklyContext):
         # Feel free to play with other versions
         packages = ['com.databricks:spark-csv_2.10:1.4.0']
 
@@ -76,7 +76,7 @@ Sparkle relies on the csv connector provided by `Databricks <databricks.com>`_.
 Elastic
 ^^^^^^^
 
-Sparkle relies on the official elastic spark connector and was successfully tested in production using versions 2.2.x and 2.3.x.
+Sparkly relies on the official elastic spark connector and was successfully tested in production using versions 2.2.x and 2.3.x.
 
 +---------------+---------------------------------------------------------------------------------+
 | Package       | https://spark-packages.org/package/elastic/elasticsearch-hadoop                 |
@@ -86,10 +86,10 @@ Sparkle relies on the official elastic spark connector and was successfully test
 
 .. code-block:: python
 
-    from sparkle import SparkleContext
+    from sparkly import SparklyContext
 
 
-    class MyContext(SparkleContext):
+    class MyContext(SparklyContext):
         # Feel free to play with other versions
         packages = ['org.elasticsearch:elasticsearch-spark_2.10:2.3.0']
 
@@ -111,18 +111,18 @@ Basically, it's just a high level api on top of the native
 
 .. note::
 
-    Sparkle doesn't contain any jars inside, so you will have to take care of this.
+    Sparkly doesn't contain any jars inside, so you will have to take care of this.
     Java connectors for mysql could be found on https://dev.mysql.com/downloads/connector/j/.
     Place them within our service/package codebase in `resources` directory.
     It's not the best idea to place binaries within a source code, but it's pretty convenient.
 
 .. code-block:: python
 
-    from sparkle import SparkleContext
-    from sparkle.utils import absolute_path
+    from sparkly import SparklyContext
+    from sparkly.utils import absolute_path
 
 
-    class MyContext(SparkleContext):
+    class MyContext(SparklyContext):
         # Feel free to play with other versions.
         jars = [absolute_path(__file__, './path/to/mysql-connector-java-5.1.39-bin.jar')]
 
@@ -151,9 +151,9 @@ To solve the problem, we decided to add the universal api to read/write `DataFra
 
 .. code-block:: python
 
-    from sparkle import SparkleContext
+    from sparkly import SparklyContext
 
-    class MyContext(SparkleContext):
+    class MyContext(SparklyContext):
         packages = [
             'datastax:spark-cassandra-connector:1.6.1-s_2.10',
             'com.databricks:spark-csv_2.10:1.4.0',
@@ -207,11 +207,11 @@ we have to retry the whole pack in 100 tasks.
 Reader API documentation
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: sparkle.reader
+.. automodule:: sparkly.reader
     :members:
 
 Writer API documentation
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: sparkle.writer
+.. automodule:: sparkly.writer
     :members:

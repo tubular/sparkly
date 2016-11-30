@@ -34,6 +34,6 @@ COPY requirements_dev.txt /tmp/requirements_dev.txt
 RUN python3 -m pip install -r /tmp/requirements.txt
 RUN python3 -m pip install -r /tmp/requirements_dev.txt
 
-# Provision Sparkle
-ADD . /opt/sparkle/
-WORKDIR /opt/sparkle/
+# Provision Sparkly
+ADD . /opt/sparkly/
+WORKDIR /opt/sparkly/

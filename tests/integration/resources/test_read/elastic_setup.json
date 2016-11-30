@@ -1,6 +1,6 @@
-{ "index" : { "_index" : "sparkle_test", "_type" : "test", "_id": "1" } }
+{ "index" : { "_index" : "sparkly_test", "_type" : "test", "_id": "1" } }
 { "name" : "John2", "topics": [1, 2, 3, 4, 5], "age": 56, "demo": { "age_30": 20, "age_10": 50 } }
-{ "index" : { "_index" : "sparkle_test", "_type" : "test", "_id": "2" } }
+{ "index" : { "_index" : "sparkly_test", "_type" : "test", "_id": "2" } }
 { "name" : "Smith3", "topics": [1, 4, 5], "age": 31, "demo": { "age_30": 110, "age_10": 50 } }
-{ "index" : { "_index" : "sparkle_test", "_type" : "test", "_id": "3" } }
+{ "index" : { "_index" : "sparkly_test", "_type" : "test", "_id": "3" } }
 { "name" : "Smith4", "topics": [4, 5], "age": 12, "demo": { "age_30": 20, "age_10": 1 } }

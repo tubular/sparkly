@@ -8,7 +8,7 @@ from pyspark.sql.types import StructType
 logger = logging.getLogger(__name__)
 
 
-class SparkleHiveMetastoreManager(object):
+class SparklyHiveMetastoreManager(object):
     """A set of tools to interact with HiveMetastore."""
 
     def __init__(self, hc):

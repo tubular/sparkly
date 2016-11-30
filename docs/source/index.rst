@@ -1,16 +1,16 @@
-Welcome to sparkle's documentation!
+Welcome to sparkly's documentation!
 ===================================
 
-Sparkle is a lib which makes usage of pyspark more convenient and consistent.
+Sparkly is a lib which makes usage of pyspark more convenient and consistent.
 
-A brief tour on Sparkle features by example:
+A brief tour on Sparkly features by example:
 
 .. code-block:: python
 
-   # The main thing and the entry point of the Sparkle lib is SparkleContext
-   from sparkle import SparkleContext
+   # The main thing and the entry point of the Sparkly lib is SparklyContext
+   from sparkly import SparklyContext
 
-   class CustomSparkleContext(SparkleContext):
+   class CustomSparklyContext(SparklyContext):
       # Install custom spark packages instead of hacking with `spark-submit`:
       packages = ['com.databricks:spark-csv_2.10:1.4.0']
 
@@ -39,9 +39,9 @@ A brief tour on Sparkle features by example:
    )
 
    # Make integration testing more convenient with Fixtures and base test classes:
-   # SparkleTest, SparkleGlobalContextTest, instead of implementing you own spark testing
+   # SparklyTest, SparklyGlobalContextTest, instead of implementing you own spark testing
    # mini frameworks:
-   class TestMyShinySparkScript(SparkleTest):
+   class TestMyShinySparkScript(SparklyTest):
       fixtures = [
          MysqlFixture('<my-testing-host>', '<test-user>', '<test-pass>', '/path/to/data.sql', '/path/to/clear.sql')
       ]
@@ -66,7 +66,7 @@ A brief tour on Sparkle features by example:
    exceptions
    test
 
-.. automodule:: sparkle
+.. automodule:: sparkly
    :members:
 
 Indices and tables

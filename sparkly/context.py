@@ -3,21 +3,21 @@ import sys
 
 from pyspark import SparkConf, SparkContext, HiveContext
 
-from sparkle.reader import SparkleReader
-from sparkle.writer import attach_writer_to_dataframe
-from sparkle.hive_metastore_manager import SparkleHiveMetastoreManager
+from sparkly.reader import SparklyReader
+from sparkly.writer import attach_writer_to_dataframe
+from sparkly.hive_metastore_manager import SparklyHiveMetastoreManager
 
 
-class SparkleContext(HiveContext):
+class SparklyContext(HiveContext):
     """Wrapper around HiveContext to simplify definition of options, packages, JARs and UDFs.
 
     Example::
 
         from pyspark.sql.types import IntegerType
-        import sparkle
+        import sparkly
 
 
-        class MyContext(sparkle.SparkleContext):
+        class MyContext(sparkly.SparklyContext):
             options = {'spark.sql.shuffle.partitions': '2000'}
             packages = ['com.databricks:spark-csv_2.10:1.4.0']
             jars = ['../path/to/brickhouse-0.7.1.jar']
@@ -61,11 +61,11 @@ class SparkleContext(HiveContext):
         spark_context = SparkContext(conf=spark_conf)
 
         # Init HiveContext
-        super(SparkleContext, self).__init__(spark_context)
+        super(SparklyContext, self).__init__(spark_context)
         self._setup_udfs()
 
-        self.read_ext = SparkleReader(self)
-        self.hms = SparkleHiveMetastoreManager(self)
+        self.read_ext = SparklyReader(self)
+        self.hms = SparklyHiveMetastoreManager(self)
 
         attach_writer_to_dataframe()
 

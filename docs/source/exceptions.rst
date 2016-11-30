@@ -1,5 +1,5 @@
 Exceptions
 ==========
 
-.. automodule:: sparkle.exceptions
+.. automodule:: sparkly.exceptions
     :members:

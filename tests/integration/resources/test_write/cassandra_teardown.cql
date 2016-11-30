@@ -1,1 +1,1 @@
-DROP KEYSPACE sparkle_test;
+DROP KEYSPACE sparkly_test;

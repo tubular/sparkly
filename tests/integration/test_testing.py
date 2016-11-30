@@ -1,16 +1,16 @@
 import pytest
 
-from sparkle.testing import (
+from sparkly.testing import (
     CassandraFixture,
     ElasticFixture,
     MysqlFixture,
-    SparkleGlobalContextTest,
+    SparklyGlobalContextTest,
 )
-from sparkle.utils import absolute_path
+from sparkly.utils import absolute_path
 from tests.integration.base import _TestContext
 
 
-class TestCassandraFixtures(SparkleGlobalContextTest):
+class TestCassandraFixtures(SparklyGlobalContextTest):
     context = _TestContext
 
     def test_cassandra_fixture(self):
@@ -21,7 +21,7 @@ class TestCassandraFixtures(SparkleGlobalContextTest):
         )
 
         with data_in_cassandra:
-            df = self.hc.read_ext.by_url('cassandra://cassandra.docker/sparkle_test/test')
+            df = self.hc.read_ext.by_url('cassandra://cassandra.docker/sparkly_test/test')
             self.assertDataFrameEqual(df, [
                 {
                     'uid': '1',
@@ -30,7 +30,7 @@ class TestCassandraFixtures(SparkleGlobalContextTest):
             ], fields=['uid', 'countries'])
 
 
-class TestMysqlFixtures(SparkleGlobalContextTest):
+class TestMysqlFixtures(SparklyGlobalContextTest):
 
     context = _TestContext
 
@@ -45,20 +45,20 @@ class TestMysqlFixtures(SparkleGlobalContextTest):
     ]
 
     def test_mysql_fixture(self):
-        df = self.hc.read_ext.by_url('mysql://mysql.docker/sparkle_test/test?user=root&password=')
+        df = self.hc.read_ext.by_url('mysql://mysql.docker/sparkly_test/test?user=root&password=')
         self.assertDataFrameEqual(df, [
             {'id': 1, 'name': 'john', 'surname': 'sk', 'age': 111},
         ])
 
 
-class TestElasticFixture(SparkleGlobalContextTest):
+class TestElasticFixture(SparklyGlobalContextTest):
 
     context = _TestContext
 
     class_fixtures = [
         ElasticFixture(
             'elastic.docker',
-            'sparkle_test_fixture',
+            'sparkly_test_fixture',
             'test',
             absolute_path(__file__, 'resources', 'test_fixtures', 'mapping.json'),
             absolute_path(__file__, 'resources', 'test_fixtures', 'data.json'),
@@ -66,7 +66,7 @@ class TestElasticFixture(SparkleGlobalContextTest):
     ]
 
     def test_elastic_fixture(self):
-        df = self.hc.read_ext.by_url('elastic://elastic.docker/sparkle_test_fixture/test?'
+        df = self.hc.read_ext.by_url('elastic://elastic.docker/sparkly_test_fixture/test?'
                                      'es.read.metadata=false')
         self.assertDataFrameEqual(df, [
             {'name': 'John', 'age': 56},

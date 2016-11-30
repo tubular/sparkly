@@ -7,15 +7,15 @@ except ImportError:
 import pytest
 import pyspark.sql
 
-import sparkle
-from sparkle.reader import SparkleReader
-from sparkle import schema_parser
+import sparkly
+from sparkly.reader import SparklyReader
+from sparkly import schema_parser
 
 
-class TestSparkleReaderByUrl(unittest.TestCase):
+class TestSparklyReaderByUrl(unittest.TestCase):
     def setUp(self):
-        self.hc = mock.Mock(spec=sparkle.SparkleContext)
-        self.read_ext = SparkleReader(self.hc)
+        self.hc = mock.Mock(spec=sparkly.SparklyContext)
+        self.read_ext = SparklyReader(self.hc)
         self.fake_df = mock.Mock(spec=pyspark.sql.DataFrame)
 
     def test_table(self):

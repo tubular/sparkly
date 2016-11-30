@@ -1,1 +1,1 @@
-DROP DATABASE sparkle_test;
+DROP DATABASE sparkly_test;

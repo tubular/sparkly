@@ -6,7 +6,7 @@ except ImportError:
 from pyspark.sql import DataFrame
 
 
-class SparkleWriter(object):
+class SparklyWriter(object):
     """A set of tools to write DataFrames to the external storages.
 
     Note:
@@ -287,8 +287,8 @@ class SparkleWriter(object):
 
 
 def attach_writer_to_dataframe():
-    """A tiny amount of magic to attach `SparkleWriter` to a `DataFrame`."""
+    """A tiny amount of magic to attach `SparklyWriter` to a `DataFrame`."""
     def write_ext(self):
-        return SparkleWriter(self)
+        return SparklyWriter(self)
 
     DataFrame.write_ext = property(write_ext)

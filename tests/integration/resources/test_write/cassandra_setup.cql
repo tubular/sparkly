@@ -1,8 +1,8 @@
-DROP KEYSPACE IF EXISTS sparkle_test;
+DROP KEYSPACE IF EXISTS sparkly_test;
 
-CREATE KEYSPACE sparkle_test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'};
+CREATE KEYSPACE sparkly_test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'};
 
-CREATE TABLE sparkle_test.test_writer (
+CREATE TABLE sparkly_test.test_writer (
     uid text,
     title text,
     views bigint,

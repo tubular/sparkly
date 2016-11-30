@@ -7,10 +7,10 @@ About Hive Metastore
 ^^^^^^^^^^^^^^^^^^^^
 
 Hive metastore is a database storing metadata about Hive tables,
-which you operate in your Sparkle (Hive) Context.
+which you operate in your Sparkly (Hive) Context.
 `Read more about Hive Metastore <http://www.cloudera.com/documentation/archive/cdh/4-x/4-2-0/CDH4-Installation-Guide/cdh4ig_topic_18_4.html>`_
 
-To configure a SparkleContext to work with your Hive Metastore, you have to set `hive.metastore.uris` option.
+To configure a SparklyContext to work with your Hive Metastore, you have to set `hive.metastore.uris` option.
 You can do this via hive-site.xml file in spark config ($SPARK_HOME/conf/hive-site.xml), like this:
 
 .. code-block:: xml
@@ -22,16 +22,16 @@ You can do this via hive-site.xml file in spark config ($SPARK_HOME/conf/hive-si
     </property>
 
 
-or set it dynamically in SparkleContext options, like this:
+or set it dynamically in SparklyContext options, like this:
 
 .. code-block:: python
 
-    class MySparkleContext(SparkleContext):
+    class MySparklyContext(SparklyContext):
         options = {
             'hive.metastore.uris': 'thrift://<n.n.n.n>:9083',
         }
 
-After this your sparkle context will operate on the configured Hive Metastore.
+After this your sparkly context will operate on the configured Hive Metastore.
 
 
 Use cases
@@ -46,8 +46,8 @@ Check for existence
 
 .. code-block:: python
 
-    from sparkle import SparkleContext
-    hc = SparkleContext()
+    from sparkly import SparklyContext
+    hc = SparklyContext()
     assert(hc.hms.table('my_table').exists() in {True, False})
 
 .. _create_table:
@@ -66,9 +66,9 @@ generates the CREATE TABLE statements by passed parameters and executes them on 
 
 .. code-block:: python
 
-    from sparkle import SparkeContext
+    from sparkly import SparkeContext
     # input
-    hc = SparkleContext()
+    hc = SparklyContext()
     df = hc.read_ext.by_url('parquet:s3://path/to/data/')
     # operation
     hc.hms.create_table(
@@ -96,9 +96,9 @@ then operating on meta data (quick renaming operation).
 
 .. code-block:: python
 
-    from sparkle import SparkeContext
+    from sparkly import SparkeContext
     # input
-    hc = SparkleContext()
+    hc = SparklyContext()
     df = hc.read_ext.by_url('csv:s3://path/to/data/new/')
     # operation
     table = hc.hms.replace_table(
@@ -121,8 +121,8 @@ table properties. We implemented a more convenient interface on top of this.
 
 .. code-block:: python
 
-    from sparkle import SparkleContext
-    hc = SparkleContext()
+    from sparkly import SparklyContext
+    hc = SparklyContext()
     table = hc.hms.table('my_table')
     table.set_property('foo', 'bar')
     assert table.get_property('foo') == 'bar'
@@ -135,5 +135,5 @@ data types by yourself.
 API documentation
 ^^^^^^^^^^^^^^^^^
 
-.. automodule:: sparkle.hive_metastore_manager
+.. automodule:: sparkly.hive_metastore_manager
     :members:
