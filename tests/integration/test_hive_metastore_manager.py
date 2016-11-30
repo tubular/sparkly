@@ -3,18 +3,18 @@ import os
 
 import pytest
 
-from sparkle.testing import SparkleGlobalContextTest
+from sparkly.testing import SparklyGlobalContextTest
 from tests.integration.base import _TestContext
 
 
-class TestHql(SparkleGlobalContextTest):
+class TestHql(SparklyGlobalContextTest):
 
     context = _TestContext
 
     @classmethod
     def setUpClass(cls):
         super(TestHql, cls).setUpClass()
-        cls.base = '/tmp/sparkle/{}'.format(uuid.uuid4().hex)
+        cls.base = '/tmp/sparkly/{}'.format(uuid.uuid4().hex)
         cls.path = '{}/test/'.format(cls.base)
         cls.df = cls.hc.createDataFrame([
             ('Pavlo', 26, '2016-01-01', 'youtube'), ('Johny', 30, '2016-01-01', 'youtube'),

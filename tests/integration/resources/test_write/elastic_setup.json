@@ -1,2 +1,2 @@
-{ "index" : { "_index" : "sparkle_test", "_type" : "test_writer", "_id": "1111" } }
+{ "index" : { "_index" : "sparkly_test", "_type" : "test_writer", "_id": "1111" } }
 { "uid": "1111", "title": "xxxx", "views": 1111}

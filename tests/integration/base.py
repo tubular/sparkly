@@ -1,10 +1,10 @@
 from pyspark.sql.types import StringType
 
-from sparkle import SparkleContext
-from sparkle.utils import absolute_path
+from sparkly import SparklyContext
+from sparkly.utils import absolute_path
 
 
-class _TestContext(SparkleContext):
+class _TestContext(SparklyContext):
     packages = [
         'com.databricks:spark-csv_2.10:1.4.0',
         'datastax:spark-cassandra-connector:1.6.1-s_2.10',

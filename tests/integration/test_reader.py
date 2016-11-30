@@ -1,16 +1,16 @@
 import pytest
 
-from sparkle.testing import (
-    SparkleGlobalContextTest,
+from sparkly.testing import (
+    SparklyGlobalContextTest,
     CassandraFixture,
     MysqlFixture,
     ElasticFixture,
 )
-from sparkle.utils import absolute_path
+from sparkly.utils import absolute_path
 from tests.integration.base import _TestContext
 
 
-class SparkleReaderCassandraTest(SparkleGlobalContextTest):
+class SparklyReaderCassandraTest(SparklyGlobalContextTest):
     context = _TestContext
 
     fixtures = [
@@ -25,7 +25,7 @@ class SparkleReaderCassandraTest(SparkleGlobalContextTest):
         df = self.hc.read_ext.cassandra(
             host='cassandra.docker',
             port=9042,
-            keyspace='sparkle_test',
+            keyspace='sparkly_test',
             table='test',
             consistency='ONE',
         )
@@ -49,7 +49,7 @@ class SparkleReaderCassandraTest(SparkleGlobalContextTest):
         ])
 
 
-class SparkleReaderCSVTest(SparkleGlobalContextTest):
+class SparklyReaderCSVTest(SparklyGlobalContextTest):
     context = _TestContext
 
     def test_csv(self):
@@ -101,13 +101,13 @@ class SparkleReaderCSVTest(SparkleGlobalContextTest):
         ])
 
 
-class SparkleReaderElasticTest(SparkleGlobalContextTest):
+class SparklyReaderElasticTest(SparklyGlobalContextTest):
     context = _TestContext
 
     fixtures = [
         ElasticFixture(
             'elastic.docker',
-            'sparkle_test',
+            'sparkly_test',
             'test',
             None,
             absolute_path(__file__, 'resources', 'test_read', 'elastic_setup.json'),
@@ -118,7 +118,7 @@ class SparkleReaderElasticTest(SparkleGlobalContextTest):
         df = self.hc.read_ext.elastic(
             host='elastic.docker',
             port=9200,
-            es_index='sparkle_test',
+            es_index='sparkly_test',
             es_type='test',
             query='?q=name:*Smith*',
             options={
@@ -149,7 +149,7 @@ class SparkleReaderElasticTest(SparkleGlobalContextTest):
         ])
 
 
-class SparkleReaderMySQLTest(SparkleGlobalContextTest):
+class SparklyReaderMySQLTest(SparklyGlobalContextTest):
     context = _TestContext
 
     fixtures = [
@@ -165,7 +165,7 @@ class SparkleReaderMySQLTest(SparkleGlobalContextTest):
     def test_read_mysql(self):
         df = self.hc.read_ext.mysql(
             host='mysql.docker',
-            database='sparkle_test',
+            database='sparkly_test',
             table='test',
             options={
                 'user': 'root',

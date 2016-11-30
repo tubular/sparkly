@@ -3,7 +3,7 @@ from collections import OrderedDict
 from pyspark.sql.types import (StructType, StringType, LongType, IntegerType,
                                FloatType, BooleanType, MapType, ArrayType)
 
-from sparkle.exceptions import UnsupportedDataType
+from sparkly.exceptions import UnsupportedDataType
 
 
 def parse(schema):
@@ -39,7 +39,7 @@ def _generate_structure_type(fields_and_types):
         >>> _generate_structure_type({'field_a': 'loooong'})
         Traceback (most recent call last):
         ...
-        sparkle.exceptions.UnsupportedDataType: Unsupported type field_a for field loooong
+        sparkly.exceptions.UnsupportedDataType: Unsupported type field_a for field loooong
 
     Args:
         fields_and_types (dict[str, str]): Field - type associations.
@@ -137,7 +137,7 @@ def _process_type(field_type):
         >>> _process_type('map[string,long]')
         Traceback (most recent call last):
         ...
-        sparkle.exceptions.UnsupportedDataType: Cannot parse type from string: "map[string,long]"
+        sparkly.exceptions.UnsupportedDataType: Cannot parse type from string: "map[string,long]"
     """
     if field_type in TYPES:
         return TYPES[field_type]()

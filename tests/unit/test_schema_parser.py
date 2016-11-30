@@ -2,8 +2,8 @@ from unittest import TestCase
 
 import pytest
 
-from sparkle.exceptions import UnsupportedDataType
-from sparkle.schema_parser import parse, _generate_structure_type, _process_type
+from sparkly.exceptions import UnsupportedDataType
+from sparkly.schema_parser import parse, _generate_structure_type, _process_type
 
 
 @pytest.mark.branch_1_0

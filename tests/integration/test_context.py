@@ -1,10 +1,10 @@
 import pytest
 
-from sparkle.testing import SparkleGlobalContextTest
+from sparkly.testing import SparklyGlobalContextTest
 from tests.integration.base import _TestContext
 
 
-class TestSparkleContext(SparkleGlobalContextTest):
+class TestSparklyContext(SparklyGlobalContextTest):
     context = _TestContext
 
     def test_python_udf(self):

@@ -1,9 +1,9 @@
 from shutil import rmtree
 from tempfile import mkdtemp
 
-from sparkle.utils import absolute_path
-from sparkle.testing import (
-    SparkleGlobalContextTest,
+from sparkly.utils import absolute_path
+from sparkly.testing import (
+    SparklyGlobalContextTest,
     CassandraFixture,
     ElasticFixture,
     MysqlFixture,
@@ -18,7 +18,7 @@ TEST_DATA = [
 ]
 
 
-class TestWriteByURL(SparkleGlobalContextTest):
+class TestWriteByURL(SparklyGlobalContextTest):
     context = _TestContext
 
     def setUp(self):
@@ -46,7 +46,7 @@ class TestWriteByURL(SparkleGlobalContextTest):
         self.assertDataFrameEqual(written_df, TEST_DATA)
 
 
-class TestWriteCassandra(SparkleGlobalContextTest):
+class TestWriteCassandra(SparklyGlobalContextTest):
     context = _TestContext
 
     fixtures = [
@@ -63,7 +63,7 @@ class TestWriteCassandra(SparkleGlobalContextTest):
         df.write_ext.cassandra(
             host='cassandra.docker',
             port=9042,
-            keyspace='sparkle_test',
+            keyspace='sparkly_test',
             table='test_writer',
             consistency='ONE',
             mode='overwrite',
@@ -71,19 +71,19 @@ class TestWriteCassandra(SparkleGlobalContextTest):
 
         written_df = self.hc.read_ext.by_url(
             'cassandra://cassandra.docker/'
-            'sparkle_test/test_writer'
+            'sparkly_test/test_writer'
             '?consistency=ONE'
         )
         self.assertDataFrameEqual(written_df, TEST_DATA)
 
 
-class TestWriteElastic(SparkleGlobalContextTest):
+class TestWriteElastic(SparklyGlobalContextTest):
     context = _TestContext
 
     fixtures = [
         ElasticFixture(
             'elastic.docker',
-            'sparkle_test',
+            'sparkly_test',
             'test',
             None,
             absolute_path(__file__, 'resources', 'test_write', 'elastic_setup.json')
@@ -96,7 +96,7 @@ class TestWriteElastic(SparkleGlobalContextTest):
         df.write_ext.elastic(
             host='elastic.docker',
             port=9200,
-            es_index='sparkle_test',
+            es_index='sparkly_test',
             es_type='test_writer',
             mode='overwrite',
             options={
@@ -105,12 +105,12 @@ class TestWriteElastic(SparkleGlobalContextTest):
         )
 
         df = self.hc.read_ext.by_url(
-            'elastic://elastic.docker/sparkle_test/test_writer?es.read.metadata=false'
+            'elastic://elastic.docker/sparkly_test/test_writer?es.read.metadata=false'
         )
         self.assertDataFrameEqual(df, TEST_DATA)
 
 
-class TestWriteMysql(SparkleGlobalContextTest):
+class TestWriteMysql(SparklyGlobalContextTest):
     context = _TestContext
 
     fixtures = [
@@ -129,7 +129,7 @@ class TestWriteMysql(SparkleGlobalContextTest):
         df.write_ext.mysql(
             host='mysql.docker',
             port=3306,
-            database='sparkle_test',
+            database='sparkly_test',
             table='test_writer',
             mode='overwrite',
             options={'user': 'root', 'password': ''}
@@ -137,7 +137,7 @@ class TestWriteMysql(SparkleGlobalContextTest):
 
         df = self.hc.read_ext.by_url(
             'mysql://mysql.docker/'
-            'sparkle_test/test_writer'
+            'sparkly_test/test_writer'
             '?user=root&password='
         )
         self.assertDataFrameEqual(df, TEST_DATA)

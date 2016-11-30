@@ -3,7 +3,7 @@ services:
   dev-spark-1.6:
     build: .
     volumes:
-      - .:/opt/sparkle/
+      - .:/opt/sparkly/
     depends_on:
       - cassandra.docker
       - elastic.docker
@@ -34,6 +34,6 @@ services:
   mysql.docker:
     image: mysql
     environment:
-      MYSQL_DATABASE: sparkle_test
+      MYSQL_DATABASE: sparkly_test
       MYSQL_USER: root
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"

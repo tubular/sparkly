@@ -22,8 +22,8 @@ except ImportError:
     except:
         pass
 
-from sparkle.exceptions import FixtureError
-from sparkle import SparkleContext
+from sparkly.exceptions import FixtureError
+from sparkly import SparklyContext
 
 
 logger = logging.getLogger()
@@ -32,30 +32,30 @@ logger = logging.getLogger()
 _test_context_cache = None
 
 
-class SparkleTest(TestCase):
+class SparklyTest(TestCase):
     """Base test for spark scrip tests.
 
     Initializes and shuts down Context specified in `context` param.
 
     Example:
 
-        >>> class MyTestCase(SparkleTest):
+        >>> class MyTestCase(SparklyTest):
         ...     def test(self):
         ...         self.assertDataFrameEqual(
         ...              self.hc.sql('SELECT 1 as one').collect(),
         ...              [{'one': 1}],
         ...         )
     """
-    context = SparkleContext
+    context = SparklyContext
     class_fixtures = []
     fixtures = []
     maxDiff = None
 
     @classmethod
     def setUpClass(cls):
-        super(SparkleTest, cls).setUpClass()
+        super(SparklyTest, cls).setUpClass()
 
-        # In case if project has a mix of SparkleTest and SparkleGlobalContextTest-based tests
+        # In case if project has a mix of SparklyTest and SparklyGlobalContextTest-based tests
         global _test_context_cache
         if _test_context_cache:
             logger.info('Found a global context, stopping it %r', _test_context_cache)
@@ -70,7 +70,7 @@ class SparkleTest(TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.hc._sc.stop()
-        super(SparkleTest, cls).tearDownClass()
+        super(SparklyTest, cls).tearDownClass()
 
         try:
             shutil.rmtree('metastore_db')
@@ -114,7 +114,7 @@ class SparkleTest(TestCase):
             self.assertCountEqual(actual_data, expected_data)
 
 
-class SparkleGlobalContextTest(SparkleTest):
+class SparklyGlobalContextTest(SparklyTest):
     """Base test case that keeps a single instance for the given context class across all tests.
 
     Integration tests are slow, especially when you have to start/stop Spark context
@@ -183,7 +183,7 @@ class CassandraFixture(Fixture):
 
     Examples:
 
-           >>> class MyTestCase(SparkleTest):
+           >>> class MyTestCase(SparklyTest):
            ...      fixtures = [
            ...          CassandraFixture(
            ...              'cassandra.host',
@@ -193,7 +193,7 @@ class CassandraFixture(Fixture):
            ...      ]
            ...
 
-           >>> class MyTestCase(SparkleTest):
+           >>> class MyTestCase(SparklyTest):
            ...      data = CassandraFixture(
            ...          'cassandra.host',
            ...          absolute_path(__file__, 'resources', 'setup.cql'),
@@ -239,7 +239,7 @@ class ElasticFixture(Fixture):
 
     Examples:
 
-           >>> class MyTestCase(SparkleTest):
+           >>> class MyTestCase(SparklyTest):
            ...      fixtures = [
            ...          ElasticFixture(
            ...              'elastic.host',
@@ -318,7 +318,7 @@ class MysqlFixture(Fixture):
 
     Examples:
 
-           >>> class MyTestCase(SparkleTest):
+           >>> class MyTestCase(SparklyTest):
            ...      fixtures = [MysqlFixture('mysql.host', 'user', 'password', '/path/to/data.sql')]
            ...      def test(self):
            ...          pass

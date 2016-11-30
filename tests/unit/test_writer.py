@@ -7,15 +7,15 @@ except ImportError:
 import pytest
 from pyspark.sql import DataFrame
 
-import sparkle
-from sparkle.writer import SparkleWriter
+import sparkly
+from sparkly.writer import SparklyWriter
 
 
 class TestWriteByUrl(unittest.TestCase):
     def setUp(self):
         self.df = mock.Mock(spec=DataFrame)
-        self.df.sql_ctx = mock.Mock(spec=sparkle.SparkleContext)
-        self.write_ext = SparkleWriter(self.df)
+        self.df.sql_ctx = mock.Mock(spec=sparkly.SparklyContext)
+        self.write_ext = SparklyWriter(self.df)
 
     def test_parquet_s3(self):
         self.write_ext.by_url(

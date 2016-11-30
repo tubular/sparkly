@@ -3,15 +3,15 @@ try:
 except ImportError:
     from urlparse import urlparse, parse_qsl
 
-from sparkle import schema_parser
+from sparkly import schema_parser
 
 
-class SparkleReader(object):
+class SparklyReader(object):
     """A set of tools to create DataFrames from the external storages.
 
     Note:
         This is a private class to the library. You should not use it directly.
-        The instance of the class is available under `SparkleContext` via `read_ext` attribute.
+        The instance of the class is available under `SparklyContext` via `read_ext` attribute.
     """
     def __init__(self, hc):
         self._hc = hc

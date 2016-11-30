@@ -1,13 +1,13 @@
-Sparkle Context
+Sparkly Context
 ---------------
 
-About Sparkle Context
+About Sparkly Context
 ^^^^^^^^^^^^^^^^^^^^^
 
-``SparkleContext`` class is the main class of the Sparkle library. It encompasses all of this library's functionality.
+``SparklyContext`` class is the main class of the Sparkly library. It encompasses all of this library's functionality.
 Most of times you want to subclass it to define the various options you desire through class attributes.
 
-Sparkle context have links to other extras of the lib:
+Sparkly context have links to other extras of the lib:
 
 ================ ================================
      Attribute    Link to the doc
@@ -35,8 +35,8 @@ We prefer to define Spark options declaratively rather than using getter/setters
 
 .. code-block:: python
 
-    from sparkle import SparkleContext
-    class OwnSparkleContext(SparkleContext):
+    from sparkly import SparklyContext
+    class OwnSparklyContext(SparklyContext):
         options = {
             # Increasing default amount of partitions for shuffling.
             'spark.sql.shuffle.partitions': 1000,
@@ -47,7 +47,7 @@ We prefer to define Spark options declaratively rather than using getter/setters
         }
 
     # you can also overwrite or add some options at initialisation time.
-    cnx = OwnSparkleContext({ ...initialize-time options... })
+    cnx = OwnSparklyContext({ ...initialize-time options... })
 
     # you still can update options later if you need.
     cnx.setConf('key', 'value')
@@ -64,15 +64,15 @@ your tables.
 
 .. code-block:: python
 
-    from sparkle import SparkleContext
-    class OwnSparkleContext(SparkleContext):
+    from sparkly import SparklyContext
+    class OwnSparklyContext(SparklyContext):
         # specifying spark dependencies.
         packages = [
             'datastax:spark-cassandra-connector:1.5.0-M3-s_2.10',
         ]
 
     # dependencies will be installed in context initialization.
-    cnx = OwnSparkleContext()
+    cnx = OwnSparklyContext()
 
     # Here is how you now can obtain a Dataframe representing yout cassandra table.
     df = cnx.read_ext.by_url('cassandra://<cassandra-host>'
@@ -90,12 +90,12 @@ udfs you wish to use using verbose Hive queries.
 .. code-block:: python
 
     from pyspark.sql.types import IntegerType
-    from sparkle import SparkleContext
+    from sparkly import SparklyContext
 
     def my_own_udf(item):
         return len(item)
 
-    class OwnSparkleContext(SparkleContext):
+    class OwnSparklyContext(SparklyContext):
         # specifying spark dependencies.
         jars = [
             '/path/to/brickhouse.jar'
@@ -106,11 +106,11 @@ udfs you wish to use using verbose Hive queries.
         }
 
     # dependencies will be installed in context initialization.
-    cnx = OwnSparkleContext()
+    cnx = OwnSparklyContext()
 
     cnx.sql('SELECT collect_max(amount) FROM my_data GROUP BY ...')
     cnx.sql('SELECT my_udf(amount) FROM my_data')
 
 
-.. automodule:: sparkle.context
+.. automodule:: sparkly.context
     :members:

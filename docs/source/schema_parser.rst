@@ -16,19 +16,19 @@ Init Dataframe from data
 **Why**: Sometimes you know the schema of the data,
 but format is not recognized by spark. Then you can
 read it as raw python data and apply the known schema to it.
-Sparkle utility will make schema definition easy and not hardcoded.
+Sparkly utility will make schema definition easy and not hardcoded.
 
 **For example**: You have custom format file without any type information, but
 types could be are easily derived.
 
 .. code-block:: python
 
-    from sparkle.schema_parser import generate_structure_type, parse_schema
+    from sparkly.schema_parser import generate_structure_type, parse_schema
 
     data = ... parse data from file ...
     schema_as_string = 'name:string|age:int'  # Note: you can get this from command line, for example
     spark_schema = generate_structure_type(parse_schema(schema_as_string))
     df = cnx.createDataframe(data, spark_schema)
 
-.. automodule:: sparkle.schema_parser
+.. automodule:: sparkly.schema_parser
     :members:

@@ -1,2 +1,2 @@
-{ "index" : { "_index" : "sparkle_test_fixture", "_type" : "test", "_id": "1" } }
+{ "index" : { "_index" : "sparkly_test_fixture", "_type" : "test", "_id": "1" } }
 { "name" : "John", "age": 56}

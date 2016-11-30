@@ -1,7 +1,7 @@
 Generic Utils
 =============
 
-These are generic utils used across the Sparkle library.
+These are generic utils used across the Sparkly library.
 
-.. automodule:: sparkle.utils
+.. automodule:: sparkly.utils
     :members:
