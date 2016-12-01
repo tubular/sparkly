@@ -111,7 +111,10 @@ class SparklyTest(TestCase):
         if ordered:
             self.assertEqual(actual_data, expected_data)
         else:
-            self.assertCountEqual(actual_data, expected_data)
+            try:
+                self.assertCountEqual(actual_data, expected_data)
+            except AttributeError:
+                self.assertItemsEqual(actual_data, expected_data)
 
 
 class SparklyGlobalContextTest(SparklyTest):
