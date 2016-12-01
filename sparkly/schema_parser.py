@@ -3,24 +3,43 @@ from collections import OrderedDict
 from pyspark.sql.types import (StructType, StringType, LongType, IntegerType,
                                FloatType, BooleanType, MapType, ArrayType)
 
-from sparkle.exceptions import UnsupportedDataType
+from sparkly.exceptions import UnsupportedDataType
 
 
-def generate_structure_type(fields_and_types):
+def parse(schema):
+    """Converts string to Sparke schema definition.
+
+    Usages:
+        >>> parse('struct[a:struct[a:string]]').simpleString()
+        'struct<a:struct<a:string>>'
+
+    Args:
+        schema (str): Schema definition as string.
+
+    Returns:
+        StructType
+
+    Raises:
+        UnsupportedDataType: In case of unsupported data type.
+    """
+    return _generate_structure_type(_parse_schema(schema))
+
+
+def _generate_structure_type(fields_and_types):
     """Generate a StructType from the dict of fields & types.
 
     Schema definition supports basic types: string, integer, long, float, boolean.
     And complex types in any combinations: dict, struct, list.
 
     Usages:
-        >>> generate_structure_type({'field_a': 'long'}).simpleString()
+        >>> _generate_structure_type({'field_a': 'long'}).simpleString()
         'struct<field_a:bigint>'
-        >>> generate_structure_type({'field_a': 'dict[string,long]'}).simpleString()
+        >>> _generate_structure_type({'field_a': 'dict[string,long]'}).simpleString()
         'struct<field_a:map<string,bigint>>'
-        >>> generate_structure_type({'field_a': 'loooong'})
+        >>> _generate_structure_type({'field_a': 'loooong'})
         Traceback (most recent call last):
         ...
-        sparkle.exceptions.UnsupportedDataType: Unsupported type field_a for field loooong
+        sparkly.exceptions.UnsupportedDataType: Unsupported type field_a for field loooong
 
     Args:
         fields_and_types (dict[str, str]): Field - type associations.
@@ -43,7 +62,7 @@ def generate_structure_type(fields_and_types):
     return struct
 
 
-def parse_schema(schema):
+def _parse_schema(schema):
     """Converts schema string to dict: field_name -> type definition string.
 
     Note:
@@ -118,7 +137,7 @@ def _process_type(field_type):
         >>> _process_type('map[string,long]')
         Traceback (most recent call last):
         ...
-        sparkle.exceptions.UnsupportedDataType: Cannot parse type from string: "map[string,long]"
+        sparkly.exceptions.UnsupportedDataType: Cannot parse type from string: "map[string,long]"
     """
     if field_type in TYPES:
         return TYPES[field_type]()

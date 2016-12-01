@@ -1,12 +1,10 @@
-CREATE KEYSPACE sparkle_test WITH replication =
-{'class': 'SimpleStrategy', 'replication_factor': '1'};
+DROP KEYSPACE IF EXISTS sparkly_test;
 
-CREATE TABLE sparkle_test.test_writer (
-    video_uid text,
-    account_uid text,
+CREATE KEYSPACE sparkly_test WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'};
+
+CREATE TABLE sparkly_test.test_writer (
+    uid text,
     title text,
-    description text,
     views bigint,
-    published text,
-    PRIMARY KEY (video_uid)
+    PRIMARY KEY (uid)
 );

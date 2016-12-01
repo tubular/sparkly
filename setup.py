@@ -1,5 +1,3 @@
-""" Tubular Sparkle """
-
 from codecs import open
 import os
 import re
@@ -19,18 +17,18 @@ with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='tubular-sparkle',
+    name='sparkly',
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.5.0',
+    version='1.0.0',
 
     description='Helpers & syntax sugar for PySpark.',
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://github.com/tubular/tbcode/pkg-sparkle',
+    url='https://github.com/Tubular/sparkly',
 
     # Author details
     author='Tubular Engineering',
@@ -55,11 +53,11 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
     ],
 
     # What does your project relate to?
-    keywords='sparkle',
+    keywords='sparkly spark pyspark',
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
@@ -71,4 +69,7 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=reqs,
+    extras_require={
+        'test': ['cassandra-driver>=3.7,<3.8', 'PyMySQL>=0.7,<0.8'],
+    },
 )
