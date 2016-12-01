@@ -282,7 +282,7 @@ class SparklyWriter(object):
         df.write.save(
             path=parsed_url.path,
             format='parquet',
-            **parsed_qs,
+            **parsed_qs
         )
 
 

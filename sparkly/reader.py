@@ -285,7 +285,7 @@ class SparklyReader(object):
         df = self._hc.read.load(
             path=parsed_url.path,
             format=parsed_url.scheme,
-            **parsed_qs,
+            **parsed_qs
         )
 
         if parallelism:
