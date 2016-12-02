@@ -63,5 +63,5 @@ There are couple of databases supported in Sparkly:
         ]
         ...
 
-.. automodule:: sparkly.test
+.. automodule:: sparkly.testing
     :members:
