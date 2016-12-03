@@ -21,7 +21,7 @@ A brief tour on Sparkly features by example:
       }
 
 
-   ctx = CustomSparkContext()
+   ctx = CustomSparklyContext()
 
    # Operate with easily interchangable URL-like data source definitions,
    # instead of untidy default interface:
@@ -49,7 +49,7 @@ A brief tour on Sparkly features by example:
       def test_job_works_with_mysql(self):
          df = self.hc.read_ext('mysql://<my-testing-host>/<test-db>/<test-table>?user=<test-usre>&password=<test-password>')
          res_df = my_shiny_script(df)
-         self.assertDataframeEqual(
+         self.assertDataFrameEqual(
             res_df,
             [('DataA', 'DataB', 'DataC')],
             ['fieldA', 'fieldB', 'fieldC'],

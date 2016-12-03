@@ -22,7 +22,7 @@ There are two main testing classes in Sparkly:
         context = SparklyContext
         def test(self):
             df = self.hc.read_ext.by_url(...)
-            self.assertDataframeEqual(
+            self.assertDataFrameEqual(
                 df, [('test_data', 1)], ['name', 'number']
             )
 
