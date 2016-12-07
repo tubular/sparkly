@@ -4,6 +4,10 @@ import sys
 import os
 import shutil
 from unittest import TestCase
+
+from sparkly.exceptions import FixtureError
+from sparkly import SparklyContext
+
 if sys.version_info.major == 3:
     from http.client import HTTPConnection
 else:
@@ -21,9 +25,6 @@ except ImportError:
         import mysql.connector as connector
     except:
         pass
-
-from sparkly.exceptions import FixtureError
-from sparkly import SparklyContext
 
 
 logger = logging.getLogger()
@@ -116,6 +117,16 @@ class SparklyTest(TestCase):
             except AttributeError:
                 self.assertItemsEqual(actual_data, expected_data)
 
+    def assertRDDEqual(self, actual_rdd, expected_data, ordered=False):
+        actual_data = actual_rdd.collect() if hasattr(actual_rdd, 'collect') else actual_rdd
+        if ordered:
+            self.assertEqual(actual_data, expected_data)
+        else:
+            try:
+                self.assertCountEqual(actual_data, expected_data)
+            except AttributeError:
+                self.assertItemsEqual(actual_data, expected_data)
+
 
 class SparklyGlobalContextTest(SparklyTest):
     """Base test case that keeps a single instance for the given context class across all tests.
@@ -154,7 +165,8 @@ class SparklyGlobalContextTest(SparklyTest):
 class Fixture(object):
     """Base class for fixtures.
 
-    Fixture is a term borrowed from Django tests, it's data loaded into database for integration testing.
+    Fixture is a term borrowed from Django tests,
+    it's data loaded into database for integration testing.
     """
 
     def setup_data(self):
@@ -322,7 +334,9 @@ class MysqlFixture(Fixture):
     Examples:
 
            >>> class MyTestCase(SparklyTest):
-           ...      fixtures = [MysqlFixture('mysql.host', 'user', 'password', '/path/to/data.sql')]
+           ...      fixtures = [
+           ...          MysqlFixture('mysql.host', 'user', 'password', '/path/to/data.sql')
+           ...      ]
            ...      def test(self):
            ...          pass
            ...

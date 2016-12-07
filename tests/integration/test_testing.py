@@ -1,5 +1,3 @@
-import pytest
-
 from sparkly.testing import (
     CassandraFixture,
     ElasticFixture,
@@ -8,6 +6,42 @@ from sparkly.testing import (
 )
 from sparkly.utils import absolute_path
 from tests.integration.base import _TestContext
+
+
+class TestAssertions(SparklyGlobalContextTest):
+    context = _TestContext
+
+    def test_assert_dataframe_equal(self):
+        df = self.hc.createDataFrame([('Alice', 1),
+                                      ('Kelly', 1),
+                                      ('BigBoss', 999)],
+                                     ['name', 'age'])
+        self.assertDataFrameEqual(
+            df,
+            [{'name': 'Alice', 'age': 1},
+             {'name': 'BigBoss', 'age': 999},
+             {'name': 'Kelly', 'age': 1},
+             ],
+            ordered=False,
+        )
+
+        with self.assertRaises(AssertionError):
+            self.assertDataFrameEqual(
+                df,
+                [{'name': 'Alice', 'age': 1},
+                 {'name': 'BigBoss', 'age': 999},
+                 {'name': 'Kelly', 'age': 1},
+                 ],
+                ordered=True,
+            )
+
+    def test_assert_rdd_equal(self):
+        rdd = self.hc._sc.parallelize([1, 2, 3, 4, 5])
+
+        self.assertRDDEqual(rdd, [1, 2, 3, 4, 5])
+        self.assertRDDEqual(rdd, [1, 2, 3, 4, 5], ordered=True)
+        with self.assertRaises(AssertionError):
+            self.assertRDDEqual(rdd, [3, 4, 5, 1, 2], ordered=True)
 
 
 class TestCassandraFixtures(SparklyGlobalContextTest):

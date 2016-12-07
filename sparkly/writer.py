@@ -3,7 +3,9 @@ try:
 except ImportError:
     from urlparse import urlparse, parse_qsl
 
+from kafka import KafkaProducer
 from pyspark.sql import DataFrame
+from pyspark.rdd import RDD
 
 
 class SparklyWriter(object):
@@ -286,9 +288,48 @@ class SparklyWriter(object):
         )
 
 
+class SparklyRDDWriter(object):
+
+    def __init__(self, rdd):
+        self._rdd = rdd
+
+    def kafka(self, brokers, topic, key_serializer, value_serializer):
+        """Writes rdd to kafka.
+
+        RDD items should be two-element tuples, containing key and value.
+
+        Args:
+            brokers (list[str]): List of kafka brokers.
+            topic (str): Topic to write to.
+            key_serializer (function): Function to serialize key.
+            value_serializer (function): Function to serialize value.
+        """
+
+        def _map(messages):
+            producer = KafkaProducer(
+                bootstrap_servers=brokers,
+                key_serializer=key_serializer,
+                value_serializer=value_serializer,
+            )
+            for message in messages:
+                key, val = message
+                producer.send(topic, key=key, value=val)
+
+            producer.flush()
+            producer.close()
+
+            return messages
+
+        self._rdd.mapPartitions(_map).count()
+
+
 def attach_writer_to_dataframe():
-    """A tiny amount of magic to attach `SparklyWriter` to a `DataFrame`."""
+    """A tiny amount of magic to attach write extensions."""
     def write_ext(self):
         return SparklyWriter(self)
 
+    def write_rdd_ext(self):
+        return SparklyRDDWriter(self)
+
     DataFrame.write_ext = property(write_ext)
+    RDD.write_ext = property(write_rdd_ext)

@@ -1,3 +1,9 @@
+## 1.1.0
+* Kafka reader and writer.
+
+## 1.0.0
+* Initial open-source release.
+
 ## 0.5.0
 * Add managed_table sugar for hql utils.
 

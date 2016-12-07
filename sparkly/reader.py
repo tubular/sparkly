@@ -3,6 +3,8 @@ try:
 except ImportError:
     from urlparse import urlparse, parse_qsl
 
+from pyspark.streaming.kafka import KafkaUtils, OffsetRange
+
 from sparkly import schema_parser
 
 
@@ -213,6 +215,33 @@ class SparklyReader(object):
         }
 
         return self._basic_read(reader_options, options, parallelism)
+
+    def kafka(self, brokers, offset_ranges, key_deserializer, value_deserializer):
+        """Creates dataframe from specified set of messages from Kafka topic.
+
+        Args:
+            hc (HiveContext):
+            brokers (list): Additional kafka parameters, see KafkaUtils.createRDD docs.
+            offset_ranges (list[(str, int, int, int)]): List of partition ranges
+                [(topic, partition, start_offset, end_offset)].
+            key_deserializer (function): Function used to deserialize the key.
+            value_deserializer (function): Function used to deserialize the value.
+
+        Returns:
+            pyspark.rdd.RDD
+        """
+        assert self._hc.has_package('org.apache.spark:spark-streaming-kafka')
+
+        kafka_params = {
+            'metadata.broker.list': ','.join(brokers)
+        }
+        offset_ranges = [OffsetRange(topic, partition, start_offset, end_offset)
+                         for topic, partition, start_offset, end_offset in offset_ranges]
+        rdd = KafkaUtils.createRDD(self._hc._sc, kafka_params, offset_ranges,
+                                   keyDecoder=key_deserializer,
+                                   valueDecoder=value_deserializer,
+                                   )
+        return rdd
 
     def _basic_read(self, reader_options, additional_options, parallelism):
         reader_options.update(additional_options or {})
