@@ -14,10 +14,15 @@
 # limitations under the License.
 #
 
+from sparkly.exceptions import InvalidArgumentError
+from sparkly.utils import kafka_get_topics_offsets
+
 try:
     from urllib.parse import urlparse, parse_qsl
 except ImportError:
     from urlparse import urlparse, parse_qsl
+
+from pyspark.streaming.kafka import KafkaUtils, OffsetRange
 
 from sparkly import schema_parser
 
@@ -229,6 +234,76 @@ class SparklyReader(object):
         }
 
         return self._basic_read(reader_options, options, parallelism)
+
+    def kafka(self,
+              host,
+              topic,
+              offset_ranges=None,
+              key_deserializer=None,
+              value_deserializer=None,
+              schema=None,
+              port=9092,
+              parallelism=None,
+              options=None):
+        """Creates dataframe from specified set of messages from Kafka topic.
+
+        Defining ranges:
+            - If `offset_ranges` is specified it defines which specific range to read.
+            - If `offset_ranges` is omitted it will auto-discover it's partitions.
+
+        The `schema` parameter, if specified, should contain two top level fields:
+        `key` and `value`.
+
+        Parameters `key_deserializer` and `value_deserializer` are callables
+        which get's bytes as input and should return python structures as output.
+
+        Args:
+            host (str): Kafka host.
+            topic (str|None): Kafka topic to read from.
+            offset_ranges (list[(int, int, int)]|None): List of partition ranges
+                [(partition, start_offset, end_offset)].
+            key_deserializer (function): Function used to deserialize the key.
+            value_deserializer (function): Function used to deserialize the value.
+            schema (pyspark.sql.types.StructType): Schema to apply to create a Dataframe.
+            port (int): Kafka port.
+            parallelism (int|None): The max number of parallel tasks that could be executed
+                during the read stage (see :ref:`controlling-the-load`).
+            options (dict|None): Additional kafka parameters, see KafkaUtils.createRDD docs.
+
+        Returns:
+            pyspark.sql.DataFrame
+
+        Raises:
+            InvalidArgumentError
+        """
+        assert self._hc.has_package('org.apache.spark:spark-streaming-kafka')
+
+        if not key_deserializer or not value_deserializer or not schema:
+            raise InvalidArgumentError('You should specify all of parameters:'
+                                       '`key_deserializer`, `value_deserializer` and `schema`')
+
+        kafka_params = {
+            'metadata.broker.list': '{}:{}'.format(host, port),
+        }
+
+        if options:
+            kafka_params.update(options)
+
+        if not offset_ranges:
+            offset_ranges = kafka_get_topics_offsets(host, topic, port)
+
+        offset_ranges = [OffsetRange(topic, partition, start_offset, end_offset)
+                         for partition, start_offset, end_offset in offset_ranges]
+
+        rdd = KafkaUtils.createRDD(self._hc._sc, kafka_params, offset_ranges or [],
+                                   keyDecoder=key_deserializer,
+                                   valueDecoder=value_deserializer,
+                                   )
+
+        if parallelism:
+            rdd = rdd.coalesce(parallelism)
+
+        return self._hc.createDataFrame(rdd, schema=schema)
 
     def _basic_read(self, reader_options, additional_options, parallelism):
         reader_options.update(additional_options or {})

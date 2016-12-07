@@ -25,6 +25,7 @@ class _TestContext(SparklyContext):
         'com.databricks:spark-csv_2.10:1.4.0',
         'datastax:spark-cassandra-connector:1.6.1-s_2.10',
         'org.elasticsearch:elasticsearch-spark_2.10:2.3.0',
+        'org.apache.spark:spark-streaming-kafka_2.10:1.6.1',
     ]
 
     jars = [

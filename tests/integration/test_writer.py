@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+import json
+import uuid
 from shutil import rmtree
 from tempfile import mkdtemp
 
@@ -25,6 +27,11 @@ from sparkly.testing import (
     MysqlFixture,
 )
 from tests.integration.base import _TestContext
+
+try:
+    from kafka import KafkaConsumer
+except ImportError:
+    pass
 
 
 TEST_DATA = [
@@ -157,3 +164,38 @@ class TestWriteMysql(SparklyGlobalContextTest):
             '?user=root&password='
         )
         self.assertDataFrameEqual(df, TEST_DATA)
+
+
+class TestWriteKafka(SparklyGlobalContextTest):
+    context = _TestContext
+
+    def setUp(self):
+        self.json_decoder = lambda item: json.loads(item.decode('utf-8'))
+        self.json_encoder = lambda item: json.dumps(item).encode('utf-8')
+        self.topic = 'test.topic.write.kafka.{}'.format(uuid.uuid4().hex[:10])
+        self.fixture_path = absolute_path(__file__, 'resources', 'test_write', 'kafka_setup.json')
+        self.expected_data = self.hc.read.json(self.fixture_path)
+
+    def test_write_kafka_dataframe(self):
+        self.expected_data.write_ext.kafka(
+            'kafka.docker',
+            self.topic,
+            key_serializer=self.json_encoder,
+            value_serializer=self.json_encoder,
+        )
+
+        consumer = KafkaConsumer(
+            self.topic,
+            bootstrap_servers='kafka.docker:9092',
+            key_deserializer=lambda item: json.loads(item.decode('utf-8')),
+            value_deserializer=lambda item: json.loads(item.decode('utf-8')),
+            auto_offset_reset='earliest',
+        )
+
+        actual_data = []
+        for i in range(self.expected_data.count()):
+            message = next(consumer)
+            data = {'key': message.key, 'value': message.value}
+            actual_data.append(data)
+
+        self.assertDataFrameEqual(self.expected_data, actual_data)

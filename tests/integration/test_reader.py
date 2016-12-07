@@ -13,14 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import json
+import uuid
 
+from sparkly.exceptions import InvalidArgumentError
 from sparkly.testing import (
     SparklyGlobalContextTest,
     CassandraFixture,
     MysqlFixture,
     ElasticFixture,
-)
-from sparkly.utils import absolute_path
+    KafkaFixture)
+from sparkly.utils import absolute_path, kafka_get_topics_offsets
 from tests.integration.base import _TestContext
 
 
@@ -192,3 +195,80 @@ class SparklyReaderMySQLTest(SparklyGlobalContextTest):
             {'id': 2, 'name': 'john', 'surname': 'po', 'age': 222},
             {'id': 3, 'name': 'john', 'surname': 'ku', 'age': 333},
         ])
+
+
+class TestReaderKafka(SparklyGlobalContextTest):
+    context = _TestContext
+
+    def setUp(self):
+        self.json_decoder = lambda item: json.loads(item.decode('utf-8'))
+        self.json_encoder = lambda item: json.dumps(item).encode('utf-8')
+        self.topic = 'test.topic.write.kafka.{}'.format(uuid.uuid4().hex[:10])
+        self.fixture_path = absolute_path(__file__, 'resources', 'test_read', 'kafka_setup.json')
+        self.fixture = KafkaFixture(
+            'kafka.docker',
+            topic=self.topic,
+            key_serializer=self.json_encoder,
+            value_serializer=self.json_encoder,
+            data=self.fixture_path,
+        )
+        self.fixture.setup_data()
+        self.expected_data_df = self.hc.read.json(self.fixture_path)
+        self.expected_data = [item.asDict(recursive=True)
+                              for item in self.expected_data_df.collect()]
+
+    def test_read_by_topic(self):
+        df = self.hc.read_ext.kafka(
+            'kafka.docker',
+            topic=self.topic,
+            key_deserializer=self.json_decoder,
+            value_deserializer=self.json_decoder,
+            schema=self.expected_data_df.schema,
+        )
+        self.assertDataFrameEqual(
+            df,
+            self.expected_data,
+        )
+
+    def test_read_by_offsets(self):
+        offsets = kafka_get_topics_offsets('kafka.docker', self.topic)
+        df = self.hc.read_ext.kafka(
+            'kafka.docker',
+            topic=self.topic,
+            offset_ranges=offsets,
+            key_deserializer=self.json_decoder,
+            value_deserializer=self.json_decoder,
+            schema=self.expected_data_df.schema,
+        )
+
+        self.assertDataFrameEqual(df, self.expected_data)
+
+        self.fixture.setup_data()
+
+        offsets = kafka_get_topics_offsets('kafka.docker', self.topic)
+        df = self.hc.read_ext.kafka(
+            'kafka.docker',
+            topic=self.topic,
+            offset_ranges=offsets,
+            key_deserializer=self.json_decoder,
+            value_deserializer=self.json_decoder,
+            schema=self.expected_data_df.schema,
+        )
+
+        self.assertDataFrameEqual(df, self.expected_data * 2)
+
+    def test_argument_errors(self):
+        with self.assertRaises(InvalidArgumentError):
+            self.hc.read_ext.kafka(
+                'kafka.docker',
+                topic=self.topic,
+                key_deserializer=self.json_decoder,
+                value_deserializer=self.json_decoder,
+            )
+
+        with self.assertRaises(InvalidArgumentError):
+            self.hc.read_ext.kafka(
+                'kafka.docker',
+                topic=self.topic,
+                schema=self.expected_data_df.schema,
+            )
