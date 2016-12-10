@@ -293,7 +293,13 @@ class SparklyRDDWriter(object):
     def __init__(self, rdd):
         self._rdd = rdd
 
-    def kafka(self, brokers, topic, key_serializer, value_serializer):
+    def kafka(self,
+              brokers,
+              topic,
+              key_serializer,
+              value_serializer,
+              parallelism=None,
+              options=None):
         """Writes rdd to kafka.
 
         RDD items should be two-element tuples, containing key and value.
@@ -303,6 +309,9 @@ class SparklyRDDWriter(object):
             topic (str): Topic to write to.
             key_serializer (function): Function to serialize key.
             value_serializer (function): Function to serialize value.
+            parallelism (int|None): The max number of parallel tasks that could be executed
+                during the write stage (see :ref:`controlling-the-load`).
+            options (dict|None): Additional options.
         """
 
         def _map(messages):
@@ -320,7 +329,11 @@ class SparklyRDDWriter(object):
 
             return messages
 
-        self._rdd.mapPartitions(_map).count()
+        rdd = self._rdd
+        if parallelism:
+            rdd = rdd.coalesce(parallelism)
+
+        rdd.mapPartitions(_map).count()
 
 
 def attach_writer_to_dataframe():

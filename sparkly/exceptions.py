@@ -10,3 +10,7 @@ class UnsupportedDataType(SparklyException):
 class FixtureError(SparklyException):
     """Happen when testing data setup or teardown fails."""
     pass
+
+
+class InvalidArgumentError(SparklyException):
+    """Happen when invalide parameters passed to the function."""

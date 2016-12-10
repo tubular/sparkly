@@ -1,3 +1,6 @@
+from sparkly.exceptions import InvalidArgumentError
+from sparkly.utils import kafka_get_topics_offsets
+
 try:
     from urllib.parse import urlparse, parse_qsl
 except ImportError:
@@ -216,31 +219,59 @@ class SparklyReader(object):
 
         return self._basic_read(reader_options, options, parallelism)
 
-    def kafka(self, brokers, offset_ranges, key_deserializer, value_deserializer):
+    def kafka(self,
+              brokers,
+              topics=None,
+              offset_ranges=None,
+              key_deserializer=None,
+              value_deserializer=None,
+              parallelism=None,
+              options=None):
         """Creates dataframe from specified set of messages from Kafka topic.
 
+        If offset ranges parameter is omitted it will auto-discover.
+
         Args:
-            hc (HiveContext):
-            brokers (list): Additional kafka parameters, see KafkaUtils.createRDD docs.
+            brokers (list): List of kafka brokers.
+            topics (list[str]): List of kafka topics to read from.
             offset_ranges (list[(str, int, int, int)]): List of partition ranges
                 [(topic, partition, start_offset, end_offset)].
             key_deserializer (function): Function used to deserialize the key.
             value_deserializer (function): Function used to deserialize the value.
+            parallelism (int|None): The max number of parallel tasks that could be executed
+                during the read stage (see :ref:`controlling-the-load`).
+            options (dict|None): Additional kafka parameters, see KafkaUtils.createRDD docs.
 
         Returns:
             pyspark.rdd.RDD
         """
         assert self._hc.has_package('org.apache.spark:spark-streaming-kafka')
 
+        if (topics and offset_ranges) or (not topics and not offset_ranges):
+            raise InvalidArgumentError('You should specify either `topics` or '
+                                       '`offset_ranges` not both, but at least one')
+
         kafka_params = {
             'metadata.broker.list': ','.join(brokers)
         }
+
+        if options:
+            kafka_params.update(options)
+
+        if topics:
+            offset_ranges = kafka_get_topics_offsets(brokers, topics)
+
         offset_ranges = [OffsetRange(topic, partition, start_offset, end_offset)
                          for topic, partition, start_offset, end_offset in offset_ranges]
+
         rdd = KafkaUtils.createRDD(self._hc._sc, kafka_params, offset_ranges,
                                    keyDecoder=key_deserializer,
                                    valueDecoder=value_deserializer,
                                    )
+
+        if parallelism:
+            rdd = rdd.coalesce(parallelism)
+
         return rdd
 
     def _basic_read(self, reader_options, additional_options, parallelism):

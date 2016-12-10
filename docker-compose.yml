@@ -45,6 +45,7 @@ services:
       KAFKA_ADVERTISED_PORT: 9092
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_ZOOKEEPER_CONNECT: zookeeper.docker:2181
+      KAFKA_NUM_PARTITIONS: 3
     depends_on:
       - zookeeper.docker
 

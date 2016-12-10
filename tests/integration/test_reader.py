@@ -1,4 +1,5 @@
-import pytest
+import json
+import uuid
 
 from sparkly.testing import (
     SparklyGlobalContextTest,
@@ -6,7 +7,7 @@ from sparkly.testing import (
     MysqlFixture,
     ElasticFixture,
 )
-from sparkly.utils import absolute_path
+from sparkly.utils import absolute_path, kafka_get_topics_offsets
 from tests.integration.base import _TestContext
 
 
@@ -178,3 +179,70 @@ class SparklyReaderMySQLTest(SparklyGlobalContextTest):
             {'id': 2, 'name': 'john', 'surname': 'po', 'age': 222},
             {'id': 3, 'name': 'john', 'surname': 'ku', 'age': 333},
         ])
+
+
+class TestReaderKafka(SparklyGlobalContextTest):
+    context = _TestContext
+
+    KAFKA_TEST_DATA = [
+        ({'name': 'john'}, {'name': 'john', 'surname': 'smith'}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic'}),
+        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith'}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'smith'}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic'}),
+        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith'}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'smith'}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic'}),
+        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith'}),
+    ]
+
+    def setUp(self):
+        self.json_decoder = lambda item: json.loads(item.decode('utf-8'))
+        self.json_encoder = lambda item: json.dumps(item).encode('utf-8')
+        self.topic = 'test.topic.write.kafka.{}'.format(uuid.uuid4().hex[:10])
+        self.rdd = self.hc._sc.parallelize(self.KAFKA_TEST_DATA)
+        self.rdd.write_ext.kafka(
+            ['kafka.docker:9092'],
+            self.topic,
+            key_serializer=self.json_encoder,
+            value_serializer=self.json_encoder,
+        )
+
+    def test_read_by_topics(self):
+        rdd = self.hc.read_ext.kafka(
+            ['kafka.docker:9092'],
+            topics=[self.topic],
+            key_deserializer=self.json_decoder,
+            value_deserializer=self.json_decoder,
+        )
+
+        self.assertRDDEqual(rdd, self.KAFKA_TEST_DATA)
+
+    def test_read_by_offsets(self):
+        offsets = kafka_get_topics_offsets(['kafka.docker:9092'], [self.topic])
+        rdd = self.hc.read_ext.kafka(
+            ['kafka.docker:9092'],
+            offset_ranges=offsets,
+            key_deserializer=self.json_decoder,
+            value_deserializer=self.json_decoder,
+        )
+
+        self.assertRDDEqual(rdd, self.KAFKA_TEST_DATA)
+
+    def test_read_multiple_topics(self):
+        additional_topic = 'test.topic.write.kafka.{}'.format(uuid.uuid4().hex[:10])
+        self.rdd.write_ext.kafka(
+            ['kafka.docker:9092'],
+            additional_topic,
+            key_serializer=self.json_encoder,
+            value_serializer=self.json_encoder,
+        )
+
+        rdd = self.hc.read_ext.kafka(
+            ['kafka.docker:9092'],
+            topics=[self.topic, additional_topic],
+            key_deserializer=self.json_decoder,
+            value_deserializer=self.json_decoder,
+        )
+
+        self.assertRDDEqual(rdd, self.KAFKA_TEST_DATA * 2)

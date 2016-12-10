@@ -152,6 +152,12 @@ class TestWriteKafka(SparklyGlobalContextTest):
         ({'name': 'john'}, {'name': 'john', 'surname': 'smith'}),
         ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic'}),
         ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith'}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'smith'}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic'}),
+        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith'}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'smith'}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic'}),
+        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith'}),
     ]
 
     def test_write_kafka(self):
@@ -173,7 +179,7 @@ class TestWriteKafka(SparklyGlobalContextTest):
 
         rdd = self.hc.read_ext.kafka(
             ['kafka.docker:9092'],
-            [[topic, 0, 0, 3]],
+            topics=[topic],
             key_deserializer=_json_decoder,
             value_deserializer=_json_decoder,
         )
