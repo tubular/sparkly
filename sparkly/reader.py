@@ -225,11 +225,16 @@ class SparklyReader(object):
               offset_ranges=None,
               key_deserializer=None,
               value_deserializer=None,
+              schema=None,
               parallelism=None,
               options=None):
         """Creates dataframe from specified set of messages from Kafka topic.
 
-        If offset ranges parameter is omitted it will auto-discover.
+        If `offset_ranges` parameter is omitted it will auto-discover.
+        If `schema` parameter is specified the Dataframe with this schema will be returned,
+        else the RDD will be returned.
+        The `schema` parameter, if specified, should contain two top level fields:
+        `key` and `value`.
 
         Args:
             brokers (list): List of kafka brokers.
@@ -238,12 +243,13 @@ class SparklyReader(object):
                 [(topic, partition, start_offset, end_offset)].
             key_deserializer (function): Function used to deserialize the key.
             value_deserializer (function): Function used to deserialize the value.
+            schema (pyspark.sql.types.StructType|None): Schema to apply to create a Dataframe.
             parallelism (int|None): The max number of parallel tasks that could be executed
                 during the read stage (see :ref:`controlling-the-load`).
             options (dict|None): Additional kafka parameters, see KafkaUtils.createRDD docs.
 
         Returns:
-            pyspark.rdd.RDD
+            pyspark.rdd.RDD|pyspark.sql.DataFrame
         """
         assert self._hc.has_package('org.apache.spark:spark-streaming-kafka')
 
@@ -271,6 +277,10 @@ class SparklyReader(object):
 
         if parallelism:
             rdd = rdd.coalesce(parallelism)
+
+        if schema:
+            df = self._hc.createDataFrame(rdd, schema=schema)
+            return df
 
         return rdd
 

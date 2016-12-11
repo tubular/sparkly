@@ -1,6 +1,8 @@
 import json
 import uuid
 
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
+
 from sparkly.testing import (
     SparklyGlobalContextTest,
     CassandraFixture,
@@ -185,15 +187,15 @@ class TestReaderKafka(SparklyGlobalContextTest):
     context = _TestContext
 
     KAFKA_TEST_DATA = [
-        ({'name': 'john'}, {'name': 'john', 'surname': 'smith'}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic'}),
-        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith'}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'smith'}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic'}),
-        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith'}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'smith'}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic'}),
-        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith'}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'smith', 'age': 1}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic', 'age': 2}),
+        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith', 'age': 3}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'smith', 'age': 4}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic', 'age': 5}),
+        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith', 'age': 6}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'smith', 'age': 7}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic', 'age': 8}),
+        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith', 'age': 9}),
     ]
 
     def setUp(self):
@@ -206,6 +208,37 @@ class TestReaderKafka(SparklyGlobalContextTest):
             self.topic,
             key_serializer=self.json_encoder,
             value_serializer=self.json_encoder,
+        )
+
+    def test_read_dataframe(self):
+        df_schema = StructType([
+            StructField('key', StructType([
+                StructField('name', StringType(), True)
+            ])),
+            StructField('value', StructType([
+                StructField('name', StringType(), True),
+                StructField('surname', StringType(), True),
+                StructField('age', IntegerType(), True),
+            ]))
+        ])
+
+        df_data = []
+        for k, v in self.KAFKA_TEST_DATA:
+            df_data.append({
+                'key': k,
+                'value': v,
+            })
+
+        df = self.hc.read_ext.kafka(
+            ['kafka.docker:9092'],
+            topics=[self.topic],
+            key_deserializer=self.json_decoder,
+            value_deserializer=self.json_decoder,
+            schema=df_schema,
+        )
+        self.assertDataFrameEqual(
+            df,
+            df_data,
         )
 
     def test_read_by_topics(self):
