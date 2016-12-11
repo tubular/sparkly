@@ -198,6 +198,35 @@ class SparklyWriter(object):
 
         return self._basic_write(writer_options, options, parallelism, mode)
 
+    def kafka(self,
+              brokers,
+              topic,
+              key_serializer,
+              value_serializer,
+              parallelism=None,
+              options=None):
+        """Writes dataframge to kafka topic.
+
+        Expected schema is:
+          key -> Struct(...)
+          value -> Struct(...)
+
+        Args:
+            brokers (list[str]): List of kafka brokers.
+            topic (str): Topic to write to.
+            key_serializer (function): Function to serialize key.
+            value_serializer (function): Function to serialize value.
+            parallelism (int|None): The max number of parallel tasks that could be executed
+                during the write stage (see :ref:`controlling-the-load`).
+            options (dict|None): Additional options.
+        """
+        def dict_to_tuple(item):
+            as_dict = item.asDict(recursive=True)
+            return as_dict['key'], as_dict['value']
+
+        rdd = self._df.rdd.map(dict_to_tuple)
+        rdd.write_ext.kafka(brokers, topic, key_serializer, value_serializer, parallelism, options)
+
     def _basic_write(self, writer_options, additional_options, parallelism, mode):
         if mode:
             writer_options['mode'] = mode

@@ -3,6 +3,8 @@ import uuid
 from shutil import rmtree
 from tempfile import mkdtemp
 
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
+
 from sparkly.utils import absolute_path
 from sparkly.testing import (
     SparklyGlobalContextTest,
@@ -149,39 +151,69 @@ class TestWriteKafka(SparklyGlobalContextTest):
     context = _TestContext
 
     KAFKA_TEST_DATA = [
-        ({'name': 'john'}, {'name': 'john', 'surname': 'smith'}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic'}),
-        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith'}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'smith'}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic'}),
-        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith'}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'smith'}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic'}),
-        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith'}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'smith', 'age': 1}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic', 'age': 2}),
+        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith', 'age': 3}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'smith', 'age': 4}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic', 'age': 5}),
+        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith', 'age': 6}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'smith', 'age': 7}),
+        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic', 'age': 8}),
+        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith', 'age': 9}),
     ]
 
-    def test_write_kafka(self):
-        topic = 'test.topic.write.kafka.{}'.format(uuid.uuid4().hex[:10])
+    def setUp(self):
+        self.json_decoder = lambda item: json.loads(item.decode('utf-8'))
+        self.json_encoder = lambda item: json.dumps(item).encode('utf-8')
+        self.topic = 'test.topic.write.kafka.{}'.format(uuid.uuid4().hex[:10])
 
-        def _json_decoder(item):
-            return json.loads(item.decode('utf-8'))
-
-        def _json_encoder(item):
-            return json.dumps(item).encode('utf-8')
-
+    def test_write_kafka_dataframe(self):
         rdd = self.hc._sc.parallelize(self.KAFKA_TEST_DATA)
 
-        rdd.write_ext.kafka(
-            ['kafka.docker:9092'], topic,
-            key_serializer=_json_encoder,
-            value_serializer=_json_encoder,
+        df_schema = StructType([
+            StructField('key', StructType([
+                StructField('name', StringType(), True)
+            ])),
+            StructField('value', StructType([
+                StructField('name', StringType(), True),
+                StructField('surname', StringType(), True),
+                StructField('age', IntegerType(), True),
+            ]))
+        ])
+
+        df = self.hc.createDataFrame(rdd, schema=df_schema)
+
+        df.write_ext.kafka(
+            ['kafka.docker:9092'],
+            self.topic,
+            key_serializer=self.json_encoder,
+            value_serializer=self.json_encoder,
         )
 
         rdd = self.hc.read_ext.kafka(
             ['kafka.docker:9092'],
-            topics=[topic],
-            key_deserializer=_json_decoder,
-            value_deserializer=_json_decoder,
+            topics=[self.topic],
+            key_deserializer=self.json_decoder,
+            value_deserializer=self.json_decoder,
+        )
+
+        self.assertRDDEqual(rdd, self.KAFKA_TEST_DATA)
+
+    def test_write_kafka_rdd(self):
+        rdd = self.hc._sc.parallelize(self.KAFKA_TEST_DATA)
+
+        rdd.write_ext.kafka(
+            ['kafka.docker:9092'],
+            self.topic,
+            key_serializer=self.json_encoder,
+            value_serializer=self.json_encoder,
+        )
+
+        rdd = self.hc.read_ext.kafka(
+            ['kafka.docker:9092'],
+            topics=[self.topic],
+            key_deserializer=self.json_decoder,
+            value_deserializer=self.json_decoder,
         )
 
         self.assertRDDEqual(rdd, self.KAFKA_TEST_DATA)
