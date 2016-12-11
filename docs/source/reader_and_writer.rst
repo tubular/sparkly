@@ -135,6 +135,106 @@ Basically, it's just a high level api on top of the native
     df.write_ext.mysql('localhost', 'my_database', 'my_table',
                        options={'user': 'root', 'password': 'root'})
 
+.. _kafka:
+
+Kafka
+^^^^^
+
+Spark streaming Kafka package (`org.apache.spark:spark-streaming-kafka <https://mvnrepository.com/artifact/org.apache.spark/spark-streaming-kafka-0-10_2.11/2.0.0>`_)
+only provides a basic functionality to represent Kafka topics as RDDs.
+Sparkly provides a more convenient interface for both read and write to Kafka topics.
+This introduces a dependecy on `kafka-python <https://github.com/dpkp/kafka-python>`_ library.
+
++---------------+--------------------------------------------------------------------------------------------+
+| Package       | https://mvnrepository.com/artifact/org.apache.spark/spark-streaming-kafka-0-10_2.11/2.0.0  |
++---------------+--------------------------------------------------------------------------------------------+
+| Configuration | http://spark.apache.org/docs/latest/streaming-kafka-0-10-integration.html                  |
++---------------+--------------------------------------------------------------------------------------------+
+
+Features:
+ - Autodicover topic partitions and offsets.
+ - Work with both RDD and Dataframe for read and write.
+
+.. note::
+    - To use Kafka functionality **sparkly** needs the **kafka-python** library which is an optional dependency.
+      So you need to install **sparkly** with **kafka** extras:
+      ```
+      pip install sparkly[kafka]
+      ```
+    - When working via RDD api, it is expected to be organized as 2-element tuples, which are key and value:
+      ```
+      rdd = ctx._sc.parallelize([(key1, value1), (key2, value2>), ...])
+      ```
+    - When working via DataFrame api, it is expected to be organized as a structure with two top level keys
+      for key and value:
+      ```
+      schema=StructType([StructField('key', ...), StructField('value', ...)]))
+      ```
+      and then
+      ```
+      df = ctx.createDataFrame(data, schema=schema)
+      ```
+    - This was tested on Kafka version **0.10.x**, which is the most recent to the moment, was not tested on
+      Kafka **0.8.x** for which needs another package version, which do not have Api used in Sparkly.
+
+.. code-block:: python
+
+    import json
+    from sparkly import SparklyContext
+
+    class MyContext(SparklyContext):
+        packages = [
+            'org.apache.spark:spark-streaming-kafka_2.10:1.6.1',
+        ]
+
+    hc = MyContext()
+
+    # To read unstructured data from kafka in json as RDD.
+    rdd = hc.read_ext.kafka(
+        ['kafka.host:9092'],
+        topics=['my.topic'],
+        key_deserializer=lambda item: json.loads(item.decode('utf-8')),
+        value_deserializer=lambda item: json.loads(item.decode('utf-8')),
+    )
+
+    # To read structued data from kafka in json as Dataframe.
+
+    #   1. Define the schema of the data you read.
+    df_schema = StructType([
+        StructField('key', StructType([
+            StructField('id', StringType(), True)
+        ])),
+        StructField('value', StructType([
+            StructField('name', StringType(), True),
+            StructField('surname', StringType(), True),
+        ]))
+    ])
+
+    #   2. Specify the schema as the reader parameter.
+    df = hc.read_ext.kafka(
+        ['kafka.host:9092'],
+        topics=['my.topic'],
+        key_deserializer=lambda item: json.loads(item.decode('utf-8')),
+        value_deserializer=lambda item: json.loads(item.decode('utf-8')),
+        schema=df_schema,
+    )
+
+    # To write unstructured data to kafka in json from RDD
+    rdd.write_ext.kafka(
+        ['kafka.host:9092'],
+        topics=['my.topic'],
+        key_serializer=lambda item: json.dumps(item).encode('utf-8'),
+        value_serializer=lambda item: json.dumps(item).encode('utf-8'),
+    )
+
+    # To write structuctured data to kafka in json from Dataframe
+    df.write_ext.kafka(
+        ['kafka.host:9092'],
+        topics=['my.topic'],
+        key_serializer=lambda item: json.dumps(item).encode('utf-8'),
+        value_serializer=lambda item: json.dumps(item).encode('utf-8'),
+        schema=df_schema,  # the schema is defined above
+    )
 
 .. _universal-reader-and-writer:
 
