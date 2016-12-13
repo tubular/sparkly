@@ -4,6 +4,10 @@ import sys
 import os
 import shutil
 from unittest import TestCase
+
+from sparkly.exceptions import FixtureError
+from sparkly import SparklyContext
+
 if sys.version_info.major == 3:
     from http.client import HTTPConnection
 else:
@@ -22,8 +26,10 @@ except ImportError:
     except:
         pass
 
-from sparkly.exceptions import FixtureError
-from sparkly import SparklyContext
+try:
+    from kafka import KafkaProducer
+except ImportError:
+    pass
 
 
 logger = logging.getLogger()
@@ -154,7 +160,8 @@ class SparklyGlobalContextTest(SparklyTest):
 class Fixture(object):
     """Base class for fixtures.
 
-    Fixture is a term borrowed from Django tests, it's data loaded into database for integration testing.
+    Fixture is a term borrowed from Django tests,
+    it's data loaded into database for integration testing.
     """
 
     def setup_data(self):
@@ -314,7 +321,7 @@ class ElasticFixture(Fixture):
 
 
 class MysqlFixture(Fixture):
-    """Base test class for mysql integration tests.
+    """Fixture for mysql integration tests.
 
     Notes:
      * depends on PyMySql lib.
@@ -322,7 +329,9 @@ class MysqlFixture(Fixture):
     Examples:
 
            >>> class MyTestCase(SparklyTest):
-           ...      fixtures = [MysqlFixture('mysql.host', 'user', 'password', '/path/to/data.sql')]
+           ...      fixtures = [
+           ...          MysqlFixture('mysql.host', 'user', 'password', '/path/to/data.sql')
+           ...      ]
            ...      def test(self):
            ...          pass
            ...
@@ -352,3 +361,63 @@ class MysqlFixture(Fixture):
 
     def teardown_data(self):
         self._execute(self.read_file(self.teardown))
+
+
+class KafkaFixture(Fixture):
+    """Fixture for kafka integration tests.
+
+    Notes:
+     * depends on kafka-python lib.
+     * json file should contain array of dicts: [{'key': ..., 'value': ...}]
+
+    Examples:
+
+        >>> class MyTestCase(SparklyContext):
+        ...     fixtures = [
+        ...         KafkaFixture(
+        ...             'kafka.host', 'topic',
+        ...             key_serializer=..., value_serializer=...,
+        ...             data='/path/to/data.json',
+        ...         )
+        ...     ]
+
+    """
+    def __init__(self, host, port=9092, topic=None,
+                 key_serializer=None, value_serializer=None,
+                 data=None):
+        """Constructor.
+
+        Args:
+            host (str): Kafka host.
+            port (int): Kafka port.
+            topic (str): Kafka topic.
+            key_serializer (function): Converts python data structure to bytes,
+                applied to message key.
+            value_serializer (function): Converts python data structure to bytes,
+                applied to message value.
+            data (str): Path to json file with data.
+        """
+
+        self.host = host
+        self.port = port
+        self.topic = topic
+        self.key_serializer = key_serializer
+        self.value_serializer = value_serializer
+        self.data = data
+
+    def _publish_data(self, data):
+        producer = KafkaProducer(bootstrap_servers='kafka.docker',
+                                 key_serializer=self.key_serializer,
+                                 value_serializer=self.value_serializer)
+        for item in data:
+            producer.send(self.topic, key=item['key'], value=item['value'])
+
+        producer.flush()
+        producer.close()
+
+    def setup_data(self):
+        data = [json.loads(item) for item in self.read_file(self.data).strip().split('\n')]
+        self._publish_data(data)
+
+    def teardown_data(self):
+        pass

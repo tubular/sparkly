@@ -3,6 +3,7 @@ try:
 except ImportError:
     from urlparse import urlparse, parse_qsl
 
+from kafka import KafkaProducer
 from pyspark.sql import DataFrame
 
 
@@ -196,6 +197,58 @@ class SparklyWriter(object):
 
         return self._basic_write(writer_options, options, parallelism, mode)
 
+    def kafka(self,
+              host,
+              topic,
+              key_serializer,
+              value_serializer,
+              port=9092,
+              parallelism=None,
+              options=None):
+        """Writes dataframe to kafka topic.
+
+        The schema of the dataframe should conform the pattern:
+
+        >>>  StructType([
+        ...     StructField('key', ...),
+        ...     StructField('value', ...),
+        ...  ])
+
+        Parameters `key_serializer` and `value_serializer` are callables
+        which get's python structure as input and should return bytes of encoded data as output.
+
+        Args:
+            host (str): Kafka host.
+            topic (str): Topic to write to.
+            key_serializer (function): Function to serialize key.
+            value_serializer (function): Function to serialize value.
+            port (int): Kafka port.
+            parallelism (int|None): The max number of parallel tasks that could be executed
+                during the write stage (see :ref:`controlling-the-load`).
+            options (dict|None): Additional options.
+        """
+        def write_partition_to_kafka(messages):
+            producer = KafkaProducer(
+                bootstrap_servers=['{}:{}'.format(host, port)],
+                key_serializer=key_serializer,
+                value_serializer=value_serializer,
+            )
+            for message in messages:
+                as_dict = message.asDict(recursive=True)
+                producer.send(topic, key=as_dict['key'], value=as_dict['value'])
+
+            producer.flush()
+            producer.close()
+
+            return messages
+
+        rdd = self._df.rdd
+
+        if parallelism:
+            rdd = rdd.coalesce(parallelism)
+
+        rdd.mapPartitions(write_partition_to_kafka).count()
+
     def _basic_write(self, writer_options, additional_options, parallelism, mode):
         if mode:
             writer_options['mode'] = mode
@@ -287,7 +340,7 @@ class SparklyWriter(object):
 
 
 def attach_writer_to_dataframe():
-    """A tiny amount of magic to attach `SparklyWriter` to a `DataFrame`."""
+    """A tiny amount of magic to attach write extensions."""
     def write_ext(self):
         return SparklyWriter(self)
 

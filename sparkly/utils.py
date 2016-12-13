@@ -1,5 +1,11 @@
 import os
 
+try:
+    from kafka import SimpleClient
+    from kafka.structs import OffsetRequestPayload
+except ImportError:
+    pass
+
 
 def absolute_path(file_path, *rel_path):
     """Returns absolute path to file.
@@ -30,3 +36,37 @@ def absolute_path(file_path, *rel_path):
             *rel_path
         )
     )
+
+
+def kafka_get_topics_offsets(host, topic, port=9092):
+    """Returns available partitions and their offsets for the given topic.
+
+    Args:
+        host (str): Kafka host.
+        topic (str): Kafka topic.
+        port (int): Kafka port.
+
+    Returns:
+        [(int, int, int)]: [(partition, start_offset, end_offset)].
+    """
+    brokers = ['{}:{}'.format(host, port)]
+    client = SimpleClient(brokers)
+
+    offsets = []
+    partitions = client.get_partition_ids_for_topic(topic)
+
+    offsets_responses_end = client.send_offset_request(
+        [OffsetRequestPayload(topic, partition, -1, 1)
+         for partition in partitions]
+    )
+    offsets_responses_start = client.send_offset_request(
+        [OffsetRequestPayload(topic, partition, -2, 1)
+         for partition in partitions]
+    )
+
+    for start_offset, end_offset in zip(offsets_responses_start, offsets_responses_end):
+        offsets.append((start_offset.partition,
+                        start_offset.offsets[0],
+                        end_offset.offsets[0]))
+
+    return offsets
