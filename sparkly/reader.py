@@ -226,7 +226,7 @@ class SparklyReader(object):
               key_deserializer=None,
               value_deserializer=None,
               schema=None,
-              port=None,
+              port=9092,
               parallelism=None,
               options=None):
         """Creates dataframe from specified set of messages from Kafka topic.
@@ -235,10 +235,11 @@ class SparklyReader(object):
             - If `offset_ranges` is specified it defines which specific range to read.
             - If `offset_ranges` is omitted it will auto-discover it's partitions.
 
-        If `schema` parameter is specified the Dataframe with this schema will be returned,
-        else the RDD will be returned.
         The `schema` parameter, if specified, should contain two top level fields:
         `key` and `value`.
+
+        Parameters `key_deserializer` and `value_deserializer` are callables
+        which get's bytes as input and should return python structures as output.
 
         Args:
             host (str): Kafka host.
@@ -247,8 +248,8 @@ class SparklyReader(object):
                 [(partition, start_offset, end_offset)].
             key_deserializer (function): Function used to deserialize the key.
             value_deserializer (function): Function used to deserialize the value.
-            schema (pyspark.sql.types.StructType|None): Schema to apply to create a Dataframe.
-            port (int|None): Kafka port.
+            schema (pyspark.sql.types.StructType): Schema to apply to create a Dataframe.
+            port (int): Kafka port.
             parallelism (int|None): The max number of parallel tasks that could be executed
                 during the read stage (see :ref:`controlling-the-load`).
             options (dict|None): Additional kafka parameters, see KafkaUtils.createRDD docs.
@@ -265,9 +266,8 @@ class SparklyReader(object):
             raise InvalidArgumentError('You should specify all of parameters:'
                                        '`key_deserializer`, `value_deserializer` and `schema`')
 
-        brokers = ['{}:{}'.format(host, port or 9092)]
         kafka_params = {
-            'metadata.broker.list': ','.join(brokers),
+            'metadata.broker.list': '{}:{}'.format(host, port),
         }
 
         if options:
@@ -287,8 +287,7 @@ class SparklyReader(object):
         if parallelism:
             rdd = rdd.coalesce(parallelism)
 
-        df = self._hc.createDataFrame(rdd, schema=schema)
-        return df
+        return self._hc.createDataFrame(rdd, schema=schema)
 
     def _basic_read(self, reader_options, additional_options, parallelism):
         reader_options.update(additional_options or {})

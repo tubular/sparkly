@@ -1,15 +1,13 @@
 import json
 import uuid
 
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType
-
 from sparkly.exceptions import InvalidArgumentError
 from sparkly.testing import (
     SparklyGlobalContextTest,
     CassandraFixture,
     MysqlFixture,
     ElasticFixture,
-)
+    KafkaFixture)
 from sparkly.utils import absolute_path, kafka_get_topics_offsets
 from tests.integration.base import _TestContext
 
@@ -187,44 +185,22 @@ class SparklyReaderMySQLTest(SparklyGlobalContextTest):
 class TestReaderKafka(SparklyGlobalContextTest):
     context = _TestContext
 
-    KAFKA_TEST_DATA = [
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 1}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 2}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 3}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 4}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 5}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 6}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 7}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 8}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 9}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 10}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 11}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 12}},
-    ]
-
-    KAFKA_TEST_DATA_SCHEMA = StructType([
-        StructField('key', StructType([
-            StructField('name', StringType(), True)
-        ])),
-        StructField('value', StructType([
-            StructField('name', StringType(), True),
-            StructField('surname', StringType(), True),
-            StructField('age', IntegerType(), True),
-        ]))
-    ])
-
     def setUp(self):
         self.json_decoder = lambda item: json.loads(item.decode('utf-8'))
         self.json_encoder = lambda item: json.dumps(item).encode('utf-8')
         self.topic = 'test.topic.write.kafka.{}'.format(uuid.uuid4().hex[:10])
-        rdd = self.hc._sc.parallelize(self.KAFKA_TEST_DATA)
-        self.df = self.hc.createDataFrame(rdd, schema=self.KAFKA_TEST_DATA_SCHEMA)
-        self.df.write_ext.kafka(
+        self.fixture_path = absolute_path(__file__, 'resources', 'test_read', 'kafka_setup.json')
+        self.fixture = KafkaFixture(
             'kafka.docker',
-            self.topic,
+            topic=self.topic,
             key_serializer=self.json_encoder,
             value_serializer=self.json_encoder,
+            data=self.fixture_path,
         )
+        self.fixture.setup_data()
+        self.expected_data_df = self.hc.read.json(self.fixture_path)
+        self.expected_data = [item.asDict(recursive=True)
+                              for item in self.expected_data_df.collect()]
 
     def test_read_by_topic(self):
         df = self.hc.read_ext.kafka(
@@ -232,9 +208,12 @@ class TestReaderKafka(SparklyGlobalContextTest):
             topic=self.topic,
             key_deserializer=self.json_decoder,
             value_deserializer=self.json_decoder,
-            schema=self.KAFKA_TEST_DATA_SCHEMA,
+            schema=self.expected_data_df.schema,
         )
-        self.assertDataFrameEqual(df, self.KAFKA_TEST_DATA)
+        self.assertDataFrameEqual(
+            df,
+            self.expected_data,
+        )
 
     def test_read_by_offsets(self):
         offsets = kafka_get_topics_offsets('kafka.docker', self.topic)
@@ -244,17 +223,24 @@ class TestReaderKafka(SparklyGlobalContextTest):
             offset_ranges=offsets,
             key_deserializer=self.json_decoder,
             value_deserializer=self.json_decoder,
-            schema=self.KAFKA_TEST_DATA_SCHEMA,
+            schema=self.expected_data_df.schema,
         )
 
-        self.assertDataFrameEqual(df, self.KAFKA_TEST_DATA)
+        self.assertDataFrameEqual(df, self.expected_data)
 
-        self.df.write_ext.kafka(
+        self.fixture.setup_data()
+
+        offsets = kafka_get_topics_offsets('kafka.docker', self.topic)
+        df = self.hc.read_ext.kafka(
             'kafka.docker',
-            self.topic,
-            key_serializer=self.json_encoder,
-            value_serializer=self.json_encoder,
+            topic=self.topic,
+            offset_ranges=offsets,
+            key_deserializer=self.json_decoder,
+            value_deserializer=self.json_decoder,
+            schema=self.expected_data_df.schema,
         )
+
+        self.assertDataFrameEqual(df, self.expected_data * 2)
 
     def test_argument_errors(self):
         with self.assertRaises(InvalidArgumentError):
@@ -269,5 +255,5 @@ class TestReaderKafka(SparklyGlobalContextTest):
             self.hc.read_ext.kafka(
                 'kafka.docker',
                 topic=self.topic,
-                schema=self.KAFKA_TEST_DATA_SCHEMA,
+                schema=self.expected_data_df.schema,
             )

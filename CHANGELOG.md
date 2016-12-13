@@ -1,5 +1,6 @@
 ## 1.1.0
 * Kafka reader and writer.
+* Kafka fixtures.
 
 ## 1.0.0
 * Initial open-source release.

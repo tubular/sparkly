@@ -151,12 +151,8 @@ the second covers a lack of writing functionality in the official distribution.
 | Configuration | http://spark.apache.org/docs/latest/streaming-kafka-0-10-integration.html                  |
 +---------------+--------------------------------------------------------------------------------------------+
 
-Features:
- - Autodiscover topic partitions and offsets.
- - Works with Dataframe Api for read and write.
-
 .. note::
-    - To use Kafka functionality **sparkly** needs the **kafka-python** library which is an optional dependency.
+    - To use the Kafka functionality **sparkly** needs the **kafka-python** library which is an optional dependency.
       So you need to install **sparkly** with **kafka** extras:
       ```
       pip install sparkly[kafka]
@@ -170,8 +166,8 @@ Features:
       ```
       df = ctx.createDataFrame(data, schema=schema)
       ```
-    - This was tested on Kafka version **0.10.x**, which is the most recent to the moment, was not tested on
-      Kafka **0.8.x** for which needs another package version, which do not have Api used in Sparkly.
+    - This functionality was tested on Kafka version **0.10.x**, which is the most recent to the moment.
+      It was not tested on Kafka **0.8.x** for which needs another package version, which does not have Api used in Sparkly.
 
 .. code-block:: python
 
@@ -213,7 +209,6 @@ Features:
         topic='my.topic',
         key_serializer=lambda item: json.dumps(item).encode('utf-8'),
         value_serializer=lambda item: json.dumps(item).encode('utf-8'),
-        schema=df_schema,  # the schema is defined above
     )
 
 .. _universal-reader-and-writer:

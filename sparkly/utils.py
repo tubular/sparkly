@@ -38,17 +38,18 @@ def absolute_path(file_path, *rel_path):
     )
 
 
-def kafka_get_topics_offsets(host, topic, port=None):
-    """Returns available partitions and its offsets for list of topics.
+def kafka_get_topics_offsets(host, topic, port=9092):
+    """Returns available partitions and their offsets for the given topic.
 
     Args:
         host (str): Kafka host.
         topic (str): Kafka topic.
-        port (int|None): Kafka port.
+        port (int): Kafka port.
+
     Returns:
         [(int, int, int)]: [(partition, start_offset, end_offset)].
     """
-    brokers = ['{}:{}'.format(host, port or 9092)]
+    brokers = ['{}:{}'.format(host, port)]
     client = SimpleClient(brokers)
 
     offsets = []

@@ -3,8 +3,6 @@ import uuid
 from shutil import rmtree
 from tempfile import mkdtemp
 
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType
-
 from sparkly.utils import absolute_path
 from sparkly.testing import (
     SparklyGlobalContextTest,
@@ -13,6 +11,11 @@ from sparkly.testing import (
     MysqlFixture,
 )
 from tests.integration.base import _TestContext
+
+try:
+    from kafka import KafkaConsumer
+except ImportError:
+    pass
 
 
 TEST_DATA = [
@@ -150,54 +153,33 @@ class TestWriteMysql(SparklyGlobalContextTest):
 class TestWriteKafka(SparklyGlobalContextTest):
     context = _TestContext
 
-    KAFKA_TEST_DATA = [
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 1}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 2}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 3}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 4}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 5}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 6}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 7}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 8}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 9}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 10}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 11}},
-        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 12}},
-    ]
-
-    KAFKA_TEST_DATA_SCHEMA = StructType([
-        StructField('key', StructType([
-            StructField('name', StringType(), True)
-        ])),
-        StructField('value', StructType([
-            StructField('name', StringType(), True),
-            StructField('surname', StringType(), True),
-            StructField('age', IntegerType(), True),
-        ]))
-    ])
-
     def setUp(self):
         self.json_decoder = lambda item: json.loads(item.decode('utf-8'))
         self.json_encoder = lambda item: json.dumps(item).encode('utf-8')
         self.topic = 'test.topic.write.kafka.{}'.format(uuid.uuid4().hex[:10])
+        self.fixture_path = absolute_path(__file__, 'resources', 'test_write', 'kafka_setup.json')
+        self.expected_data = self.hc.read.json(self.fixture_path)
 
     def test_write_kafka_dataframe(self):
-        rdd = self.hc._sc.parallelize(self.KAFKA_TEST_DATA)
-        df = self.hc.createDataFrame(rdd, schema=self.KAFKA_TEST_DATA_SCHEMA)
-
-        df.write_ext.kafka(
+        self.expected_data.write_ext.kafka(
             'kafka.docker',
             self.topic,
             key_serializer=self.json_encoder,
             value_serializer=self.json_encoder,
         )
 
-        result_df = self.hc.read_ext.kafka(
-            'kafka.docker',
-            topic=self.topic,
-            key_deserializer=self.json_decoder,
-            value_deserializer=self.json_decoder,
-            schema=self.KAFKA_TEST_DATA_SCHEMA,
+        consumer = KafkaConsumer(
+            self.topic,
+            bootstrap_servers='kafka.docker:9092',
+            key_deserializer=lambda item: json.loads(item.decode('utf-8')),
+            value_deserializer=lambda item: json.loads(item.decode('utf-8')),
+            auto_offset_reset='earliest',
         )
 
-        self.assertDataFrameEqual(result_df, self.KAFKA_TEST_DATA)
+        actual_data = []
+        for i in range(self.expected_data.count()):
+            message = next(consumer)
+            data = {'key': message.key, 'value': message.value}
+            actual_data.append(data)
+
+        self.assertDataFrameEqual(self.expected_data, actual_data)

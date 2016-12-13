@@ -202,28 +202,34 @@ class SparklyWriter(object):
               topic,
               key_serializer,
               value_serializer,
-              port=None,
+              port=9092,
               parallelism=None,
               options=None):
-        """Writes dataframge to kafka topic.
+        """Writes dataframe to kafka topic.
 
-        Expected schema is:
-          key -> Struct(...)
-          value -> Struct(...)
+        The schema of the dataframe should conform the pattern:
+
+        >>>  StructType([
+        ...     StructField('key', ...),
+        ...     StructField('value', ...),
+        ...  ])
+
+        Parameters `key_serializer` and `value_serializer` are callables
+        which get's python structure as input and should return bytes of encoded data as output.
 
         Args:
             host (str): Kafka host.
             topic (str): Topic to write to.
             key_serializer (function): Function to serialize key.
             value_serializer (function): Function to serialize value.
-            port (int|None): Kafka port.
+            port (int): Kafka port.
             parallelism (int|None): The max number of parallel tasks that could be executed
                 during the write stage (see :ref:`controlling-the-load`).
             options (dict|None): Additional options.
         """
         def write_partition_to_kafka(messages):
             producer = KafkaProducer(
-                bootstrap_servers=['{}:{}'.format(host, port or 9092)],
+                bootstrap_servers=['{}:{}'.format(host, port)],
                 key_serializer=key_serializer,
                 value_serializer=value_serializer,
             )
