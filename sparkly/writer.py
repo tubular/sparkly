@@ -5,7 +5,6 @@ except ImportError:
 
 from kafka import KafkaProducer
 from pyspark.sql import DataFrame
-from pyspark.rdd import RDD
 
 
 class SparklyWriter(object):
@@ -199,10 +198,11 @@ class SparklyWriter(object):
         return self._basic_write(writer_options, options, parallelism, mode)
 
     def kafka(self,
-              brokers,
+              host,
               topic,
               key_serializer,
               value_serializer,
+              port=None,
               parallelism=None,
               options=None):
         """Writes dataframge to kafka topic.
@@ -212,20 +212,36 @@ class SparklyWriter(object):
           value -> Struct(...)
 
         Args:
-            brokers (list[str]): List of kafka brokers.
+            host (str): Kafka host.
             topic (str): Topic to write to.
             key_serializer (function): Function to serialize key.
             value_serializer (function): Function to serialize value.
+            port (int|None): Kafka port.
             parallelism (int|None): The max number of parallel tasks that could be executed
                 during the write stage (see :ref:`controlling-the-load`).
             options (dict|None): Additional options.
         """
-        def dict_to_tuple(item):
-            as_dict = item.asDict(recursive=True)
-            return as_dict['key'], as_dict['value']
+        def write_partition_to_kafka(messages):
+            producer = KafkaProducer(
+                bootstrap_servers=['{}:{}'.format(host, port or 9092)],
+                key_serializer=key_serializer,
+                value_serializer=value_serializer,
+            )
+            for message in messages:
+                as_dict = message.asDict(recursive=True)
+                producer.send(topic, key=as_dict['key'], value=as_dict['value'])
 
-        rdd = self._df.rdd.map(dict_to_tuple)
-        rdd.write_ext.kafka(brokers, topic, key_serializer, value_serializer, parallelism, options)
+            producer.flush()
+            producer.close()
+
+            return messages
+
+        rdd = self._df.rdd
+
+        if parallelism:
+            rdd = rdd.coalesce(parallelism)
+
+        rdd.mapPartitions(write_partition_to_kafka).count()
 
     def _basic_write(self, writer_options, additional_options, parallelism, mode):
         if mode:
@@ -317,61 +333,9 @@ class SparklyWriter(object):
         )
 
 
-class SparklyRDDWriter(object):
-
-    def __init__(self, rdd):
-        self._rdd = rdd
-
-    def kafka(self,
-              brokers,
-              topic,
-              key_serializer,
-              value_serializer,
-              parallelism=None,
-              options=None):
-        """Writes rdd to kafka.
-
-        RDD items should be two-element tuples, containing key and value.
-
-        Args:
-            brokers (list[str]): List of kafka brokers.
-            topic (str): Topic to write to.
-            key_serializer (function): Function to serialize key.
-            value_serializer (function): Function to serialize value.
-            parallelism (int|None): The max number of parallel tasks that could be executed
-                during the write stage (see :ref:`controlling-the-load`).
-            options (dict|None): Additional options.
-        """
-
-        def _map(messages):
-            producer = KafkaProducer(
-                bootstrap_servers=brokers,
-                key_serializer=key_serializer,
-                value_serializer=value_serializer,
-            )
-            for message in messages:
-                key, val = message
-                producer.send(topic, key=key, value=val)
-
-            producer.flush()
-            producer.close()
-
-            return messages
-
-        rdd = self._rdd
-        if parallelism:
-            rdd = rdd.coalesce(parallelism)
-
-        rdd.mapPartitions(_map).count()
-
-
 def attach_writer_to_dataframe():
     """A tiny amount of magic to attach write extensions."""
     def write_ext(self):
         return SparklyWriter(self)
 
-    def write_rdd_ext(self):
-        return SparklyRDDWriter(self)
-
     DataFrame.write_ext = property(write_ext)
-    RDD.write_ext = property(write_rdd_ext)

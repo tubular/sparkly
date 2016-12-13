@@ -151,16 +151,30 @@ class TestWriteKafka(SparklyGlobalContextTest):
     context = _TestContext
 
     KAFKA_TEST_DATA = [
-        ({'name': 'john'}, {'name': 'john', 'surname': 'smith', 'age': 1}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic', 'age': 2}),
-        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith', 'age': 3}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'smith', 'age': 4}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic', 'age': 5}),
-        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith', 'age': 6}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'smith', 'age': 7}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic', 'age': 8}),
-        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith', 'age': 9}),
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 1}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 2}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 3}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 4}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 5}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 6}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 7}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 8}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 9}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 10}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 11}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 12}},
     ]
+
+    KAFKA_TEST_DATA_SCHEMA = StructType([
+        StructField('key', StructType([
+            StructField('name', StringType(), True)
+        ])),
+        StructField('value', StructType([
+            StructField('name', StringType(), True),
+            StructField('surname', StringType(), True),
+            StructField('age', IntegerType(), True),
+        ]))
+    ])
 
     def setUp(self):
         self.json_decoder = lambda item: json.loads(item.decode('utf-8'))
@@ -169,51 +183,21 @@ class TestWriteKafka(SparklyGlobalContextTest):
 
     def test_write_kafka_dataframe(self):
         rdd = self.hc._sc.parallelize(self.KAFKA_TEST_DATA)
-
-        df_schema = StructType([
-            StructField('key', StructType([
-                StructField('name', StringType(), True)
-            ])),
-            StructField('value', StructType([
-                StructField('name', StringType(), True),
-                StructField('surname', StringType(), True),
-                StructField('age', IntegerType(), True),
-            ]))
-        ])
-
-        df = self.hc.createDataFrame(rdd, schema=df_schema)
+        df = self.hc.createDataFrame(rdd, schema=self.KAFKA_TEST_DATA_SCHEMA)
 
         df.write_ext.kafka(
-            ['kafka.docker:9092'],
+            'kafka.docker',
             self.topic,
             key_serializer=self.json_encoder,
             value_serializer=self.json_encoder,
         )
 
-        rdd = self.hc.read_ext.kafka(
-            ['kafka.docker:9092'],
-            topics=[self.topic],
+        result_df = self.hc.read_ext.kafka(
+            'kafka.docker',
+            topic=self.topic,
             key_deserializer=self.json_decoder,
             value_deserializer=self.json_decoder,
+            schema=self.KAFKA_TEST_DATA_SCHEMA,
         )
 
-        self.assertRDDEqual(rdd, self.KAFKA_TEST_DATA)
-
-    def test_write_kafka_rdd(self):
-        rdd = self.hc._sc.parallelize(self.KAFKA_TEST_DATA)
-
-        rdd.write_ext.kafka(
-            ['kafka.docker:9092'],
-            self.topic,
-            key_serializer=self.json_encoder,
-            value_serializer=self.json_encoder,
-        )
-
-        rdd = self.hc.read_ext.kafka(
-            ['kafka.docker:9092'],
-            topics=[self.topic],
-            key_deserializer=self.json_decoder,
-            value_deserializer=self.json_decoder,
-        )
-
-        self.assertRDDEqual(rdd, self.KAFKA_TEST_DATA)
+        self.assertDataFrameEqual(result_df, self.KAFKA_TEST_DATA)

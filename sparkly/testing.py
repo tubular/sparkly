@@ -117,16 +117,6 @@ class SparklyTest(TestCase):
             except AttributeError:
                 self.assertItemsEqual(actual_data, expected_data)
 
-    def assertRDDEqual(self, actual_rdd, expected_data, ordered=False):
-        actual_data = actual_rdd.collect() if hasattr(actual_rdd, 'collect') else actual_rdd
-        if ordered:
-            self.assertEqual(actual_data, expected_data)
-        else:
-            try:
-                self.assertCountEqual(actual_data, expected_data)
-            except AttributeError:
-                self.assertItemsEqual(actual_data, expected_data)
-
 
 class SparklyGlobalContextTest(SparklyTest):
     """Base test case that keeps a single instance for the given context class across all tests.

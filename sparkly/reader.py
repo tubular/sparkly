@@ -220,57 +220,66 @@ class SparklyReader(object):
         return self._basic_read(reader_options, options, parallelism)
 
     def kafka(self,
-              brokers,
-              topics=None,
+              host,
+              topic,
               offset_ranges=None,
               key_deserializer=None,
               value_deserializer=None,
               schema=None,
+              port=None,
               parallelism=None,
               options=None):
         """Creates dataframe from specified set of messages from Kafka topic.
 
-        If `offset_ranges` parameter is omitted it will auto-discover.
+        Defining ranges:
+            - If `offset_ranges` is specified it defines which specific range to read.
+            - If `offset_ranges` is omitted it will auto-discover it's partitions.
+
         If `schema` parameter is specified the Dataframe with this schema will be returned,
         else the RDD will be returned.
         The `schema` parameter, if specified, should contain two top level fields:
         `key` and `value`.
 
         Args:
-            brokers (list): List of kafka brokers.
-            topics (list[str]): List of kafka topics to read from.
-            offset_ranges (list[(str, int, int, int)]): List of partition ranges
-                [(topic, partition, start_offset, end_offset)].
+            host (str): Kafka host.
+            topic (str|None): Kafka topic to read from.
+            offset_ranges (list[(int, int, int)]|None): List of partition ranges
+                [(partition, start_offset, end_offset)].
             key_deserializer (function): Function used to deserialize the key.
             value_deserializer (function): Function used to deserialize the value.
             schema (pyspark.sql.types.StructType|None): Schema to apply to create a Dataframe.
+            port (int|None): Kafka port.
             parallelism (int|None): The max number of parallel tasks that could be executed
                 during the read stage (see :ref:`controlling-the-load`).
             options (dict|None): Additional kafka parameters, see KafkaUtils.createRDD docs.
 
         Returns:
-            pyspark.rdd.RDD|pyspark.sql.DataFrame
+            pyspark.sql.DataFrame
+
+        Raises:
+            InvalidArgumentError
         """
         assert self._hc.has_package('org.apache.spark:spark-streaming-kafka')
 
-        if (topics and offset_ranges) or (not topics and not offset_ranges):
-            raise InvalidArgumentError('You should specify either `topics` or '
-                                       '`offset_ranges` not both, but at least one')
+        if not key_deserializer or not value_deserializer or not schema:
+            raise InvalidArgumentError('You should specify all of parameters:'
+                                       '`key_deserializer`, `value_deserializer` and `schema`')
 
+        brokers = ['{}:{}'.format(host, port or 9092)]
         kafka_params = {
-            'metadata.broker.list': ','.join(brokers)
+            'metadata.broker.list': ','.join(brokers),
         }
 
         if options:
             kafka_params.update(options)
 
-        if topics:
-            offset_ranges = kafka_get_topics_offsets(brokers, topics)
+        if not offset_ranges:
+            offset_ranges = kafka_get_topics_offsets(host, topic, port)
 
         offset_ranges = [OffsetRange(topic, partition, start_offset, end_offset)
-                         for topic, partition, start_offset, end_offset in offset_ranges]
+                         for partition, start_offset, end_offset in offset_ranges]
 
-        rdd = KafkaUtils.createRDD(self._hc._sc, kafka_params, offset_ranges,
+        rdd = KafkaUtils.createRDD(self._hc._sc, kafka_params, offset_ranges or [],
                                    keyDecoder=key_deserializer,
                                    valueDecoder=value_deserializer,
                                    )
@@ -278,11 +287,8 @@ class SparklyReader(object):
         if parallelism:
             rdd = rdd.coalesce(parallelism)
 
-        if schema:
-            df = self._hc.createDataFrame(rdd, schema=schema)
-            return df
-
-        return rdd
+        df = self._hc.createDataFrame(rdd, schema=schema)
+        return df
 
     def _basic_read(self, reader_options, additional_options, parallelism):
         reader_options.update(additional_options or {})

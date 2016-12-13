@@ -3,6 +3,7 @@ import uuid
 
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 
+from sparkly.exceptions import InvalidArgumentError
 from sparkly.testing import (
     SparklyGlobalContextTest,
     CassandraFixture,
@@ -187,95 +188,86 @@ class TestReaderKafka(SparklyGlobalContextTest):
     context = _TestContext
 
     KAFKA_TEST_DATA = [
-        ({'name': 'john'}, {'name': 'john', 'surname': 'smith', 'age': 1}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic', 'age': 2}),
-        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith', 'age': 3}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'smith', 'age': 4}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic', 'age': 5}),
-        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith', 'age': 6}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'smith', 'age': 7}),
-        ({'name': 'john'}, {'name': 'john', 'surname': 'mnemonic', 'age': 8}),
-        ({'name': 'kelly'}, {'name': 'kelly', 'surname': 'smith', 'age': 9}),
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 1}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 2}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 3}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 4}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 5}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 6}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 7}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 8}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 9}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'smith', 'age': 10}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 11}},
+        {'key': {'name': 'john'}, 'value': {'name': 'john', 'surname': 'mnemonic', 'age': 12}},
     ]
+
+    KAFKA_TEST_DATA_SCHEMA = StructType([
+        StructField('key', StructType([
+            StructField('name', StringType(), True)
+        ])),
+        StructField('value', StructType([
+            StructField('name', StringType(), True),
+            StructField('surname', StringType(), True),
+            StructField('age', IntegerType(), True),
+        ]))
+    ])
 
     def setUp(self):
         self.json_decoder = lambda item: json.loads(item.decode('utf-8'))
         self.json_encoder = lambda item: json.dumps(item).encode('utf-8')
         self.topic = 'test.topic.write.kafka.{}'.format(uuid.uuid4().hex[:10])
-        self.rdd = self.hc._sc.parallelize(self.KAFKA_TEST_DATA)
-        self.rdd.write_ext.kafka(
-            ['kafka.docker:9092'],
+        rdd = self.hc._sc.parallelize(self.KAFKA_TEST_DATA)
+        self.df = self.hc.createDataFrame(rdd, schema=self.KAFKA_TEST_DATA_SCHEMA)
+        self.df.write_ext.kafka(
+            'kafka.docker',
             self.topic,
             key_serializer=self.json_encoder,
             value_serializer=self.json_encoder,
         )
 
-    def test_read_dataframe(self):
-        df_schema = StructType([
-            StructField('key', StructType([
-                StructField('name', StringType(), True)
-            ])),
-            StructField('value', StructType([
-                StructField('name', StringType(), True),
-                StructField('surname', StringType(), True),
-                StructField('age', IntegerType(), True),
-            ]))
-        ])
-
-        df_data = []
-        for k, v in self.KAFKA_TEST_DATA:
-            df_data.append({
-                'key': k,
-                'value': v,
-            })
-
+    def test_read_by_topic(self):
         df = self.hc.read_ext.kafka(
-            ['kafka.docker:9092'],
-            topics=[self.topic],
+            'kafka.docker',
+            topic=self.topic,
             key_deserializer=self.json_decoder,
             value_deserializer=self.json_decoder,
-            schema=df_schema,
+            schema=self.KAFKA_TEST_DATA_SCHEMA,
         )
-        self.assertDataFrameEqual(
-            df,
-            df_data,
-        )
-
-    def test_read_by_topics(self):
-        rdd = self.hc.read_ext.kafka(
-            ['kafka.docker:9092'],
-            topics=[self.topic],
-            key_deserializer=self.json_decoder,
-            value_deserializer=self.json_decoder,
-        )
-
-        self.assertRDDEqual(rdd, self.KAFKA_TEST_DATA)
+        self.assertDataFrameEqual(df, self.KAFKA_TEST_DATA)
 
     def test_read_by_offsets(self):
-        offsets = kafka_get_topics_offsets(['kafka.docker:9092'], [self.topic])
-        rdd = self.hc.read_ext.kafka(
-            ['kafka.docker:9092'],
+        offsets = kafka_get_topics_offsets('kafka.docker', self.topic)
+        df = self.hc.read_ext.kafka(
+            'kafka.docker',
+            topic=self.topic,
             offset_ranges=offsets,
             key_deserializer=self.json_decoder,
             value_deserializer=self.json_decoder,
+            schema=self.KAFKA_TEST_DATA_SCHEMA,
         )
 
-        self.assertRDDEqual(rdd, self.KAFKA_TEST_DATA)
+        self.assertDataFrameEqual(df, self.KAFKA_TEST_DATA)
 
-    def test_read_multiple_topics(self):
-        additional_topic = 'test.topic.write.kafka.{}'.format(uuid.uuid4().hex[:10])
-        self.rdd.write_ext.kafka(
-            ['kafka.docker:9092'],
-            additional_topic,
+        self.df.write_ext.kafka(
+            'kafka.docker',
+            self.topic,
             key_serializer=self.json_encoder,
             value_serializer=self.json_encoder,
         )
 
-        rdd = self.hc.read_ext.kafka(
-            ['kafka.docker:9092'],
-            topics=[self.topic, additional_topic],
-            key_deserializer=self.json_decoder,
-            value_deserializer=self.json_decoder,
-        )
+    def test_argument_errors(self):
+        with self.assertRaises(InvalidArgumentError):
+            self.hc.read_ext.kafka(
+                'kafka.docker',
+                topic=self.topic,
+                key_deserializer=self.json_decoder,
+                value_deserializer=self.json_decoder,
+            )
 
-        self.assertRDDEqual(rdd, self.KAFKA_TEST_DATA * 2)
+        with self.assertRaises(InvalidArgumentError):
+            self.hc.read_ext.kafka(
+                'kafka.docker',
+                topic=self.topic,
+                schema=self.KAFKA_TEST_DATA_SCHEMA,
+            )

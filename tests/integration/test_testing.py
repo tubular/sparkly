@@ -35,14 +35,6 @@ class TestAssertions(SparklyGlobalContextTest):
                 ordered=True,
             )
 
-    def test_assert_rdd_equal(self):
-        rdd = self.hc._sc.parallelize([1, 2, 3, 4, 5])
-
-        self.assertRDDEqual(rdd, [1, 2, 3, 4, 5])
-        self.assertRDDEqual(rdd, [1, 2, 3, 4, 5], ordered=True)
-        with self.assertRaises(AssertionError):
-            self.assertRDDEqual(rdd, [3, 4, 5, 1, 2], ordered=True)
-
 
 class TestCassandraFixtures(SparklyGlobalContextTest):
     context = _TestContext
