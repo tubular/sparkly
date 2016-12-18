@@ -47,12 +47,11 @@ A brief tour on Sparkly features by example:
       ]
 
       def test_job_works_with_mysql(self):
-         df = self.hc.read_ext('mysql://<my-testing-host>/<test-db>/<test-table>?user=<test-usre>&password=<test-password>')
+         df = self.hc.read_ext.by_url('mysql://<my-testing-host>/<test-db>/<test-table>?user=<test-usre>&password=<test-password>')
          res_df = my_shiny_script(df)
          self.assertDataFrameEqual(
             res_df,
-            [('DataA', 'DataB', 'DataC')],
-            ['fieldA', 'fieldB', 'fieldC'],
+            {'fieldA': 'DataA', 'fieldB': 'DataB', 'fieldC': 'DataC'},
          )
 
 .. toctree::
