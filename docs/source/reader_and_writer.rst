@@ -109,11 +109,17 @@ Basically, it's just a high level api on top of the native
 `jdbc reader <http://spark.apache.org/docs/2.0.0/api/python/pyspark.sql.html#pyspark.sql.DataFrameReader.jdbc>`_ and
 `jdbc writer <http://spark.apache.org/docs/2.0.0/api/python/pyspark.sql.html#pyspark.sql.DataFrameWriter.jdbc>`_.
 
++---------------+--------------------------------------------------------------------------------------------------+
+| Jars          | https://dev.mysql.com/downloads/connector/j/                                                     |
++---------------+--------------------------------------------------------------------------------------------------+
+| Configuration | https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-configuration-properties.html |
++---------------+--------------------------------------------------------------------------------------------------+
+
 .. note::
 
     Sparkly doesn't contain any jars inside, so you will have to take care of this.
     Java connectors for mysql could be found on https://dev.mysql.com/downloads/connector/j/.
-    Place them within our service/package codebase in `resources` directory.
+    We usually place them within our service/package codebase in `resources` directory.
     It's not the best idea to place binaries within a source code, but it's pretty convenient.
 
 .. code-block:: python
@@ -132,8 +138,11 @@ Basically, it's just a high level api on top of the native
     df = hc.read_ext.mysql('localhost', 'my_database', 'my_table',
                            options={'user': 'root', 'password': 'root'})
     # To write data
-    df.write_ext.mysql('localhost', 'my_database', 'my_table',
-                       options={'user': 'root', 'password': 'root'})
+    df.write_ext.mysql('localhost', 'my_database', 'my_table', options={
+        'user': 'root',
+        'password': 'root',
+        'rewriteBatchedStatements': 'true',  # improves write throughput dramatically
+    })
 
 
 .. _universal-reader-and-writer:
