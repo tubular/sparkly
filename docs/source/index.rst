@@ -64,6 +64,7 @@ A brief tour on Sparkly features by example:
    utils
    exceptions
    test
+   license
 
 .. automodule:: sparkly
    :members:
