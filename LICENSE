@@ -213,8 +213,7 @@ licenses.
 Apache licenses
 ========================================================================
 
-The following components are provided under a Apache license. See project link for details.
-The text of each license is also included at licenses/LICENSE-[project].txt.
+The following dependencies are provided under a Apache license. See project link for details.
 
 (Apache License 2.0) Spark (https://github.com/apache/spark)
 (Apache License 2.0) cassandra-driver (https://github.com/datastax/python-driver)
@@ -223,8 +222,7 @@ The text of each license is also included at licenses/LICENSE-[project].txt.
 BSD-style licenses
 ========================================================================
 
-The following components are provided under a BSD-style license. See project link for details.
-The text of each license is also included at licenses/LICENSE-[project].txt.
+The following dependencies are provided under a BSD-style license. See project link for details.
 
 (BSD License) mock (https://github.com/testing-cabal/mock)
 (PSF License) Sphinx (https://github.com/sphinx-doc/sphinx)
@@ -233,8 +231,7 @@ The text of each license is also included at licenses/LICENSE-[project].txt.
 MIT licenses
 ========================================================================
 
-The following components are provided under the MIT License. See project link for details.
-The text of each license is also included at licenses/LICENSE-[project].txt.
+The following dependencies are provided under the MIT License. See project link for details.
 
 (MIT License) sphinx_rtd_theme (https://github.com/snide/sphinx_rtd_theme)
 (MIT License) pytest (https://github.com/pytest-dev/pytest)
