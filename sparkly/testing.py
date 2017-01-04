@@ -1,9 +1,29 @@
+#
+# Copyright 2017 Tubular Labs, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import json
 import logging
 import sys
 import os
 import shutil
 from unittest import TestCase
+
+from sparkly.exceptions import FixtureError
+from sparkly import SparklyContext
+
 if sys.version_info.major == 3:
     from http.client import HTTPConnection
 else:
@@ -21,9 +41,6 @@ except ImportError:
         import mysql.connector as connector
     except:
         pass
-
-from sparkly.exceptions import FixtureError
-from sparkly import SparklyContext
 
 
 logger = logging.getLogger()
@@ -154,7 +171,8 @@ class SparklyGlobalContextTest(SparklyTest):
 class Fixture(object):
     """Base class for fixtures.
 
-    Fixture is a term borrowed from Django tests, it's data loaded into database for integration testing.
+    Fixture is a term borrowed from Django tests,
+    it's data loaded into database for integration testing.
     """
 
     def setup_data(self):
@@ -322,7 +340,8 @@ class MysqlFixture(Fixture):
     Examples:
 
            >>> class MyTestCase(SparklyTest):
-           ...      fixtures = [MysqlFixture('mysql.host', 'user', 'password', '/path/to/data.sql')]
+           ...      fixtures = [MysqlFixture('mysql.host', 'user',
+           ...                               'password', '/path/to/data.sql')]
            ...      def test(self):
            ...          pass
            ...
