@@ -13,15 +13,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import json
+import uuid
 
 from sparkly.testing import (
     CassandraFixture,
     ElasticFixture,
     MysqlFixture,
     SparklyGlobalContextTest,
-)
+    KafkaFixture)
 from sparkly.utils import absolute_path
 from tests.integration.base import _TestContext
+
+try:
+    from kafka import KafkaConsumer
+except ImportError:
+    pass
+
+
+class TestAssertions(SparklyGlobalContextTest):
+    context = _TestContext
+
+    def test_assert_dataframe_equal(self):
+        df = self.hc.createDataFrame([('Alice', 1),
+                                      ('Kelly', 1),
+                                      ('BigBoss', 999)],
+                                     ['name', 'age'])
+        self.assertDataFrameEqual(
+            df,
+            [{'name': 'Alice', 'age': 1},
+             {'name': 'BigBoss', 'age': 999},
+             {'name': 'Kelly', 'age': 1},
+             ],
+            ordered=False,
+        )
+
+        with self.assertRaises(AssertionError):
+            self.assertDataFrameEqual(
+                df,
+                [{'name': 'Alice', 'age': 1},
+                 {'name': 'BigBoss', 'age': 999},
+                 {'name': 'Kelly', 'age': 1},
+                 ],
+                ordered=True,
+            )
 
 
 class TestCassandraFixtures(SparklyGlobalContextTest):
@@ -85,3 +120,39 @@ class TestElasticFixture(SparklyGlobalContextTest):
         self.assertDataFrameEqual(df, [
             {'name': 'John', 'age': 56},
         ])
+
+
+class TestKafkaFixture(SparklyGlobalContextTest):
+
+    context = _TestContext
+
+    topic = 'sparkly.test.fixture.{}'.format(uuid.uuid4().hex[:10])
+    fixtures = [
+        KafkaFixture(
+            'kafka.docker',
+            topic=topic,
+            key_serializer=lambda item: json.dumps(item).encode('utf-8'),
+            value_serializer=lambda item: json.dumps(item).encode('utf-8'),
+            data=absolute_path(__file__, 'resources', 'test_fixtures', 'kafka.json'),
+        )
+    ]
+
+    def test_kafka_fixture(self):
+        consumer = KafkaConsumer(
+            self.topic,
+            bootstrap_servers='kafka.docker:9092',
+            key_deserializer=lambda item: json.loads(item.decode('utf-8')),
+            value_deserializer=lambda item: json.loads(item.decode('utf-8')),
+            auto_offset_reset='earliest',
+        )
+
+        actual_data = []
+        for i in range(5):
+            message = next(consumer)
+            data = {'key': message.key, 'value': message.value}
+            actual_data.append(data)
+
+        expected_data = self.hc.read.json(
+            absolute_path(__file__, 'resources', 'test_fixtures', 'kafka.json')
+        )
+        self.assertDataFrameEqual(expected_data, actual_data)

@@ -38,7 +38,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='1.0.0',
+    version='1.1.0',
 
     description='Helpers & syntax sugar for PySpark.',
     long_description=long_description,
@@ -86,6 +86,7 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=reqs,
     extras_require={
-        'test': ['cassandra-driver>=3.7,<3.8', 'PyMySQL>=0.7,<0.8'],
+        'kafka': ['kafka-python>=1.2.2,<1.3'],
+        'test': ['cassandra-driver>=3.7,<3.8', 'PyMySQL>=0.7,<0.8', 'kafka-python>=1.2.2,<1.3'],
     },
 )
