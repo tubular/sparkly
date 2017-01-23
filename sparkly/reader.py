@@ -304,13 +304,10 @@ class SparklyReader(object):
         parallelism = parsed_qs.pop('parallelism', None)
 
         if 'schema' in parsed_qs:
-            schema = schema_parser.parse(parsed_qs.pop('schema'))
-        else:
-            schema = None
+            parsed_qs['schema'] = schema_parser.parse(parsed_qs.pop('schema'))
 
         df = self._sparkSession.read.csv(
             path=parsed_url.path,
-            schema=schema,
             **parsed_qs
         )
 
