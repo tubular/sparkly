@@ -29,7 +29,6 @@ from sparkly.writer import SparklyWriter
 class TestWriteByUrl(unittest.TestCase):
     def setUp(self):
         self.df = mock.Mock(spec=DataFrame)
-        self.df.sql_ctx = mock.Mock(spec=sparkly.SparklySession)
         self.write_ext = SparklyWriter(self.df)
 
     def test_parquet_s3(self):
@@ -48,15 +47,14 @@ class TestWriteByUrl(unittest.TestCase):
         )
 
     def test_csv_local(self):
-        self.write_ext.csv = mock.Mock()
+        self.df.write.csv = mock.Mock()
 
-        self.write_ext.by_url('csv:///my-bucket/path/to/csv')
+        self.write_ext.by_url('csv:///my-bucket/path/to/csv?parallelism=10')
 
-        self.write_ext.csv.assert_called_once_with(
+        self.df.coalesce.assert_called_once_with(10)
+        self.df.coalesce.return_value.write.save.assert_called_once_with(
             path='/my-bucket/path/to/csv',
-            mode=None,
-            parallelism=None,
-            options={},
+            format='csv',
         )
 
     def test_cassandra(self):

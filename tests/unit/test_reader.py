@@ -29,57 +29,52 @@ from sparkly import schema_parser
 
 class TestSparklyReaderByUrl(unittest.TestCase):
     def setUp(self):
-        self.hc = mock.Mock(spec=sparkly.SparklySession)
-        self.read_ext = SparklyReader(self.hc)
+        self.spark = mock.Mock(spec=sparkly.SparklySession)
+        self.read_ext = SparklyReader(self.spark)
         self.fake_df = mock.Mock(spec=pyspark.sql.DataFrame)
 
     def test_table(self):
-        self.hc.table.return_value = self.fake_df
+        self.spark.table.return_value = self.fake_df
 
         df = self.read_ext.by_url('table://some_hive_table')
 
         self.assertEqual(df, self.fake_df)
-        self.hc.table.assert_called_with('some_hive_table')
+        self.spark.table.assert_called_with('some_hive_table')
 
     def test_parquet(self):
-        self.hc.read.load.return_value = self.fake_df
+        self.spark.read.load.return_value = self.fake_df
 
         df = self.read_ext.by_url('parquet:s3://my-bucket/path/to/parquet')
 
         self.assertEqual(df, self.fake_df)
-        self.hc.read.load.assert_called_with(
+        self.spark.read.load.assert_called_with(
             path='s3://my-bucket/path/to/parquet',
             format='parquet',
         )
 
     def test_csv(self):
-        self.read_ext.csv = mock.Mock(return_value=self.fake_df)
+        self.spark.read.csv.return_value = self.fake_df
 
         df = self.read_ext.by_url('csv:s3://my-bucket/path/to/csv?header=true')
 
         self.assertEqual(df, self.fake_df)
-        self.read_ext.csv.assert_called_with(
+        self.spark.read.csv.assert_called_with(
             path='s3://my-bucket/path/to/csv',
-            header=True,
-            parallelism=None,
-            options={},
+            header='true',
         )
 
     def test_csv_on_local_file_system(self):
-        self.read_ext.csv = mock.Mock(return_value=self.fake_df)
-        self.hc.read.format.return_value.options.return_value.load.return_value = self.fake_df
+        self.spark.read.csv.return_value = self.fake_df
 
         schema = 'name:string|age:long|l:list[long]|s:struct[name:string,age:long]'
-        df = self.read_ext.by_url('csv:///path/on/file/system?header=false&custom_schema={}'
+        df = self.read_ext.by_url('csv:///path/on/file/system?header=false&schema={}'
                                   .format(schema))
 
         self.assertEqual(df, self.fake_df)
-        self.read_ext.csv.assert_called_with(
+        self.spark.read.csv.assert_called_with(
             path='/path/on/file/system',
-            custom_schema=schema_parser.parse(schema),
-            header=False,
-            parallelism=None,
-            options={},
+            schema=schema_parser.parse(schema),
+            header='false',
         )
 
     def test_elastic(self):
