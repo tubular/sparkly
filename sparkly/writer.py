@@ -37,7 +37,6 @@ class SparklyWriter(object):
     """
     def __init__(self, df):
         self._df = df
-        self._hc = df.sql_ctx
 
     def by_url(self, url):
         """Write a dataframe to a destination specified by `url`.
@@ -115,7 +114,7 @@ class SparklyWriter(object):
             options (dict[str, str]): Additional options to `org.apache.spark.sql.cassandra`
                 format (see configuration for :ref:`cassandra`).
         """
-        assert self._hc.has_package('datastax:spark-cassandra-connector')
+        assert self._df.sql_ctx.sparkSession.has_package('datastax:spark-cassandra-connector')
 
         writer_options = {
             'format': 'org.apache.spark.sql.cassandra',
@@ -146,7 +145,7 @@ class SparklyWriter(object):
             options (dict[str, str]): Additional options to `com.databricks.spark.csv`
                 format (see configuration for :ref:`csv`).
         """
-        assert self._hc.has_package('com.databricks:spark-csv')
+        assert self._df.sql_ctx.sparkSession.has_package('com.databricks:spark-csv')
 
         writer_options = {
             'path': path,
@@ -173,7 +172,7 @@ class SparklyWriter(object):
             options (dict[str, str]): Additional options to `org.elasticsearch.spark.sql` format
                 (see configuration for :ref:`elastic`).
         """
-        assert self._hc.has_package('org.elasticsearch:elasticsearch-spark')
+        assert self._df.sql_ctx.sparkSession.has_package('org.elasticsearch:elasticsearch-spark')
 
         writer_options = {
             'path': '{}/{}'.format(es_index, es_type),
@@ -203,7 +202,7 @@ class SparklyWriter(object):
             options (dict): Additional options for JDBC writer
                 (see configuration for :ref:`mysql`).
         """
-        assert self._hc.has_jar('mysql-connector-java')
+        assert self._df.sql_ctx.sparkSession.has_jar('mysql-connector-java')
 
         writer_options = {
             'format': 'jdbc',
@@ -350,7 +349,7 @@ class SparklyWriter(object):
     def _resolve_parquet(self, parsed_url, parsed_qs):
         parallelism = parsed_qs.pop('parallelism', None)
         if parallelism:
-            df = self._df.coalesce(int(parallelism))
+            df = self._df.sql_ctxcoalesce(int(parallelism))
         else:
             df = self._df
 

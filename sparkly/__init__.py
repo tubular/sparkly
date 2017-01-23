@@ -14,6 +14,6 @@
 # limitations under the License.
 #
 
-from sparkly.context import SparklyContext
+from sparkly.session import SparklySession
 
-assert SparklyContext
+assert SparklySession

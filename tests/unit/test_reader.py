@@ -29,7 +29,7 @@ from sparkly import schema_parser
 
 class TestSparklyReaderByUrl(unittest.TestCase):
     def setUp(self):
-        self.hc = mock.Mock(spec=sparkly.SparklyContext)
+        self.hc = mock.Mock(spec=sparkly.SparklySession)
         self.read_ext = SparklyReader(self.hc)
         self.fake_df = mock.Mock(spec=pyspark.sql.DataFrame)
 

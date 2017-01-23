@@ -22,7 +22,7 @@ import shutil
 from unittest import TestCase
 
 from sparkly.exceptions import FixtureError
-from sparkly import SparklyContext
+from sparkly import SparklySession
 
 if sys.version_info.major == 3:
     from http.client import HTTPConnection
@@ -55,7 +55,7 @@ except ImportError:
 logger = logging.getLogger()
 
 
-_test_context_cache = None
+_test_session_cache = None
 
 
 class SparklyTest(TestCase):
@@ -68,11 +68,11 @@ class SparklyTest(TestCase):
         >>> class MyTestCase(SparklyTest):
         ...     def test(self):
         ...         self.assertDataFrameEqual(
-        ...              self.hc.sql('SELECT 1 as one').collect(),
+        ...              self.spark.sql('SELECT 1 as one').collect(),
         ...              [{'one': 1}],
         ...         )
     """
-    context = SparklyContext
+    session = SparklySession
     class_fixtures = []
     fixtures = []
     maxDiff = None
@@ -82,13 +82,13 @@ class SparklyTest(TestCase):
         super(SparklyTest, cls).setUpClass()
 
         # In case if project has a mix of SparklyTest and SparklyGlobalContextTest-based tests
-        global _test_context_cache
-        if _test_context_cache:
-            logger.info('Found a global context, stopping it %r', _test_context_cache)
-            _test_context_cache._sc.stop()
-            _test_context_cache = None
+        global _test_session_cache
+        if _test_session_cache:
+            logger.info('Found a global context, stopping it %r', _test_session_cache)
+            _test_session_cache.stop()
+            _test_session_cache = None
 
-        cls.hc = cls.context()
+        cls.spark = cls.session()
 
         for fixture in cls.class_fixtures:
             fixture.setup_data()
@@ -143,7 +143,7 @@ class SparklyTest(TestCase):
                 self.assertItemsEqual(actual_data, expected_data)
 
 
-class SparklyGlobalContextTest(SparklyTest):
+class SparklyGlobalSessionTest(SparklyTest):
     """Base test case that keeps a single instance for the given context class across all tests.
 
     Integration tests are slow, especially when you have to start/stop Spark context
@@ -151,27 +151,27 @@ class SparklyGlobalContextTest(SparklyTest):
     """
     @classmethod
     def setUpClass(cls):
-        global _test_context_cache
+        global _test_session_cache
 
-        if _test_context_cache and cls.context == type(_test_context_cache):
-            logger.info('Reusing the global context for %r', cls.context)
-            hc = _test_context_cache
+        if _test_session_cache and cls.session == type(_test_session_cache):
+            logger.info('Reusing the global context for %r', cls.session)
+            spark = _test_session_cache
         else:
-            if _test_context_cache:
-                logger.info('Stopping the previous global context %r', _test_context_cache)
-                _test_context_cache._sc.stop()
+            if _test_session_cache:
+                logger.info('Stopping the previous global context %r', _test_session_cache)
+                _test_session_cache.stop()
 
-            logger.info('Starting the new global context for %r', cls.context)
-            hc = _test_context_cache = cls.context()
+            logger.info('Starting the new global context for %r', cls.session)
+            spark = _test_session_cache = cls.session()
 
-        cls.hc = hc
+        cls.spark = spark
 
         for fixture in cls.class_fixtures:
             fixture.setup_data()
 
     @classmethod
     def tearDownClass(cls):
-        cls.hc.clearCache()
+        cls.spark.catalog.clearCache()
 
         for fixture in cls.class_fixtures:
             fixture.teardown_data()
@@ -398,7 +398,7 @@ class KafkaFixture(Fixture):
 
     Examples:
 
-        >>> class MyTestCase(SparklyContext):
+        >>> class MyTestCase(SparklySession):
         ...     fixtures = [
         ...         KafkaFixture(
         ...             'kafka.host', 'topic',
