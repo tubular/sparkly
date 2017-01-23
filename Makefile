@@ -15,6 +15,7 @@
 #
 
 dev:
+	docker-compose build dev-spark-1.6
 	docker-compose run dev-spark-1.6 bash
 
 dist:

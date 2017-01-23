@@ -17,14 +17,15 @@
 import os
 import sys
 
-from pyspark import SparkConf, SparkContext, HiveContext
+from pyspark import SparkConf, SparkContext
+from pyspark.sql import SparkSession
 
 from sparkly.reader import SparklyReader
 from sparkly.writer import attach_writer_to_dataframe
 from sparkly.hive_metastore_manager import SparklyHiveMetastoreManager
 
 
-class SparklyContext(HiveContext):
+class SparklySession(SparkSession):
     """Wrapper around HiveContext to simplify definition of options, packages, JARs and UDFs.
 
     Example::
@@ -74,10 +75,11 @@ class SparklyContext(HiveContext):
         # Init SparkContext
         spark_conf = SparkConf()
         spark_conf.setAll(self._setup_options(additional_options))
+        spark_conf.set('spark.sql.catalogImplementation', 'hive')
         spark_context = SparkContext(conf=spark_conf)
 
         # Init HiveContext
-        super(SparklyContext, self).__init__(spark_context)
+        super(SparklySession, self).__init__(spark_context)
         self._setup_udfs()
 
         self.read_ext = SparklyReader(self)
@@ -131,6 +133,6 @@ class SparklyContext(HiveContext):
             if isinstance(defn, str):
                 self.sql('create temporary function {} as "{}"'.format(name, defn))
             elif isinstance(defn, tuple):
-                self.registerFunction(name, *defn)
+                self.catalog.registerFunction(name, *defn)
             else:
                 raise NotImplementedError('Incorrect UDF definition: {}: {}'.format(name, defn))

@@ -17,13 +17,13 @@
 import uuid
 import os
 
-from sparkly.testing import SparklyGlobalContextTest
-from tests.integration.base import _TestContext
+from sparkly.testing import SparklyGlobalSessionTest
+from tests.integration.base import _TestSession
 
 
-class TestHql(SparklyGlobalContextTest):
+class TestHql(SparklyGlobalSessionTest):
 
-    context = _TestContext
+    session = _TestSession
 
     @classmethod
     def setUpClass(cls):
@@ -54,7 +54,7 @@ class TestHql(SparklyGlobalContextTest):
         super(TestHql, cls).tearDownClass()
 
     def test_get_all_table_properties(self):
-        table_manager = self.hc.hms.table('test_table')
+        table_manager = self.spark.hms.table('test_table')
 
         table_manager.set_property('name', 'Johny')
         table_manager.set_property('surname', 'Cache')
@@ -69,22 +69,22 @@ class TestHql(SparklyGlobalContextTest):
         self.assertEqual(res['age'], '99')
 
     def test_get_all_tables(self):
-        all_tables = self.hc.hms.get_all_tables()
+        all_tables = self.spark.hms.get_all_tables()
         self.assertIsInstance(all_tables, list)
         self.assertIn('test_table', all_tables)
 
     def test_table_exists(self):
-        self.assertTrue(self.hc.hms.table('test_table').exists())
-        self.assertFalse(self.hc.hms.table('not_test_table').exists())
+        self.assertTrue(self.spark.hms.table('test_table').exists())
+        self.assertFalse(self.spark.hms.table('not_test_table').exists())
 
     def test_set_property(self):
         self.assertEqual(
-            self.hc.hms.table('test_table').set_property('xxx', 'yyy').get_property('xxx'),
+            self.spark.hms.table('test_table').set_property('xxx', 'yyy').get_property('xxx'),
             'yyy'
         )
 
     def test_create_table(self):
-        res = self.hc.sql("""
+        res = self.spark.sql("""
             SELECT * FROM test_table
         """).coalesce(1).collect()
 
@@ -97,19 +97,19 @@ class TestHql(SparklyGlobalContextTest):
             ('Jessica3', 17, '2016-01-02', 'facebook'),
         })
 
-        all_props = self.hc.hms.table('test_table').get_all_properties()
+        all_props = self.spark.hms.table('test_table').get_all_properties()
         self.assertEqual(all_props['name'], 'johnny')
         self.assertEqual(all_props['surname'], 'cache')
 
     def test_replace_table(self):
         old_path = '{}/old/'.format(self.base)
-        df = self.hc.createDataFrame([
+        df = self.spark.createDataFrame([
             ('Jess', 36, '2116-01-02', 'facebook'),
         ], ['name', 'age', 'date', 'platform'])
         df.write.parquet(old_path, partitionBy=['platform'])
 
-        self.hc.sql('drop table if exists old_table')
-        self.hc.hms.create_table(
+        self.spark.sql('drop table if exists old_table')
+        self.spark.hms.create_table(
             'old_table',
             df,
             partition_by=['platform'],
@@ -120,21 +120,21 @@ class TestHql(SparklyGlobalContextTest):
             }
         )
 
-        old_props = self.hc.hms.table('old_table').get_all_properties()
+        old_props = self.spark.hms.table('old_table').get_all_properties()
 
-        res = self.hc.sql("""
+        res = self.spark.sql("""
             SELECT name, age, date, platform FROM old_table
         """).collect()
 
         self.assertEqual(set([(item[0], item[1], item[2], item[3]) for item in res]),
                          {('Jess', 36, '2116-01-02', 'facebook')})
 
-        self.hc.hms.replace_table(
+        self.spark.hms.replace_table(
             'old_table', self.df,
             location=self.path, partition_by=['platform', 'date'],
         )
 
-        res2 = self.hc.sql("""
+        res2 = self.spark.sql("""
             SELECT name, age, date, platform FROM old_table
         """).collect()
 
@@ -150,7 +150,7 @@ class TestHql(SparklyGlobalContextTest):
             }
         )
 
-        all_props = self.hc.hms.table('old_table').get_all_properties()
+        all_props = self.spark.hms.table('old_table').get_all_properties()
         del all_props['last_modified_time']
         del all_props['transient_lastDdlTime']
         del old_props['last_modified_time']
