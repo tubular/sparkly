@@ -244,8 +244,8 @@ class CassandraFixture(Fixture):
 
     def __init__(self, host, setup_file, teardown_file):
         if not CASSANDRA_FIXTURES_SUPPORT:
-            raise NotImplementedError('No cassandra driver not found in the environment. '
-                                      'Try to use: `pip install sparkly[test]`')
+            raise NotImplementedError('cassandra-driver package isn\'t available. '
+                                      'Use pip install sparkly[test] to fix it.')
         self.host = host
         self.setup_file = setup_file
         self.teardown_file = teardown_file
@@ -362,8 +362,8 @@ class MysqlFixture(Fixture):
 
     def __init__(self, host, user, password=None, data=None, teardown=None):
         if not MYSQL_FIXTURES_SUPPORT:
-            raise NotImplementedError('No mysql driver not found in the environment. '
-                                      'Try to use: `pip install sparkly[test]`')
+            raise NotImplementedError('PyMySQL package isn\'t available. '
+                                      'Use pip install sparkly[test] to fix it.')
         self.host = host
         self.user = user
         self.password = password
@@ -424,8 +424,8 @@ class KafkaFixture(Fixture):
             data (str): Path to json file with data.
         """
         if not KAFKA_FIXTURES_SUPPORT:
-            raise NotImplementedError('Kafka-python not found in the environment. '
-                                      'Try to use: `pip install sparkly[test]`')
+            raise NotImplementedError('kafka-python package isn\'t available. '
+                                      'Use pip install sparkly[test] to fix it.')
 
         self.host = host
         self.port = port

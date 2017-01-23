@@ -249,8 +249,8 @@ class SparklyWriter(object):
             options (dict|None): Additional options.
         """
         if not KAFKA_WRITER_SUPPORT:
-            raise NotImplementedError('Python-kafka was not found in the environment, '
-                                      'try to use: `pip install sparkly[kafka]`')
+            raise NotImplementedError('kafka-python package isn\'t available. '
+                                      'Use pip install sparkly[kafka] to fix it.')
 
         def write_partition_to_kafka(messages):
             producer = KafkaProducer(
