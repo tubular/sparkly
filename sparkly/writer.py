@@ -19,7 +19,12 @@ try:
 except ImportError:
     from urlparse import urlparse, parse_qsl
 
-from kafka import KafkaProducer
+try:
+    from kafka import KafkaProducer
+    KAFKA_WRITER_SUPPORT = True
+except ImportError:
+    KAFKA_WRITER_SUPPORT = False
+
 from pyspark.sql import DataFrame
 
 
@@ -243,6 +248,10 @@ class SparklyWriter(object):
                 during the write stage (see :ref:`controlling-the-load`).
             options (dict|None): Additional options.
         """
+        if not KAFKA_WRITER_SUPPORT:
+            raise NotImplementedError('Python-kafka was not found in the environment, '
+                                      'try to use: `pip install sparkly[kafka]`')
+
         def write_partition_to_kafka(messages):
             producer = KafkaProducer(
                 bootstrap_servers=['{}:{}'.format(host, port)],
