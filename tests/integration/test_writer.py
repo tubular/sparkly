@@ -56,7 +56,8 @@ class TestWriteByURL(SparklyGlobalSessionTest):
 
         df.write_ext.by_url('csv://{}?mode=overwrite&header=true'.format(dst_path))
 
-        written_df = self.spark.read_ext.by_url('csv://{}'.format(dst_path))
+        written_df = self.spark.read_ext.by_url('csv://{}?header=true&inferSchema=true'
+                                                .format(dst_path))
         self.assertDataFrameEqual(written_df, TEST_DATA)
 
     def test_write_parquet(self):

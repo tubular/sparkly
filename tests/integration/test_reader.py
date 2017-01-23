@@ -66,58 +66,6 @@ class SparklyReaderCassandraTest(SparklyGlobalSessionTest):
         ])
 
 
-class SparklyReaderCSVTest(SparklyGlobalSessionTest):
-    session = _TestSession
-
-    def test_csv(self):
-        df = self.spark.read_ext.csv(
-            path=absolute_path(__file__, 'resources', 'test_read', 'test.csv'),
-        )
-
-        self.assertDataFrameEqual(df.take(2), [
-            {
-                'county': 'CLAY COUNTY',
-                'statecode': 'FL',
-                'point_granularity': 1,
-                'point_latitude': 30.102261,
-                'fr_site_limit': 498960.0,
-                'point_longitude': -81.711777,
-                'tiv_2012': 792148.9,
-                'fl_site_deductible': 0,
-                'fr_site_deductible': 0,
-                'construction': 'Masonry',
-                'tiv_2011': 498960.0,
-                'line': 'Residential',
-                'eq_site_deductible': 0,
-                'policyID': 119736,
-                'eq_site_limit': 498960.0,
-                'hu_site_limit': 498960.0,
-                'hu_site_deductible': 9979.2,
-                'fl_site_limit': 498960.0,
-            },
-            {
-                'county': 'CLAY COUNTY',
-                'statecode': 'FL',
-                'point_granularity': 3,
-                'point_latitude': 30.063936,
-                'fr_site_limit': 1322376.3,
-                'point_longitude': -81.707664,
-                'tiv_2012': 1438163.57,
-                'fl_site_deductible': 0,
-                'fr_site_deductible': 0,
-                'construction': 'Masonry',
-                'tiv_2011': 1322376.3,
-                'line': 'Residential',
-                'eq_site_deductible': 0,
-                'policyID': 448094,
-                'eq_site_limit': 1322376.3,
-                'hu_site_limit': 1322376.3,
-                'hu_site_deductible': 0.0,
-                'fl_site_limit': 1322376.3,
-            },
-        ])
-
-
 class SparklyReaderElasticTest(SparklyGlobalSessionTest):
     session = _TestSession
 

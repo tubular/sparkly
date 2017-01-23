@@ -131,31 +131,6 @@ class SparklyWriter(object):
 
         return self._basic_write(writer_options, options, parallelism, mode)
 
-    def csv(self, path, header=False, mode=None, partitionBy=None, parallelism=None, options=None):
-        """Write a dataframe to a CSV file.
-
-        Args:
-            path (str): Path to the output directory.
-            header (bool): First row is a header.
-            mode (str|None): Spark save mode,
-                http://spark.apache.org/docs/latest/sql-programming-guide.html#save-modes
-            partitionBy (list[str]): Names of partitioning columns.
-            parallelism (int|None): The max number of parallel tasks that could be executed
-                during the write stage (see :ref:`controlling-the-load`).
-            options (dict[str, str]): Additional options to `com.databricks.spark.csv`
-                format (see configuration for :ref:`csv`).
-        """
-        assert self._df.sql_ctx.sparkSession.has_package('com.databricks:spark-csv')
-
-        writer_options = {
-            'path': path,
-            'format': 'com.databricks.spark.csv',
-            'header': 'true' if header else 'false',
-            'partitionBy': partitionBy,
-        }
-
-        return self._basic_write(writer_options, options, parallelism, mode)
-
     def elastic(self, host, es_index, es_type, port=None, mode=None,
                 parallelism=None, options=None):
         """Write a dataframe into an ElasticSearch index.
@@ -308,20 +283,19 @@ class SparklyWriter(object):
         )
 
     def _resolve_csv(self, parsed_url, parsed_qs):
-        kwargs = {}
-
-        if 'header' in parsed_qs:
-            kwargs['header'] = parsed_qs.pop('header') == 'true'
+        parallelism = parsed_qs.pop('parallelism', None)
+        if parallelism:
+            df = self._df.coalesce(int(parallelism))
+        else:
+            df = self._df
 
         if 'partitionBy' in parsed_qs:
-            kwargs['partitionBy'] = parsed_qs.pop('partitionBy').split(',')
+            parsed_qs['partitionBy'] = parsed_qs.pop('partitionBy').split(',')
 
-        return self.csv(
+        df.write.save(
             path=parsed_url.path,
-            mode=parsed_qs.pop('mode', None),
-            parallelism=parsed_qs.pop('parallelism', None),
-            options=parsed_qs,
-            **kwargs
+            format=parsed_url.scheme,
+            **parsed_qs
         )
 
     def _resolve_elastic(self, parsed_url, parsed_qs):
@@ -349,7 +323,7 @@ class SparklyWriter(object):
     def _resolve_parquet(self, parsed_url, parsed_qs):
         parallelism = parsed_qs.pop('parallelism', None)
         if parallelism:
-            df = self._df.sql_ctxcoalesce(int(parallelism))
+            df = self._df.coalesce(int(parallelism))
         else:
             df = self._df
 
