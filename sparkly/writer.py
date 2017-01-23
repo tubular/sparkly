@@ -118,16 +118,16 @@ class SparklyWriter(object):
 
         writer_options = {
             'format': 'org.apache.spark.sql.cassandra',
-            'spark_cassandra_connection_host': host,
+            'spark.cassandra.connection.host': host,
             'keyspace': keyspace,
             'table': table,
         }
 
         if consistency:
-            writer_options['spark_cassandra_output_consistency_level'] = consistency
+            writer_options['spark.cassandra.input.consistency.level'] = consistency
 
         if port:
-            writer_options['spark_cassandra_connection_port'] = str(port)
+            writer_options['spark.cassandra.connection.port'] = str(port)
 
         return self._basic_write(writer_options, options, parallelism, mode)
 
