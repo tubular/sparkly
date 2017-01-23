@@ -24,4 +24,4 @@ sphinx_rtd_theme==0.1.9
 cassandra-driver==3.7.1
 PyMySQL==0.7.9
 kafka-python==1.2.2
--e git+https://github.com/Tubular/spark@fix/python27-support#egg=pyspark&subdirectory=python
+-e "git+https://github.com/Tubular/spark@branch-1.6#egg=pyspark&subdirectory=python"

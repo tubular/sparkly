@@ -26,6 +26,6 @@ docs:
 
 test:
 	docker-compose build test-spark-1.6
-	docker-compose run test-spark-1.6 tox -e full,no_extras ; retcode="$$?" ; docker-compose down -v ; exit $$retcode
+	docker-compose run test-spark-1.6 tox -e full,no_extras,docs ; retcode="$$?" ; docker-compose down -v ; exit $$retcode
 
 .PHONY: docs dist
