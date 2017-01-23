@@ -124,16 +124,16 @@ class SparklyReader(object):
 
         reader_options = {
             'format': 'org.apache.spark.sql.cassandra',
-            'spark_cassandra_connection_host': host,
+            'spark.cassandra.connection.host': host,
             'keyspace': keyspace,
             'table': table,
         }
 
         if consistency:
-            reader_options['spark_cassandra_input_consistency_level'] = consistency
+            reader_options['spark.cassandra.input.consistency.level'] = consistency
 
         if port:
-            reader_options['spark_cassandra_connection_port'] = str(port)
+            reader_options['spark.cassandra.connection.port'] = str(port)
 
         return self._basic_read(reader_options, options, parallelism)
 
