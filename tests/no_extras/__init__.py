@@ -13,9 +13,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-mock==1.3.0
-pytest==3.0.3
-pytest-cov==2.3.1
-Sphinx==1.4.6
-sphinx_rtd_theme==0.1.9

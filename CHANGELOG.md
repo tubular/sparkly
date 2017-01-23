@@ -1,3 +1,6 @@
+## 1.1.1
+* Fix: kafka import error.
+
 ## 1.1.0
 * Kafka reader and writer.
 * Kafka fixtures.

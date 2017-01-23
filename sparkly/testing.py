@@ -31,21 +31,25 @@ else:
 
 try:
     from cassandra.cluster import Cluster
+    CASSANDRA_FIXTURES_SUPPORT = True
 except ImportError:
-    pass
+    CASSANDRA_FIXTURES_SUPPORT = False
 
 try:
     import pymysql as connector
+    MYSQL_FIXTURES_SUPPORT = True
 except ImportError:
     try:
         import mysql.connector as connector
-    except:
-        pass
+        MYSQL_FIXTURES_SUPPORT = True
+    except ImportError:
+        MYSQL_FIXTURES_SUPPORT = False
 
 try:
     from kafka import KafkaProducer
+    KAFKA_FIXTURES_SUPPORT = True
 except ImportError:
-    pass
+    KAFKA_FIXTURES_SUPPORT = False
 
 
 logger = logging.getLogger()
@@ -239,6 +243,9 @@ class CassandraFixture(Fixture):
     """
 
     def __init__(self, host, setup_file, teardown_file):
+        if not CASSANDRA_FIXTURES_SUPPORT:
+            raise NotImplementedError('cassandra-driver package isn\'t available. '
+                                      'Use pip install sparkly[test] to fix it.')
         self.host = host
         self.setup_file = setup_file
         self.teardown_file = teardown_file
@@ -354,6 +361,9 @@ class MysqlFixture(Fixture):
     """
 
     def __init__(self, host, user, password=None, data=None, teardown=None):
+        if not MYSQL_FIXTURES_SUPPORT:
+            raise NotImplementedError('PyMySQL package isn\'t available. '
+                                      'Use pip install sparkly[test] to fix it.')
         self.host = host
         self.user = user
         self.password = password
@@ -413,6 +423,9 @@ class KafkaFixture(Fixture):
                 applied to message value.
             data (str): Path to json file with data.
         """
+        if not KAFKA_FIXTURES_SUPPORT:
+            raise NotImplementedError('kafka-python package isn\'t available. '
+                                      'Use pip install sparkly[test] to fix it.')
 
         self.host = host
         self.port = port
