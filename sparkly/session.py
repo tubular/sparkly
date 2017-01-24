@@ -20,9 +20,9 @@ import sys
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession
 
+from sparkly.catalog import SparklyCatalog
 from sparkly.reader import SparklyReader
 from sparkly.writer import attach_writer_to_dataframe
-from sparkly.hive_metastore_manager import SparklyHiveMetastoreManager
 
 
 class SparklySession(SparkSession):
@@ -83,7 +83,7 @@ class SparklySession(SparkSession):
         self._setup_udfs()
 
         self.read_ext = SparklyReader(self)
-        self.hms = SparklyHiveMetastoreManager(self)
+        self.catalog_ext = SparklyCatalog(self)
 
         attach_writer_to_dataframe()
 
