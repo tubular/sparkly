@@ -23,7 +23,7 @@ from sparkly.testing import (
     SparklyGlobalSessionTest,
     KafkaFixture)
 from sparkly.utils import absolute_path
-from tests.integration.base import _TestSession
+from tests.integration.base import SparklyTestSession
 
 try:
     from kafka import KafkaConsumer
@@ -32,7 +32,7 @@ except ImportError:
 
 
 class TestAssertions(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     def test_assert_dataframe_equal(self):
         df = self.spark.createDataFrame([('Alice', 1),
@@ -60,7 +60,7 @@ class TestAssertions(SparklyGlobalSessionTest):
 
 
 class TestCassandraFixtures(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     def test_cassandra_fixture(self):
         data_in_cassandra = CassandraFixture(
@@ -81,7 +81,7 @@ class TestCassandraFixtures(SparklyGlobalSessionTest):
 
 class TestMysqlFixtures(SparklyGlobalSessionTest):
 
-    session = _TestSession
+    session = SparklyTestSession
 
     fixtures = [
         MysqlFixture(
@@ -102,7 +102,7 @@ class TestMysqlFixtures(SparklyGlobalSessionTest):
 
 class TestElasticFixture(SparklyGlobalSessionTest):
 
-    session = _TestSession
+    session = SparklyTestSession
 
     class_fixtures = [
         ElasticFixture(
@@ -124,7 +124,7 @@ class TestElasticFixture(SparklyGlobalSessionTest):
 
 class TestKafkaFixture(SparklyGlobalSessionTest):
 
-    session = _TestSession
+    session = SparklyTestSession
 
     topic = 'sparkly.test.fixture.{}'.format(uuid.uuid4().hex[:10])
     fixtures = [

@@ -18,14 +18,14 @@ import uuid
 import os
 
 from sparkly.testing import SparklyGlobalSessionTest
-from tests.integration.base import _TestSession
+from tests.integration.base import SparklyTestSession
 
 
 class TestSparklyCatalog(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     def setUp(self):
-        self.spark.catalog_ext.drop_table('default.test_table')
+        self.spark.catalog_ext.drop_table('test_table')
 
         df = self.spark.createDataFrame([('row_1', 1), ('row_2', 2)], schema=('a', 'b'))
         df.write.saveAsTable('test_table', format='parquet', location='/tmp/test_table')
@@ -42,7 +42,7 @@ class TestSparklyCatalog(SparklyGlobalSessionTest):
 
     def test_has_table(self):
         self.assertTrue(self.spark.catalog_ext.has_table('test_table'))
-        self.assertTrue(self.spark.catalog_ext.has_table('default.test_table'))
+        self.assertTrue(self.spark.catalog_ext.has_table('test_table', db_name='default'))
         self.assertFalse(self.spark.catalog_ext.has_table('test_unknown_table'))
 
     def test_rename_table(self):
@@ -50,7 +50,7 @@ class TestSparklyCatalog(SparklyGlobalSessionTest):
         self.assertTrue(self.spark.catalog_ext.has_table('test_table'))
         self.assertFalse(self.spark.catalog_ext.has_table('new_test_table'))
 
-        self.spark.catalog_ext.rename_table('test_table', 'default.new_test_table')
+        self.spark.catalog_ext.rename_table('test_table', 'new_test_table')
 
         self.assertFalse(self.spark.catalog_ext.has_table('test_table'))
         self.assertTrue(self.spark.catalog_ext.has_table('new_test_table'))

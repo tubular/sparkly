@@ -24,11 +24,11 @@ from sparkly.testing import (
     ElasticFixture,
     KafkaFixture)
 from sparkly.utils import absolute_path, kafka_get_topics_offsets
-from tests.integration.base import _TestSession
+from tests.integration.base import SparklyTestSession
 
 
 class SparklyReaderCassandraTest(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     fixtures = [
         CassandraFixture(
@@ -67,7 +67,7 @@ class SparklyReaderCassandraTest(SparklyGlobalSessionTest):
 
 
 class SparklyReaderElasticTest(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     fixtures = [
         ElasticFixture(
@@ -115,7 +115,7 @@ class SparklyReaderElasticTest(SparklyGlobalSessionTest):
 
 
 class SparklyReaderMySQLTest(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     fixtures = [
         MysqlFixture(
@@ -146,7 +146,7 @@ class SparklyReaderMySQLTest(SparklyGlobalSessionTest):
 
 
 class TestReaderKafka(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     def setUp(self):
         self.json_decoder = lambda item: json.loads(item.decode('utf-8'))

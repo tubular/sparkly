@@ -21,11 +21,11 @@ from sparkly.testing import (
     MysqlFixture,
     SparklyGlobalSessionTest,
     KafkaFixture)
-from tests.integration.base import _TestSession
+from tests.integration.base import SparklyTestSession
 
 
 class TestCassandraFixtures(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     def test_cassandra_fixture(self):
         with self.assertRaises(NotImplementedError):
@@ -38,7 +38,7 @@ class TestCassandraFixtures(SparklyGlobalSessionTest):
 
 class TestMysqlFixtures(SparklyGlobalSessionTest):
 
-    session = _TestSession
+    session = SparklyTestSession
 
     def test_mysql_fixture(self):
         with self.assertRaises(NotImplementedError):
@@ -53,7 +53,7 @@ class TestMysqlFixtures(SparklyGlobalSessionTest):
 
 class TestKafkaFixture(SparklyGlobalSessionTest):
 
-    session = _TestSession
+    session = SparklyTestSession
 
     def test_kafka_fixture(self):
         with self.assertRaises(NotImplementedError):

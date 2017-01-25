@@ -29,7 +29,7 @@ from pyspark.sql import DataFrame
 
 
 class SparklyWriter(object):
-    """A set of tools to write DataFrames to the external storages.
+    """A set of tools to write DataFrames to external storages.
 
     Note:
         We don't expect you to be using the class directly.

@@ -24,7 +24,7 @@ except ImportError:
 
 
 def absolute_path(file_path, *rel_path):
-    """Returns absolute path to file.
+    """Return absolute path to file.
 
     Usage:
         >>> absolute_path('/my/current/dir/x.txt', '..', 'x.txt')
@@ -55,7 +55,7 @@ def absolute_path(file_path, *rel_path):
 
 
 def kafka_get_topics_offsets(host, topic, port=9092):
-    """Returns available partitions and their offsets for the given topic.
+    """Return available partitions and their offsets for the given topic.
 
     Args:
         host (str): Kafka host.
