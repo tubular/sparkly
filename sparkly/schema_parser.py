@@ -23,7 +23,7 @@ from sparkly.exceptions import UnsupportedDataType
 
 
 def parse(schema):
-    """Converts string to Sparke schema definition.
+    """Converts string to Spark schema definition.
 
     Usages:
         >>> parse('struct[a:struct[a:string]]').simpleString()

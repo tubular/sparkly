@@ -15,11 +15,11 @@
 #
 
 from sparkly.testing import SparklyGlobalSessionTest
-from tests.integration.base import _TestSession
+from tests.integration.base import SparklyTestSession
 
 
 class TestSparklySession(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     def test_python_udf(self):
         rows = self.spark.sql('select length_of_text("hello world")')

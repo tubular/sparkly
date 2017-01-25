@@ -20,7 +20,7 @@ from sparkly import SparklySession
 from sparkly.utils import absolute_path
 
 
-class _TestSession(SparklySession):
+class SparklyTestSession(SparklySession):
     packages = [
         'datastax:spark-cassandra-connector:2.0.0-M2-s_2.11',
         'org.elasticsearch:elasticsearch-spark-20_2.11:5.1.1',

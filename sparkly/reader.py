@@ -34,8 +34,13 @@ class SparklyReader(object):
         This is a private class to the library. You should not use it directly.
         The instance of the class is available under `SparklyContext` via `read_ext` attribute.
     """
-    def __init__(self, spark_session):
-        self._sparkSession = spark_session
+    def __init__(self, spark):
+        """Constructor.
+
+        Args:
+            spark (sparkly.SparklySession)
+        """
+        self._spark = spark
 
     def by_url(self, url):
         """Create a dataframe using `url`.
@@ -120,7 +125,7 @@ class SparklyReader(object):
         Returns:
             pyspark.sql.DataFrame
         """
-        assert self._sparkSession.has_package('datastax:spark-cassandra-connector')
+        assert self._spark.has_package('datastax:spark-cassandra-connector')
 
         reader_options = {
             'format': 'org.apache.spark.sql.cassandra',
@@ -156,7 +161,7 @@ class SparklyReader(object):
         Returns:
             pyspark.sql.DataFrame
         """
-        assert self._sparkSession.has_package('org.elasticsearch:elasticsearch-spark')
+        assert self._spark.has_package('org.elasticsearch:elasticsearch-spark')
 
         reader_options = {
             'path': '{}/{}'.format(es_index, es_type),
@@ -193,7 +198,7 @@ class SparklyReader(object):
         Returns:
             pyspark.sql.DataFrame
         """
-        assert self._sparkSession.has_jar('mysql-connector-java')
+        assert self._spark.has_jar('mysql-connector-java')
 
         reader_options = {
             'format': 'jdbc',
@@ -249,7 +254,7 @@ class SparklyReader(object):
         Raises:
             InvalidArgumentError
         """
-        assert self._sparkSession.has_package('org.apache.spark:spark-streaming-kafka')
+        assert self._spark.has_package('org.apache.spark:spark-streaming-kafka')
 
         if not key_deserializer or not value_deserializer or not schema:
             raise InvalidArgumentError('You should specify all of parameters:'
@@ -268,7 +273,7 @@ class SparklyReader(object):
         offset_ranges = [OffsetRange(topic, partition, start_offset, end_offset)
                          for partition, start_offset, end_offset in offset_ranges]
 
-        rdd = KafkaUtils.createRDD(self._sparkSession.sparkContext,
+        rdd = KafkaUtils.createRDD(self._spark.sparkContext,
                                    kafkaParams=kafka_params,
                                    offsetRanges=offset_ranges or [],
                                    keyDecoder=key_deserializer,
@@ -278,12 +283,12 @@ class SparklyReader(object):
         if parallelism:
             rdd = rdd.coalesce(parallelism)
 
-        return self._sparkSession.createDataFrame(rdd, schema=schema)
+        return self._spark.createDataFrame(rdd, schema=schema)
 
     def _basic_read(self, reader_options, additional_options, parallelism):
         reader_options.update(additional_options or {})
 
-        df = self._sparkSession.read.load(**reader_options)
+        df = self._spark.read.load(**reader_options)
         if parallelism:
             df = df.coalesce(parallelism)
 
@@ -306,7 +311,7 @@ class SparklyReader(object):
         if 'schema' in parsed_qs:
             parsed_qs['schema'] = schema_parser.parse(parsed_qs.pop('schema'))
 
-        df = self._sparkSession.read.csv(
+        df = self._spark.read.csv(
             path=parsed_url.path,
             **parsed_qs
         )
@@ -348,7 +353,7 @@ class SparklyReader(object):
     def _resolve_parquet(self, parsed_url, parsed_qs):
         parallelism = parsed_qs.pop('parallelism', None)
 
-        df = self._sparkSession.read.load(
+        df = self._spark.read.load(
             path=parsed_url.path,
             format=parsed_url.scheme,
             **parsed_qs
@@ -360,7 +365,7 @@ class SparklyReader(object):
         return df
 
     def _resolve_table(self, parsed_url, parsed_qs):
-        df = self._sparkSession.table(parsed_url.netloc)
+        df = self._spark.table(parsed_url.netloc)
 
         parallelism = parsed_qs.pop('parallelism', None)
         if parallelism:

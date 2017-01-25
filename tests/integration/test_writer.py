@@ -26,7 +26,7 @@ from sparkly.testing import (
     ElasticFixture,
     MysqlFixture,
 )
-from tests.integration.base import _TestSession
+from tests.integration.base import SparklyTestSession
 
 try:
     from kafka import KafkaConsumer
@@ -42,7 +42,7 @@ TEST_DATA = [
 
 
 class TestWriteByURL(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     def setUp(self):
         self.temp_dir = mkdtemp()
@@ -71,7 +71,7 @@ class TestWriteByURL(SparklyGlobalSessionTest):
 
 
 class TestWriteCassandra(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     fixtures = [
         CassandraFixture(
@@ -102,7 +102,7 @@ class TestWriteCassandra(SparklyGlobalSessionTest):
 
 
 class TestWriteElastic(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     fixtures = [
         ElasticFixture(
@@ -135,7 +135,7 @@ class TestWriteElastic(SparklyGlobalSessionTest):
 
 
 class TestWriteMysql(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     fixtures = [
         MysqlFixture(
@@ -168,7 +168,7 @@ class TestWriteMysql(SparklyGlobalSessionTest):
 
 
 class TestWriteKafka(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     def setUp(self):
         self.json_decoder = lambda item: json.loads(item.decode('utf-8'))

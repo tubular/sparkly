@@ -24,8 +24,13 @@ from pyspark.sql.types import StructType
 class SparklyCatalog(object):
     """A set of tools to interact with HiveMetastore."""
 
-    def __init__(self, spark_session):
-        self.spark = spark_session
+    def __init__(self, spark):
+        """Constructor.
+
+        Args:
+            spark (sparkly.SparklySession)
+        """
+        self._spark = spark
 
     def drop_table(self, table_name, checkfirst=True):
         """Drop table from the metastore.
@@ -35,30 +40,23 @@ class SparklyCatalog(object):
             #LanguageManualDDL-DropTable
 
         Args:
-            table_name (str): A table name. Might contain a db name.
-                E.g. "my_table" or "default.my_table".
+            table_name (str): A table name.
             checkfirst (bool): Only issue DROPs for tables that are presented in the database.
         """
         drop_statement = 'DROP TABLE IF EXISTS' if checkfirst else 'DROP TABLE'
-        return self.spark.sql('{} `{}`'.format(drop_statement, table_name))
+        return self._spark.sql('{} `{}`'.format(drop_statement, table_name))
 
-    def has_table(self, table_name):
+    def has_table(self, table_name, db_name=None):
         """Check if table is available in the metastore.
 
         Args:
-            table_name (str): A table name. Might contain a db name.
-                E.g. "my_table" or "default.my_table".
+            table_name (str): A table name.
+            db_name (str): A database name.
 
         Returns:
             bool
         """
-        db_and_table = table_name.split('.')
-        if len(db_and_table) > 1:
-            db_name, table_name = db_and_table
-        else:
-            db_name, table_name = None, db_and_table[0]
-
-        for table in self.spark.catalog.listTables(db_name):
+        for table in self._spark.catalog.listTables(db_name):
             if table.name == table_name:
                 return True
 
@@ -72,12 +70,10 @@ class SparklyCatalog(object):
             #LanguageManualDDL-RenameTable
 
         Args:
-            old_table_name (str): The current table name. Might contain a db name.
-                E.g. "src_table" or "db_name.src_table".
-            new_table_name (str): Expected table name. Might contain a db name.
-                E.g. "dst_table" or "db_name.dst_table".
+            old_table_name (str): The current table name.
+            new_table_name (str): An expected table name.
         """
-        self.spark.sql('ALTER TABLE `{}` RENAME TO `{}`'.format(old_table_name, new_table_name))
+        self._spark.sql('ALTER TABLE `{}` RENAME TO `{}`'.format(old_table_name, new_table_name))
 
     def get_table_property(self, table_name, property_name, to_type=None):
         """Get table property value from the metastore.
@@ -94,7 +90,7 @@ class SparklyCatalog(object):
         if not to_type:
             to_type = str
 
-        df = self.spark.sql("SHOW TBLPROPERTIES `{}`('{}')".format(table_name, property_name))
+        df = self._spark.sql("SHOW TBLPROPERTIES `{}`('{}')".format(table_name, property_name))
         prop_val = df.collect()[0].value.strip()
 
         if 'does not have property' not in prop_val:
@@ -104,24 +100,22 @@ class SparklyCatalog(object):
         """Get table properties from the metastore.
 
         Args:
-            table_name (str): A table name. Might contain a db name.
-                E.g. "my_table" or "default.my_table".
+            table_name (str): A table name.
 
         Returns:
             dict[str,str]: Key/value for properties.
         """
-        rows = self.spark.sql('SHOW TBLPROPERTIES `{}`'.format(table_name)).collect()
+        rows = self._spark.sql('SHOW TBLPROPERTIES `{}`'.format(table_name)).collect()
         return {row.key: row.value for row in rows}
 
     def set_table_property(self, table_name, property_name, value):
         """Set value for table property.
 
         Args:
-            table_name (str): A table name. Might contain a db name.
-                E.g. "my_table" or "default.my_table".
+            table_name (str): A table name.
             property_name (str): A property name to set value for.
             value (Any): Will be automatically casted to string.
         """
-        self.spark.sql("ALTER TABLE `{}` SET TBLPROPERTIES ('{}'='{}')".format(
+        self._spark.sql("ALTER TABLE `{}` SET TBLPROPERTIES ('{}'='{}')".format(
             table_name, property_name, value
         ))

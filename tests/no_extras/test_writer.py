@@ -21,11 +21,11 @@ from sparkly.utils import absolute_path
 from sparkly.testing import (
     SparklyGlobalSessionTest,
 )
-from tests.integration.base import _TestSession
+from tests.integration.base import SparklyTestSession
 
 
 class TestWriteKafka(SparklyGlobalSessionTest):
-    session = _TestSession
+    session = SparklyTestSession
 
     def setUp(self):
         self.json_decoder = lambda item: json.loads(item.decode('utf-8'))

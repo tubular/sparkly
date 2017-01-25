@@ -34,7 +34,7 @@ class SparklySession(SparkSession):
         import sparkly
 
 
-        class MyContext(sparkly.SparklyContext):
+        class MySession(sparkly.SparklySession):
             options = {'spark.sql.shuffle.partitions': '2000'}
             packages = ['com.databricks:spark-csv_2.10:1.4.0']
             jars = ['../path/to/brickhouse-0.7.1.jar']
@@ -44,18 +44,18 @@ class SparklySession(SparkSession):
             }
 
 
-        hc = MyContext()
-        hc.read_ext.cassandra(...)
+        spark = MySession()
+        spark.read_ext.cassandra(...)
 
     Attributes:
         options (dict[str,str]): Configuration options that are passed to SparkConf.
             See `the list of possible options
-            <https://spark.apache.org/docs/1.6.2/configuration.html#available-properties>`_.
+            <https://spark.apache.org/docs/2.1.0/configuration.html#available-properties>`_.
         packages (list[str]): Spark packages that should be installed.
             See https://spark-packages.org/
-        jars (list[str]): Full paths to jar files that we want to include to the context.
+        jars (list[str]): Full paths to jar files that we want to include to the session.
             E.g. a JDBC connector or a library with UDF functions.
-        udfs (dict[str,str|typing.Callable]): Register UDF functions within the context.
+        udfs (dict[str,str|typing.Callable]): Register UDF functions within the session.
             Key - a name of the function,
             Value - either a class name imported from a JAR file
                 or a tuple with python function and its return type.
@@ -88,10 +88,10 @@ class SparklySession(SparkSession):
         attach_writer_to_dataframe()
 
     def has_package(self, package_prefix):
-        """Check if the package is available in the context.
+        """Check if the package is available in the session.
 
         Args:
-            package_prefix (str): E.g. "org.elasticsearch:elasticsearch-spark"
+            package_prefix (str): E.g. "org.elasticsearch:elasticsearch-spark".
 
         Returns:
             bool
@@ -99,10 +99,10 @@ class SparklySession(SparkSession):
         return any(package for package in self.packages if package.startswith(package_prefix))
 
     def has_jar(self, jar_name):
-        """Check if the jar is available in the context.
+        """Check if the jar is available in the session.
 
         Args:
-            jar_name (str): E.g. "mysql-connector-java"
+            jar_name (str): E.g. "mysql-connector-java".
 
         Returns:
             bool
