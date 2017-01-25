@@ -24,7 +24,7 @@ import pyspark.sql
 
 import sparkly
 from sparkly.reader import SparklyReader
-from sparkly import schema_parser
+from sparkly.utils import parse_schema
 
 
 class TestSparklyReaderByUrl(unittest.TestCase):
@@ -73,7 +73,7 @@ class TestSparklyReaderByUrl(unittest.TestCase):
         self.assertEqual(df, self.fake_df)
         self.spark.read.csv.assert_called_with(
             path='/path/on/file/system',
-            schema=schema_parser.parse(schema),
+            schema=parse_schema(schema),
             header='false',
         )
 

@@ -25,4 +25,3 @@ cassandra-driver==3.7.1
 PyMySQL==0.7.9
 kafka-python==1.2.2
 -e git+https://github.com/Tubular/spark@branch-2.1.0#egg=pyspark&subdirectory=python
-
