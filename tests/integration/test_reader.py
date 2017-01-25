@@ -22,7 +22,8 @@ from sparkly.testing import (
     CassandraFixture,
     MysqlFixture,
     ElasticFixture,
-    KafkaFixture)
+    KafkaFixture,
+)
 from sparkly.utils import absolute_path, kafka_get_topics_offsets
 from tests.integration.base import SparklyTestSession
 

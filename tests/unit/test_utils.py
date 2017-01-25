@@ -17,13 +17,13 @@
 from unittest import TestCase
 
 from sparkly.exceptions import UnsupportedDataType
-from sparkly.schema_parser import parse, _generate_structure_type, _process_type
+from sparkly.utils import parse_schema, _generate_structure_type, _process_type
 
 
 class TestSchemaParser(TestCase):
     def test_struct_parsing(self):
         self.assertEqual(
-            parse('a:struct[a:string]|b:list[long]').simpleString(),
+            parse_schema('a:struct[a:string]|b:list[long]').simpleString(),
             'struct<a:struct<a:string>,b:array<bigint>>',
         )
 
