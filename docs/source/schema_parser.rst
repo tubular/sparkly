@@ -8,10 +8,10 @@ This might be useful for:
 
 
 Use cases
-^^^^^^^^^
+---------
 
-Init Dataframe from data
-------------------------
+Force custom schema for a dataframe
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Why**: Sometimes you know the schema of the data,
 but format is not recognized by spark. Then you can
@@ -23,12 +23,12 @@ types could be are easily derived.
 
 .. code-block:: python
 
-    from sparkly.schema_parser import generate_structure_type, parse_schema
+    from sparkly import schema_parser
 
-    data = ... parse data from file ...
-    schema_as_string = 'name:string|age:int'  # Note: you can get this from command line, for example
-    spark_schema = generate_structure_type(parse_schema(schema_as_string))
-    df = ctx.createDataframe(data, spark_schema)
+    rows = ... parse rows from a file ...
+    schema_as_string = 'name:string|age:int'  # You can pass the schema as a command line argument.
+    dataframe_schema = schema_parser.parse(schema_as_string)
+    df = spark.createDataFrame(rows, dataframe_schema)
 
 .. automodule:: sparkly.schema_parser
     :members:

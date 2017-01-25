@@ -41,7 +41,8 @@ COPY spark.log4j.properties /usr/local/spark/conf/log4j.properties
 RUN /usr/local/spark/bin/spark-shell --packages=\
 datastax:spark-cassandra-connector:2.0.0-M2-s_2.11,\
 org.elasticsearch:elasticsearch-spark-20_2.11:5.1.1,\
-org.apache.spark:spark-streaming-kafka-0-8_2.11:2.1.0
+org.apache.spark:spark-streaming-kafka-0-8_2.11:2.1.0,\
+mysql:mysql-connector-java:5.1.39
 
 # Python env
 RUN apt-get update && apt-get install -y git

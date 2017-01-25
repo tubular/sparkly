@@ -11,188 +11,107 @@ so you can keep your code agnostic to the storages you use.
 .. _cassandra:
 
 Cassandra
-^^^^^^^^^
+---------
 
-Sparkly relies on the official spark cassandra connector and was successfully tested in production using versions 1.5.x and 1.6.x.
+Sparkly relies on the official spark cassandra connector and was successfully tested in production using version `2.0.0-M2`.
 
-+---------------+----------------------------------------------------------------------------------+
-| Package       | https://spark-packages.org/package/datastax/spark-cassandra-connector            |
-+---------------+----------------------------------------------------------------------------------+
-| Configuration | https://github.com/datastax/spark-cassandra-connector/blob/b1.6/doc/reference.md |
-+---------------+----------------------------------------------------------------------------------+
++---------------+---------------------------------------------------------------------------------------+
+| Package       | https://spark-packages.org/package/datastax/spark-cassandra-connector                 |
++---------------+---------------------------------------------------------------------------------------+
+| Configuration | https://github.com/datastax/spark-cassandra-connector/blob/v2.0.0-M2/doc/reference.md |
++---------------+---------------------------------------------------------------------------------------+
 
 .. code-block:: python
 
-    from sparkly import SparklyContext
+    from sparkly import SparklySession
 
 
-    class MyContext(SparklyContext):
+    class MySession(SparklySession):
         # Feel free to play with other versions
-        packages = ['datastax:spark-cassandra-connector:1.6.1-s_2.10']
+        packages = ['datastax:spark-cassandra-connector:2.0.0-M2-s_2.11']
 
-    hc = MyContext()
+    spark = MySession()
 
     # To read data
-    df = hc.read_ext.cassandra('localhost', 'my_keyspace', 'my_table')
+    df = spark.read_ext.cassandra('localhost', 'my_keyspace', 'my_table')
     # To write data
     df.write_ext.cassandra('localhost', 'my_keyspace', 'my_table')
 
-.. _csv:
-
-CSV
-^^^
-
-Sparkly relies on the csv connector provided by `Databricks <databricks.com>`_.
-
-.. note::
-
-    Spark 2.x supports CSV out of the box.
-    We highly recommend you to use `the official api <http://spark.apache.org/docs/2.0.0/api/python/pyspark.sql.html#pyspark.sql.DataFrameReader.csv>`_.
-
-+---------------+---------------------------------------------------------+
-| Package       | https://spark-packages.org/package/databricks/spark-csv |
-+---------------+---------------------------------------------------------+
-| Configuration | https://github.com/databricks/spark-csv#features        |
-+---------------+---------------------------------------------------------+
-
-.. code-block:: python
-
-    from sparkly import SparklyContext
-
-
-    class MyContext(SparklyContext):
-        # Feel free to play with other versions
-        packages = ['com.databricks:spark-csv_2.10:1.4.0']
-
-    hc = MyContext()
-
-    # To read data
-    df = hc.read_ext.csv('/path/to/csv/file.csv', header=True)
-    # To write data
-    df.write_ext.csv('/path/to/csv/file.csv', header=False)
 
 .. _elastic:
 
 Elastic
-^^^^^^^
+-------
 
-Sparkly relies on the official elastic spark connector and was successfully tested in production using versions 2.2.x and 2.3.x.
+Sparkly relies on the official elastic spark connector and was successfully tested in production using version `5.1.1`.
 
-+---------------+---------------------------------------------------------------------------------+
-| Package       | https://spark-packages.org/package/elastic/elasticsearch-hadoop                 |
-+---------------+---------------------------------------------------------------------------------+
-| Configuration | https://www.elastic.co/guide/en/elasticsearch/hadoop/current/configuration.html |
-+---------------+---------------------------------------------------------------------------------+
++---------------+-----------------------------------------------------------------------------+
+| Package       | https://spark-packages.org/package/elastic/elasticsearch-hadoop             |
++---------------+-----------------------------------------------------------------------------+
+| Configuration | https://www.elastic.co/guide/en/elasticsearch/hadoop/5.1/configuration.html |
++---------------+-----------------------------------------------------------------------------+
 
 .. code-block:: python
 
-    from sparkly import SparklyContext
+    from sparkly import SparklySession
 
 
-    class MyContext(SparklyContext):
+    class MySession(SparklySession):
         # Feel free to play with other versions
-        packages = ['org.elasticsearch:elasticsearch-spark_2.10:2.3.0']
+        packages = ['org.elasticsearch:elasticsearch-spark-20_2.11:5.1.1']
 
-    hc = MyContext()
+    spark = MySession()
 
     # To read data
-    df = hc.read_ext.elastic('localhost', 'my_index', 'my_type', query='?q=awesomeness')
+    df = spark.read_ext.elastic('localhost', 'my_index', 'my_type', query='?q=awesomeness')
     # To write data
     df.write_ext.elastic('localhost', 'my_index', 'my_type')
-
-.. _mysql:
-
-MySQL
-^^^^^
-
-Basically, it's just a high level api on top of the native
-`jdbc reader <http://spark.apache.org/docs/2.0.0/api/python/pyspark.sql.html#pyspark.sql.DataFrameReader.jdbc>`_ and
-`jdbc writer <http://spark.apache.org/docs/2.0.0/api/python/pyspark.sql.html#pyspark.sql.DataFrameWriter.jdbc>`_.
-
-+---------------+--------------------------------------------------------------------------------------------------+
-| Jars          | https://dev.mysql.com/downloads/connector/j/                                                     |
-+---------------+--------------------------------------------------------------------------------------------------+
-| Configuration | https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-configuration-properties.html |
-+---------------+--------------------------------------------------------------------------------------------------+
-
-.. note::
-
-    Sparkly doesn't contain any jars inside, so you will have to take care of this.
-    Java connectors for mysql could be found on https://dev.mysql.com/downloads/connector/j/.
-    We usually place them within our service/package codebase in `resources` directory.
-    It's not the best idea to place binaries within a source code, but it's pretty convenient.
-
-.. code-block:: python
-
-    from sparkly import SparklyContext
-    from sparkly.utils import absolute_path
-
-
-    class MyContext(SparklyContext):
-        # Feel free to play with other versions.
-        jars = [absolute_path(__file__, './path/to/mysql-connector-java-5.1.39-bin.jar')]
-
-    hc = MyContext()
-
-    # To read data
-    df = hc.read_ext.mysql('localhost', 'my_database', 'my_table',
-                           options={'user': 'root', 'password': 'root'})
-    # To write data
-    df.write_ext.mysql('localhost', 'my_database', 'my_table', options={
-        'user': 'root',
-        'password': 'root',
-        'rewriteBatchedStatements': 'true',  # improves write throughput dramatically
-    })
 
 .. _kafka:
 
 Kafka
-^^^^^
+-----
 
 Sparkly's reader and writer for Kafka are built on top of the official spark package
 for Kafka and python library `kafka-python <https://github.com/dpkp/kafka-python>`_ .
 The first one allows us to read data efficiently,
 the second covers a lack of writing functionality in the official distribution.
 
-+---------------+--------------------------------------------------------------------------------------------+
-| Package       | https://mvnrepository.com/artifact/org.apache.spark/spark-streaming-kafka_2.10             |
-+---------------+--------------------------------------------------------------------------------------------+
-| Configuration | http://spark.apache.org/docs/latest/streaming-kafka-0-10-integration.html                  |
-+---------------+--------------------------------------------------------------------------------------------+
++---------------+------------------------------------------------------------------------------------------+
+| Package       | https://mvnrepository.com/artifact/org.apache.spark/spark-streaming-kafka-0-8_2.11/2.1.0 |
++---------------+------------------------------------------------------------------------------------------+
+| Configuration | http://spark.apache.org/docs/2.1.0/streaming-kafka-0-8-integration.html                  |
++---------------+------------------------------------------------------------------------------------------+
 
 .. note::
-    - To use the Kafka functionality **sparkly** needs the **kafka-python** library which is an optional dependency.
+    - To interact with Kafka **sparkly** needs **kafka-python** library which is an optional dependency.
       So you need to install **sparkly** with **kafka** extras:
       ```
       pip install sparkly[kafka]
       ```
-    - When working via DataFrame api, it is expected to be organized as a structure with two top level keys
-      for key and value:
+    - To interact with Kafka via DataFrame API you have to define a schema like:
       ```
       schema=StructType([StructField('key', ...), StructField('value', ...)]))
       ```
-      and then
-      ```
-      df = ctx.createDataFrame(data, schema=schema)
-      ```
-    - This functionality was tested on Kafka version **0.10.x**, which is the most recent to the moment.
-      It was not tested on Kafka **0.8.x** for which needs another package version, which does not have Api used in Sparkly.
+    - Sparkly was tested in production on Kafka version **0.10.x**, which is the most recent to the moment.
 
 .. code-block:: python
 
     import json
-    from sparkly import SparklyContext
 
-    class MyContext(SparklyContext):
+    from sparkly import SparklySession
+
+
+    class MySession(SparklySession):
         packages = [
-            'org.apache.spark:spark-streaming-kafka_2.10:1.6.1',
+            'org.apache.spark:spark-streaming-kafka-0-8_2.11:2.1.0',
         ]
 
-    hc = MyContext()
+    spark = MySession()
 
-    # To read data from kafka in json as Dataframe.
+    # To read JSON messages from Kafka into dataframe.
 
-    #   1. Define the schema of the data you read.
+    #   1. Define a schema of the messages you read.
     df_schema = StructType([
         StructField('key', StructType([
             StructField('id', StringType(), True)
@@ -203,7 +122,7 @@ the second covers a lack of writing functionality in the official distribution.
         ]))
     ])
 
-    #   2. Specify the schema as the reader parameter.
+    #   2. Specify the schema as a reader parameter.
     df = hc.read_ext.kafka(
         'kafka.host',
         topic='my.topic',
@@ -212,7 +131,7 @@ the second covers a lack of writing functionality in the official distribution.
         schema=df_schema,
     )
 
-    # To write data to kafka in json from Dataframe
+    # To write a dataframe to Kafka in json format.
     df.write_ext.kafka(
         'kafka.host',
         topic='my.topic',
@@ -220,10 +139,48 @@ the second covers a lack of writing functionality in the official distribution.
         value_serializer=lambda item: json.dumps(item).encode('utf-8'),
     )
 
+.. _mysql:
+
+MySQL
+-----
+
+Basically, it's just a high level api on top of the native
+`jdbc reader <http://spark.apache.org/docs/2.1.0/api/python/pyspark.sql.html#pyspark.sql.DataFrameReader.jdbc>`_ and
+`jdbc writer <http://spark.apache.org/docs/2.1.0/api/python/pyspark.sql.html#pyspark.sql.DataFrameWriter.jdbc>`_.
+
++---------------+--------------------------------------------------------------------------------------------------+
+| Jars          | https://mvnrepository.com/artifact/mysql/mysql-connector-java                                    |
++---------------+--------------------------------------------------------------------------------------------------+
+| Configuration | https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-reference-configuration-properties.html |
++---------------+--------------------------------------------------------------------------------------------------+
+
+.. code-block:: python
+
+    from sparkly import SparklySession
+    from sparkly.utils import absolute_path
+
+
+    class MySession(SparklySession):
+        # Feel free to play with other versions.
+        packages = ['mysql:mysql-connector-java:5.1.39']
+
+
+    spark = MySession()
+
+    # To read data
+    df = spark.read_ext.mysql('localhost', 'my_database', 'my_table',
+                              options={'user': 'root', 'password': 'root'})
+    # To write data
+    df.write_ext.mysql('localhost', 'my_database', 'my_table', options={
+        'user': 'root',
+        'password': 'root',
+        'rewriteBatchedStatements': 'true',  # improves write throughput dramatically
+    })
+
 .. _universal-reader-and-writer:
 
 Universal reader/writer
-^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------
 
 The `DataFrame` abstraction is really powerful when it comes to transformations.
 You can shape your data from various storages using exactly the same api.
@@ -262,7 +219,7 @@ To solve the problem, we decided to add the universal api to read/write `DataFra
 .. _controlling-the-load:
 
 Controlling the load
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 
 From the official documentation:
 
@@ -289,13 +246,13 @@ we have to retry the whole pack in 100 tasks.
 `Read more about coalesce <http://spark.apache.org/docs/latest/programming-guide.html#CoalesceLink>`_
 
 Reader API documentation
-^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------
 
 .. automodule:: sparkly.reader
     :members:
 
 Writer API documentation
-^^^^^^^^^^^^^^^^^^^^^^^^
+------------------------
 
 .. automodule:: sparkly.writer
     :members:

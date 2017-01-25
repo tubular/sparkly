@@ -25,11 +25,11 @@ class SparklyTestSession(SparklySession):
         'datastax:spark-cassandra-connector:2.0.0-M2-s_2.11',
         'org.elasticsearch:elasticsearch-spark-20_2.11:5.1.1',
         'org.apache.spark:spark-streaming-kafka-0-8_2.11:2.1.0',
+        'mysql:mysql-connector-java:5.1.39',
     ]
 
     jars = [
         absolute_path(__file__, 'resources', 'brickhouse-0.7.1.jar'),
-        absolute_path(__file__, 'resources', 'mysql-connector-java-5.1.39-bin.jar'),
     ]
 
     udfs = {

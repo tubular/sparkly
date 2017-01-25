@@ -2,46 +2,49 @@ Integration Testing Base Classes
 ================================
 
 Base testing classes
-^^^^^^^^^^^^^^^^^^^^
+--------------------
 
 There are two main testing classes in Sparkly:
  - SparklyTest:
-    * Instantiates Sparkly context specified in `context` attribute.
-    * The context will be available via `self.hc`.
+    * Instantiates Sparkly session specified in `session` attribute.
+    * The session instance will be available via `self.spark`.
  - SparklyGlobalContextTest:
-    * Reuses single SparklyContext for all tests for performance boost.
+    * Reuses a single SparklySession instance for all test cases to boost performance.
 
 **Example:**
 
 .. code-block:: python
 
-    from sparkly import SparklyContext
+    from sparkly import SparklySession
     from sparkly.test import SparklyTest
 
+
     class MyTestCase(SparklyTest):
-        context = SparklyContext
+        session = SparklySession
+
         def test(self):
-            df = self.hc.read_ext.by_url(...)
+            df = self.spark.read_ext.by_url(...)
             self.assertDataFrameEqual(
                 df, [('test_data', 1)], ['name', 'number']
             )
 
     ...
 
-    class MyTestWithReusableContext(SparklyGlobalContextTest):
-        context = SparklyContext
+    class MyTestWithReusableSession(SparklyGlobalSessionTest):
+        context = SparklySession
+
         def test(self):
-            df = self.hc.read_ext.by_url(...)
+            df = self.spark.read_ext.by_url(...)
 
     ...
 
 Fixtures
-^^^^^^^^
+--------
 
-Fixtures is term borrowed from testing in Django framework.
-A fixture will load data to a database upon text execution.
+"Fixture" is a term borrowed from Django framework.
+A fixture will load data to a database before the test execution.
 
-There are couple of databases supported in Sparkly:
+There are several databases supported in Sparkly:
  - Mysql (requires: `PyMySql`)
  - Elastic
  - Cassandra (requires: `cassandra-driver`)
@@ -51,6 +54,7 @@ There are couple of databases supported in Sparkly:
 .. code-block:: python
 
     from sparkly.test import MysqlFixture, SparklyTest
+
 
     class MyTestCase(SparklyTest):
         ...

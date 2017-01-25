@@ -20,15 +20,17 @@ try:
 except ImportError:
     import mock
 
-from pyspark.sql import DataFrame
+from pyspark.sql import DataFrame, SQLContext
 
-import sparkly
+from sparkly import SparklySession
 from sparkly.writer import SparklyWriter
 
 
 class TestWriteByUrl(unittest.TestCase):
     def setUp(self):
         self.df = mock.Mock(spec=DataFrame)
+        self.df.sql_ctx = mock.Mock(spec=SQLContext)
+        self.df.sql_ctx.sparkSession = mock.Mock(spec=SparklySession)
         self.write_ext = SparklyWriter(self.df)
 
     def test_parquet_s3(self):
