@@ -37,3 +37,6 @@ class TestSparklySession(SparklyGlobalSessionTest):
 
         rows = self.spark.sql('select collect_max(key_field, value_field, 2) from test_jar_udf')
         self.assertEqual(rows.collect()[0][0], {'C': 3, 'D': 4})
+
+    def test_builder(self):
+        self.assertRaises(NotImplementedError, self.spark.builder)

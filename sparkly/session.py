@@ -87,6 +87,14 @@ class SparklySession(SparkSession):
 
         attach_writer_to_dataframe()
 
+    @property
+    def builder(self):
+        raise NotImplementedError(
+            'You do not need a builder for SparklySession. '
+            'Just use a regular python constructor. '
+            'Please, follow the documentation for more details.'
+        )
+
     def has_package(self, package_prefix):
         """Check if the package is available in the session.
 

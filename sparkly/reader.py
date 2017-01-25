@@ -182,7 +182,6 @@ class SparklyReader(object):
     def mysql(self, host, database, table, port=None, parallelism=None, options=None):
         """Create a dataframe from a MySQL table.
 
-        Should be usable for rds, aurora, etc.
         Options should include user and password.
 
         Args:
@@ -198,7 +197,8 @@ class SparklyReader(object):
         Returns:
             pyspark.sql.DataFrame
         """
-        assert self._spark.has_jar('mysql-connector-java')
+        assert (self._spark.has_jar('mysql-connector-java') or
+                self._spark.has_package('mysql:mysql-connector-java'))
 
         reader_options = {
             'format': 'jdbc',

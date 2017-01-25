@@ -37,6 +37,7 @@ class SparklyWriter(object):
     """
     def __init__(self, df):
         self._df = df
+        self._spark = df.sql_ctx.sparkSession
 
     def by_url(self, url):
         """Write a dataframe to a destination specified by `url`.
@@ -114,7 +115,7 @@ class SparklyWriter(object):
             options (dict[str, str]): Additional options to `org.apache.spark.sql.cassandra`
                 format (see configuration for :ref:`cassandra`).
         """
-        assert self._df.sql_ctx.sparkSession.has_package('datastax:spark-cassandra-connector')
+        assert self._spark.has_package('datastax:spark-cassandra-connector')
 
         writer_options = {
             'format': 'org.apache.spark.sql.cassandra',
@@ -147,7 +148,7 @@ class SparklyWriter(object):
             options (dict[str, str]): Additional options to `org.elasticsearch.spark.sql` format
                 (see configuration for :ref:`elastic`).
         """
-        assert self._df.sql_ctx.sparkSession.has_package('org.elasticsearch:elasticsearch-spark')
+        assert self._spark.has_package('org.elasticsearch:elasticsearch-spark')
 
         writer_options = {
             'path': '{}/{}'.format(es_index, es_type),
@@ -163,7 +164,6 @@ class SparklyWriter(object):
     def mysql(self, host, database, table, port=None, mode=None, parallelism=None, options=None):
         """Write a dataframe to a MySQL table.
 
-        Should be usable for rds, aurora, etc.
         Options should include user and password.
 
         Args:
@@ -177,7 +177,8 @@ class SparklyWriter(object):
             options (dict): Additional options for JDBC writer
                 (see configuration for :ref:`mysql`).
         """
-        assert self._df.sql_ctx.sparkSession.has_jar('mysql-connector-java')
+        assert (self._spark.has_jar('mysql-connector-java') or
+                self._spark.has_package('mysql:mysql-connector-java'))
 
         writer_options = {
             'format': 'jdbc',
@@ -222,6 +223,8 @@ class SparklyWriter(object):
                 during the write stage (see :ref:`controlling-the-load`).
             options (dict|None): Additional options.
         """
+        assert self._spark.has_package('org.apache.spark:spark-streaming-kafka')
+
         if not KAFKA_WRITER_SUPPORT:
             raise NotImplementedError('kafka-python package isn\'t available. '
                                       'Use pip install sparkly[kafka] to fix it.')
