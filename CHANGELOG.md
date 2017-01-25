@@ -1,3 +1,9 @@
+## 2.0.0
+* Migrate to Spark 2.x, Spark 1.6 isn't supported anymore.
+* Rename `SparklyContext` to `SparklySession` and derive it from `SparkSession`.
+* Use built-in csv reader.
+* Replace `hms` with `catalog_ext`.
+
 ## 1.1.1
 * Fix: kafka import error.
 
