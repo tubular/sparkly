@@ -1,17 +1,12 @@
-Integration Testing Base Classes
-================================
+Testing Utils
+=============
 
-Base testing classes
---------------------
+Base TestCases
+--------------
 
-There are two main testing classes in Sparkly:
- - SparklyTest:
-    * Instantiates Sparkly session specified in `session` attribute.
-    * The session instance will be available via `self.spark`.
- - SparklyGlobalContextTest:
-    * Reuses a single SparklySession instance for all test cases to boost performance.
-
-**Example:**
+There are two main test cases available in Sparkly:
+ - ``SparklyTest`` creates a new sparkly session per each test case.
+ - ``SparklyGlobalSessionTest`` uses a single sparkly session for all test cases to boot performance.
 
 .. code-block:: python
 
@@ -42,14 +37,13 @@ Fixtures
 --------
 
 "Fixture" is a term borrowed from Django framework.
-A fixture will load data to a database before the test execution.
+Fixtures load data to a database before the test execution.
 
-There are several databases supported in Sparkly:
- - Mysql (requires: `PyMySql`)
- - Elastic
- - Cassandra (requires: `cassandra-driver`)
-
-**Example:**
+There are several storages supported in Sparkly:
+    - Elastic
+    - Cassandra (requires ``cassandra-driver``)
+    - Mysql (requires ``PyMySql``)
+    _ Kafka (requires ``kafka-python``)
 
 .. code-block:: python
 

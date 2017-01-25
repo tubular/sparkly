@@ -24,7 +24,7 @@ except ImportError:
 
 from pyspark.streaming.kafka import KafkaUtils, OffsetRange
 
-from sparkly import schema_parser
+from sparkly.utils import parse_schema
 
 
 class SparklyReader(object):
@@ -309,7 +309,7 @@ class SparklyReader(object):
         parallelism = parsed_qs.pop('parallelism', None)
 
         if 'schema' in parsed_qs:
-            parsed_qs['schema'] = schema_parser.parse(parsed_qs.pop('schema'))
+            parsed_qs['schema'] = parse_schema(parsed_qs.pop('schema'))
 
         df = self._spark.read.csv(
             path=parsed_url.path,

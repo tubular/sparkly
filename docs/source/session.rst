@@ -1,13 +1,15 @@
 Sparkly Session
 ===============
 
-`SparklySession` is the main entry point to `sparkly` functionality.
-It's derived from `SparkSession` to provide additional features on top of the default session.
+``SparklySession`` is the main entry point to sparkly's functionality.
+It's derived from ``SparkSession`` to provide additional features on top of the default session.
+The are two main differences between ``SparkSession`` and ``SparklySession``:
 
-The are two main difference between `SparkSession` and `SparklySession`:
+    1. ``SparklySession`` doesn't have ``builder`` attribute,
+       because we prefer declarative style over imperative.
+    2. Hive support is enabled by default.
 
-1) Unlike `SparkSession`, `SparklySession` doesn't have `builder` attribute.
-We prefer declarative style over imperative.
+The next snippet shows how declarative style is used:
 
 .. code-block:: python
 
@@ -36,17 +38,11 @@ We prefer declarative style over imperative.
     spark = MySession({'spark.app.name': 'My Awesome App'})
 
 
-2) Hive support is enabled by default.
-
-
-Use cases
----------
-
 Installing dependencies
-^^^^^^^^^^^^^^^^^^^^^^^
+-----------------------
 
 **Why**: Spark forces you to specify dependencies (spark packages or maven artifacts)
-when a spark job is submitted (something like `spark-submit --packages=...`).
+when a spark job is submitted (something like ``spark-submit --packages=...``).
 We prefer a code-first approach where dependencies are actually
 declared as part of the job.
 
@@ -71,13 +67,15 @@ declared as part of the job.
 
 
 Tuning options
-^^^^^^^^^^^^^^
+--------------
 
 **Why**: You want to customise your spark session.
+
 **For example**:
-    - `spark.sql.shuffle.partitions` to tune shuffling;
-    - `hive.metastore.uris` to connect to your own HiveMetastore;
-    - `spark.hadoop.avro.mapred.ignore.inputs.without.extension` package specific options.
+
+    - ``spark.sql.shuffle.partitions`` to tune shuffling;
+    - ``hive.metastore.uris`` to connect to your own HiveMetastore;
+    - ``spark.hadoop.avro.mapred.ignore.inputs.without.extension`` package specific options.
 
 .. code-block:: python
 
@@ -101,10 +99,11 @@ Tuning options
 Using UDFs
 ----------
 
-**Why**: By default to use UDFs in Hive queries you need to add jars and specify which
-UDFs you wish to use using verbose Hive queries.
+**Why**: To start using Java UDF you have to import JAR file
+via SQL query like ``add jar ../path/to/file`` and then call ``registerJavaFunction``.
+We think it's too many actions for such simple functionality.
 
-**For example**: You want to import UDFs from (brickhouse)[https://github.com/klout/brickhouse] Hive UDFs lib.
+**For example**: You want to import UDFs from `brickhouse library <https://github.com/klout/brickhouse>`_.
 
 .. code-block:: python
 
@@ -132,6 +131,8 @@ UDFs you wish to use using verbose Hive queries.
     spark.sql('SELECT collect_max(amount) FROM my_data GROUP BY ...')
     spark.sql('SELECT my_udf(amount) FROM my_data')
 
+API documentation
+-----------------
 
-.. automodule:: sparkly.context
+.. automodule:: sparkly.session
     :members:

@@ -16,15 +16,11 @@
 
 from unittest import TestCase
 
-import pytest
-
 from sparkly.exceptions import UnsupportedDataType
 from sparkly.schema_parser import parse, _generate_structure_type, _process_type
 
 
-@pytest.mark.branch_1_0
 class TestSchemaParser(TestCase):
-
     def test_struct_parsing(self):
         self.assertEqual(
             parse('a:struct[a:string]|b:list[long]').simpleString(),
@@ -32,9 +28,7 @@ class TestSchemaParser(TestCase):
         )
 
 
-@pytest.mark.branch_1_0
 class TestGenerateSchema(TestCase):
-
     def test_basic(self):
         res = _generate_structure_type({'field_a': 'long'})
         self.assertEqual(
@@ -51,7 +45,6 @@ class TestGenerateSchema(TestCase):
             _generate_structure_type({'field_a': 'loooong'})
 
 
-@pytest.mark.branch_1_0
 class TestProcessType(TestCase):
 
     def test_basic(self):
