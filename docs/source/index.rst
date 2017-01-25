@@ -29,18 +29,16 @@ A brief tour on Sparkly features:
 
    spark = MySession()
 
-   # Operate with easily interchangeable URL-like data source definitions:
+   # Operate with interchangeable URL-like data source definitions:
    df = spark.read_ext.by_url('mysql://<my-sql.host>/my_database/my_database')
-   df.write_ext('parquet:s3://<my-bucket>/<path>/data?partition_by=<field_name1>,<field_name1>')
+   df.write_ext('parquet:s3://<my-bucket>/<path>/data?partition_by=<field_name1>')
 
    # Interact with Hive Metastore via convenient python api,
    # instead of verbose SQL queries:
    spark.catalog_ext.has_table('my_custom_table')
    spark.catalog_ext.get_table_properties('my_custom_table')
 
-   # Make integration testing more convenient with Fixtures and base test classes:
-   # SparklyTest, SparklyGlobalSessionTest, instead of implementing you own spark testing
-   # mini frameworks:
+   # Easy integration testing with Fixtures and base test classes.
    from sparkly.testing import SparklyTest
 
 
@@ -65,10 +63,8 @@ A brief tour on Sparkly features:
    session
    reader_and_writer
    catalog
-   schema_parser
+   testing
    utils
-   exceptions
-   test
    license
 
 .. automodule:: sparkly
