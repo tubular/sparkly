@@ -84,16 +84,11 @@ the second covers a lack of writing functionality in the official distribution.
 +---------------+------------------------------------------------------------------------------------------+
 
 .. note::
-    - To interact with Kafka **sparkly** needs **kafka-python** library which is an optional dependency.
-      So you need to install **sparkly** with **kafka** extras:
+    - To interact with Kafka ``sparkly`` needs ``kafka-python`` library, you can get it via:
       ```
       pip install sparkly[kafka]
       ```
-    - To interact with Kafka via DataFrame API you have to define a schema like:
-      ```
-      schema=StructType([StructField('key', ...), StructField('value', ...)]))
-      ```
-    - Sparkly was tested in production on Kafka version **0.10.x**, which is the most recent to the moment.
+    - Sparkly was tested in production using Apache Kafka **0.10.x**.
 
 .. code-block:: python
 

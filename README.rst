@@ -73,7 +73,13 @@ tools mentioned above have been installed, all you need is to run::
 Supported Spark Versions
 ------------------------
 
-At the moment we support only Spark 2.0.x and 2.1.x.
+At the moment we support:
+
++-------------------------------------------+
+| sparkly 1.x | Spark 1.6.x                 |
++-------------------------------------------+
+| sparkly 2.x | Spark 2.0.x and Spark 2.1.x |
++--------------------------------------------
 
 .. |Sparkly PyPi Version| image:: http://img.shields.io/pypi/v/sparkly.svg
    :target: https://pypi.python.org/pypi/sparkly

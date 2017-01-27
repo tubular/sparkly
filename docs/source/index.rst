@@ -1,7 +1,7 @@
 Welcome to sparkly's documentation!
 ===================================
 
-Sparkly is a lib that makes usage of pyspark more convenient and consistent.
+Sparkly is a library that makes usage of pyspark more convenient and consistent.
 
 A brief tour on Sparkly features:
 
