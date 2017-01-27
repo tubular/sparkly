@@ -35,7 +35,8 @@ class SparklyCatalog(object):
     def drop_table(self, table_name, checkfirst=True):
         """Drop table from the metastore.
 
-        .. Note:: follow the official documentation to understand `DROP TABLE` semantic.
+        Note:
+            Follow the official documentation to understand `DROP TABLE` semantic.
             https://cwiki.apache.org/confluence/display/Hive/LanguageManual+DDL\
             #LanguageManualDDL-DropTable
 
@@ -65,7 +66,8 @@ class SparklyCatalog(object):
     def rename_table(self, old_table_name, new_table_name):
         """Rename table in the metastore.
 
-        .. Note:: follow the official documentation to understand `ALTER TABLE` semantic.
+        Note:
+            Follow the official documentation to understand `ALTER TABLE` semantic.
             https://cwiki.apache.org/confluence/display/Hive/LanguageManual+DDL\
             #LanguageManualDDL-RenameTable
 

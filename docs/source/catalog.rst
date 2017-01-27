@@ -8,7 +8,7 @@ About Hive Metastore
 
 The Hive Metastore is a database with metadata for Hive tables.
 
-To configure ```SparklySession`` to work with your Hive Metastore, you need to set ``hive.metastore.uris`` option.
+To configure ```SparklySession`` to work with external Hive Metastore, you need to set ``hive.metastore.uris`` option.
 You can do this via ``hive-site.xml`` file in spark config ($SPARK_HOME/conf/hive-site.xml):
 
 .. code-block:: xml

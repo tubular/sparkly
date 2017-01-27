@@ -6,10 +6,10 @@ It's derived from ``SparkSession`` to provide additional features on top of the 
 The are two main differences between ``SparkSession`` and ``SparklySession``:
 
     1. ``SparklySession`` doesn't have ``builder`` attribute,
-       because we prefer declarative style over imperative.
+       because we prefer declarative session definition over imperative.
     2. Hive support is enabled by default.
 
-The next snippet shows how declarative style is used:
+The example below shows both imperative and declarative approaches:
 
 .. code-block:: python
 
@@ -46,7 +46,7 @@ when a spark job is submitted (something like ``spark-submit --packages=...``).
 We prefer a code-first approach where dependencies are actually
 declared as part of the job.
 
-**For example**: You want to use cassandra connector to read data from your cluster.
+**For example**: You want to read data from Cassandra.
 
 .. code-block:: python
 

@@ -1,5 +1,5 @@
 ## 2.0.0
-* Migrate to Spark 2.x, Spark 1.6 isn't supported anymore.
+* Migrate to Spark 2, Spark 1.6.x isn't supported by sparkly 2.x. 
 * Rename `SparklyContext` to `SparklySession` and derive it from `SparkSession`.
 * Use built-in csv reader.
 * Replace `hms` with `catalog_ext`.
