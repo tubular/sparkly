@@ -1,5 +1,3 @@
-.. _hive_metastore_manager:
-
 Hive Metastore Utils
 ====================
 
