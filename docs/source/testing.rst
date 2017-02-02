@@ -5,8 +5,8 @@ Base TestCases
 --------------
 
 There are two main test cases available in Sparkly:
- - ``SparklyTest`` creates a new sparkly session per each test case.
- - ``SparklyGlobalSessionTest`` uses a single sparkly session for all test cases to boot performance.
+ - ``SparklyTest`` creates a new session for each test case.
+ - ``SparklyGlobalSessionTest`` uses a single sparkly session for all test cases to boost performance.
 
 .. code-block:: python
 
@@ -19,8 +19,24 @@ There are two main test cases available in Sparkly:
 
         def test(self):
             df = self.spark.read_ext.by_url(...)
+
+            # Compare all fields
             self.assertDataFrameEqual(
-                df, [('test_data', 1)], ['name', 'number']
+                actual_df=df,
+                expected_data=[
+                    {'col1': 'row1', 'col2': 1},
+                    {'col1': 'row2', 'col2': 2},
+                ],
+            )
+
+            # Compare a subset of fields
+            self.assertDataFrameEqual(
+                actual_df=df,
+                expected_data=[
+                    {'col1': 'row1'},
+                    {'col1': 'row2'},
+                ],
+                fields=['col1'],
             )
 
     ...
