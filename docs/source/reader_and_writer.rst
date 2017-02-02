@@ -84,7 +84,7 @@ the second covers a lack of writing functionality in the official distribution.
 +---------------+------------------------------------------------------------------------------------------+
 
 .. note::
-    - To interact with Kafka ``sparkly`` needs ``kafka-python`` library, you can get it via:
+    - To interact with Kafka, ``sparkly`` needs the ``kafka-python`` library. You can get it via:
       ```
       pip install sparkly[kafka]
       ```
@@ -104,7 +104,7 @@ the second covers a lack of writing functionality in the official distribution.
 
     spark = MySession()
 
-    # To read JSON messages from Kafka into dataframe.
+    # To read JSON messaged from Kafka into a dataframe:
 
     #   1. Define a schema of the messages you read.
     df_schema = StructType([
@@ -126,7 +126,7 @@ the second covers a lack of writing functionality in the official distribution.
         schema=df_schema,
     )
 
-    # To write a dataframe to Kafka in json format.
+    # To write a dataframe to Kafka in JSON format:
     df.write_ext.kafka(
         'kafka.host',
         topic='my.topic',

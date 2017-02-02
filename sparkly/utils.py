@@ -154,7 +154,7 @@ def _parse_schema(schema):
 
     Note:
         We need an OrderedDict here because ordering matters in Dataframe definition
-        when I try to apply it to RDD, this is what we do when read kafka RDD.
+        when applied to a RDD, like when we read from Kafka RDDs.
 
     Example:
         name:string|age:int -> {'name': 'string', 'age': 'int'}
