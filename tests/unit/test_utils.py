@@ -17,57 +17,31 @@
 from unittest import TestCase
 
 from sparkly.exceptions import UnsupportedDataType
-from sparkly.utils import parse_schema, _generate_structure_type, _process_type
+from sparkly.utils import parse_schema
 
 
-class TestSchemaParser(TestCase):
-    def test_struct_parsing(self):
-        self.assertEqual(
-            parse_schema('a:struct[a:string]|b:list[long]').simpleString(),
-            'struct<a:struct<a:string>,b:array<bigint>>',
-        )
+class TestParseSchema(TestCase):
+    def test_atomic(self):
+        self.assert_parsed_properly('date')
+        self.assert_parsed_properly('float')
+        self.assert_parsed_properly('string')
+        self.assert_parsed_properly('timestamp')
+        self.assert_parsed_properly('int')
 
+    def test_array(self):
+        self.assert_parsed_properly('array<int>')
 
-class TestGenerateSchema(TestCase):
-    def test_basic(self):
-        res = _generate_structure_type({'field_a': 'long'})
-        self.assertEqual(
-            res.simpleString(),
-            'struct<field_a:bigint>'
-        )
-        res = _generate_structure_type({'field_a': 'dict[string,long]'})
-        self.assertEqual(
-            res.simpleString(),
-            'struct<field_a:map<string,bigint>>'
-        )
+    def test_map(self):
+        self.assert_parsed_properly('map<string,float>')
 
-        with self.assertRaises(UnsupportedDataType):
-            _generate_structure_type({'field_a': 'loooong'})
+    def test_struct(self):
+        self.assert_parsed_properly('struct<a:string,b:float>')
 
+    def test_parse_complex_types(self):
+        self.assert_parsed_properly('array<map<string,float>>')
+        self.assert_parsed_properly('map<string,struct<a:map<bigint,string>>>')
+        self.assert_parsed_properly('struct<a:struct<a:string>>')
+        self.assert_parsed_properly('struct<a:map<bigint,map<string,int>>,c:map<int,string>>')
 
-class TestProcessType(TestCase):
-
-    def test_basic(self):
-        self.assertEqual(
-            _process_type('string').simpleString(),
-            'string',
-        )
-        self.assertEqual(
-            _process_type('list[dict[string,string]]').simpleString(),
-            'array<map<string,string>>',
-        )
-        self.assertEqual(
-            _process_type('struct[a:struct[a:string]]').simpleString(),
-            'struct<a:struct<a:string>>',
-        )
-        self.assertEqual(
-            _process_type('dict[string,struct[a:dict[long,string]]]').simpleString(),
-            'map<string,struct<a:map<bigint,string>>>',
-        )
-        self.assertEqual(
-            _process_type('struct[a:dict[long,dict[string,long]],'
-                          'c:dict[long,string]]').simpleString(),
-            'struct<a:map<bigint,map<string,bigint>>,c:map<bigint,string>>',
-        )
-        with self.assertRaises(UnsupportedDataType):
-            _process_type('map[string,long]')
+    def assert_parsed_properly(self, schema):
+        self.assertEqual(parse_schema(schema).simpleString(), schema)
