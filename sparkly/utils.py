@@ -97,7 +97,7 @@ def kafka_get_topics_offsets(host, topic, port=9092):
 def parse_schema(schema):
     """Generate schema by its string definition.
 
-    It's basically an opposite action to `simpleString` method.
+    It's basically an opposite action to `DataType.simpleString` method.
     Supports all atomic types (like string, int, float...) and complex types (array, map, struct)
     except DecimalType.
 

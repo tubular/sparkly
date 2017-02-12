@@ -66,7 +66,7 @@ class TestSparklyReaderByUrl(unittest.TestCase):
     def test_csv_on_local_file_system(self):
         self.spark.read.csv.return_value = self.fake_df
 
-        schema = 'name:string|age:long|l:list[long]|s:struct[name:string,age:long]'
+        schema = 'struct<a:string,b:bigint,c:array<int>>'
         df = self.read_ext.by_url('csv:///path/on/file/system?header=false&schema={}'
                                   .format(schema))
 
