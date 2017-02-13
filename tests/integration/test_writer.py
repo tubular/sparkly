@@ -21,12 +21,12 @@ from tempfile import mkdtemp
 
 from sparkly.utils import absolute_path
 from sparkly.testing import (
-    SparklyGlobalContextTest,
+    SparklyGlobalSessionTest,
     CassandraFixture,
     ElasticFixture,
     MysqlFixture,
 )
-from tests.integration.base import _TestContext
+from tests.integration.base import SparklyTestSession
 
 try:
     from kafka import KafkaConsumer
@@ -41,8 +41,8 @@ TEST_DATA = [
 ]
 
 
-class TestWriteByURL(SparklyGlobalContextTest):
-    context = _TestContext
+class TestWriteByURL(SparklyGlobalSessionTest):
+    session = SparklyTestSession
 
     def setUp(self):
         self.temp_dir = mkdtemp()
@@ -52,25 +52,26 @@ class TestWriteByURL(SparklyGlobalContextTest):
 
     def test_write_csv(self):
         dst_path = '{}/test_csv'.format(self.temp_dir)
-        df = self.hc.createDataFrame(TEST_DATA)
+        df = self.spark.createDataFrame(TEST_DATA)
 
         df.write_ext.by_url('csv://{}?mode=overwrite&header=true'.format(dst_path))
 
-        written_df = self.hc.read_ext.by_url('csv://{}'.format(dst_path))
+        written_df = self.spark.read_ext.by_url('csv://{}?header=true&inferSchema=true'
+                                                .format(dst_path))
         self.assertDataFrameEqual(written_df, TEST_DATA)
 
     def test_write_parquet(self):
         dst_path = '{}/test_parquet'.format(self.temp_dir)
-        df = self.hc.createDataFrame(TEST_DATA)
+        df = self.spark.createDataFrame(TEST_DATA)
 
         df.write_ext.by_url('parquet://{}?mode=overwrite'.format(dst_path))
 
-        written_df = self.hc.read_ext.by_url('parquet://{}'.format(dst_path))
+        written_df = self.spark.read_ext.by_url('parquet://{}'.format(dst_path))
         self.assertDataFrameEqual(written_df, TEST_DATA)
 
 
-class TestWriteCassandra(SparklyGlobalContextTest):
-    context = _TestContext
+class TestWriteCassandra(SparklyGlobalSessionTest):
+    session = SparklyTestSession
 
     fixtures = [
         CassandraFixture(
@@ -81,7 +82,7 @@ class TestWriteCassandra(SparklyGlobalContextTest):
     ]
 
     def test_write_cassandra(self):
-        df = self.hc.createDataFrame(TEST_DATA)
+        df = self.spark.createDataFrame(TEST_DATA)
 
         df.write_ext.cassandra(
             host='cassandra.docker',
@@ -92,7 +93,7 @@ class TestWriteCassandra(SparklyGlobalContextTest):
             mode='overwrite',
         )
 
-        written_df = self.hc.read_ext.by_url(
+        written_df = self.spark.read_ext.by_url(
             'cassandra://cassandra.docker/'
             'sparkly_test/test_writer'
             '?consistency=ONE'
@@ -100,8 +101,8 @@ class TestWriteCassandra(SparklyGlobalContextTest):
         self.assertDataFrameEqual(written_df, TEST_DATA)
 
 
-class TestWriteElastic(SparklyGlobalContextTest):
-    context = _TestContext
+class TestWriteElastic(SparklyGlobalSessionTest):
+    session = SparklyTestSession
 
     fixtures = [
         ElasticFixture(
@@ -114,7 +115,7 @@ class TestWriteElastic(SparklyGlobalContextTest):
     ]
 
     def test_write_elastic(self):
-        df = self.hc.createDataFrame(TEST_DATA)
+        df = self.spark.createDataFrame(TEST_DATA)
 
         df.write_ext.elastic(
             host='elastic.docker',
@@ -127,14 +128,14 @@ class TestWriteElastic(SparklyGlobalContextTest):
             }
         )
 
-        df = self.hc.read_ext.by_url(
+        df = self.spark.read_ext.by_url(
             'elastic://elastic.docker/sparkly_test/test_writer?es.read.metadata=false'
         )
         self.assertDataFrameEqual(df, TEST_DATA)
 
 
-class TestWriteMysql(SparklyGlobalContextTest):
-    context = _TestContext
+class TestWriteMysql(SparklyGlobalSessionTest):
+    session = SparklyTestSession
 
     fixtures = [
         MysqlFixture(
@@ -147,7 +148,7 @@ class TestWriteMysql(SparklyGlobalContextTest):
     ]
 
     def test_write_mysql(self):
-        df = self.hc.createDataFrame(TEST_DATA)
+        df = self.spark.createDataFrame(TEST_DATA)
 
         df.write_ext.mysql(
             host='mysql.docker',
@@ -158,7 +159,7 @@ class TestWriteMysql(SparklyGlobalContextTest):
             options={'user': 'root', 'password': ''}
         )
 
-        df = self.hc.read_ext.by_url(
+        df = self.spark.read_ext.by_url(
             'mysql://mysql.docker/'
             'sparkly_test/test_writer'
             '?user=root&password='
@@ -166,15 +167,15 @@ class TestWriteMysql(SparklyGlobalContextTest):
         self.assertDataFrameEqual(df, TEST_DATA)
 
 
-class TestWriteKafka(SparklyGlobalContextTest):
-    context = _TestContext
+class TestWriteKafka(SparklyGlobalSessionTest):
+    session = SparklyTestSession
 
     def setUp(self):
         self.json_decoder = lambda item: json.loads(item.decode('utf-8'))
         self.json_encoder = lambda item: json.dumps(item).encode('utf-8')
         self.topic = 'test.topic.write.kafka.{}'.format(uuid.uuid4().hex[:10])
         self.fixture_path = absolute_path(__file__, 'resources', 'test_write', 'kafka_setup.json')
-        self.expected_data = self.hc.read.json(self.fixture_path)
+        self.expected_data = self.spark.read.json(self.fixture_path)
 
     def test_write_kafka_dataframe(self):
         self.expected_data.write_ext.kafka(

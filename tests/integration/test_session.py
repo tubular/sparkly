@@ -14,19 +14,19 @@
 # limitations under the License.
 #
 
-from sparkly.testing import SparklyGlobalContextTest
-from tests.integration.base import _TestContext
+from sparkly.testing import SparklyGlobalSessionTest
+from tests.integration.base import SparklyTestSession
 
 
-class TestSparklyContext(SparklyGlobalContextTest):
-    context = _TestContext
+class TestSparklySession(SparklyGlobalSessionTest):
+    session = SparklyTestSession
 
     def test_python_udf(self):
-        rows = self.hc.sql('select length_of_text("hello world")')
+        rows = self.spark.sql('select length_of_text("hello world")')
         self.assertEqual(rows.collect()[0][0], '11')
 
     def test_jar_udf(self):
-        self.hc.createDataFrame(
+        self.spark.createDataFrame(
             [
                 {'key_field': 'A', 'value_field': 1},
                 {'key_field': 'B', 'value_field': 2},
@@ -35,5 +35,9 @@ class TestSparklyContext(SparklyGlobalContextTest):
             ],
         ).registerTempTable('test_jar_udf')
 
-        rows = self.hc.sql('select collect_max(key_field, value_field, 2) from test_jar_udf')
+        rows = self.spark.sql('select collect_max(key_field, value_field, 2) from test_jar_udf')
         self.assertEqual(rows.collect()[0][0], {'C': 3, 'D': 4})
+
+    def test_builder(self):
+        with self.assertRaises(NotImplementedError):
+            assert self.spark.builder

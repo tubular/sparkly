@@ -19,13 +19,13 @@ import json
 from sparkly.testing import (
     CassandraFixture,
     MysqlFixture,
-    SparklyGlobalContextTest,
+    SparklyGlobalSessionTest,
     KafkaFixture)
-from tests.integration.base import _TestContext
+from tests.integration.base import SparklyTestSession
 
 
-class TestCassandraFixtures(SparklyGlobalContextTest):
-    context = _TestContext
+class TestCassandraFixtures(SparklyGlobalSessionTest):
+    session = SparklyTestSession
 
     def test_cassandra_fixture(self):
         with self.assertRaises(NotImplementedError):
@@ -36,9 +36,9 @@ class TestCassandraFixtures(SparklyGlobalContextTest):
             )
 
 
-class TestMysqlFixtures(SparklyGlobalContextTest):
+class TestMysqlFixtures(SparklyGlobalSessionTest):
 
-    context = _TestContext
+    session = SparklyTestSession
 
     def test_mysql_fixture(self):
         with self.assertRaises(NotImplementedError):
@@ -51,9 +51,9 @@ class TestMysqlFixtures(SparklyGlobalContextTest):
             )
 
 
-class TestKafkaFixture(SparklyGlobalContextTest):
+class TestKafkaFixture(SparklyGlobalSessionTest):
 
-    context = _TestContext
+    session = SparklyTestSession
 
     def test_kafka_fixture(self):
         with self.assertRaises(NotImplementedError):

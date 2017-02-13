@@ -19,13 +19,13 @@ import uuid
 
 from sparkly.utils import absolute_path
 from sparkly.testing import (
-    SparklyGlobalContextTest,
+    SparklyGlobalSessionTest,
 )
-from tests.integration.base import _TestContext
+from tests.integration.base import SparklyTestSession
 
 
-class TestWriteKafka(SparklyGlobalContextTest):
-    context = _TestContext
+class TestWriteKafka(SparklyGlobalSessionTest):
+    session = SparklyTestSession
 
     def setUp(self):
         self.json_decoder = lambda item: json.loads(item.decode('utf-8'))
@@ -34,7 +34,7 @@ class TestWriteKafka(SparklyGlobalContextTest):
         self.fixture_path = absolute_path(__file__, '..', 'integration', 'resources',
                                           'test_write', 'kafka_setup.json',
                                           )
-        self.expected_data = self.hc.read.json(self.fixture_path)
+        self.expected_data = self.spark.read.json(self.fixture_path)
 
     def test_write_kafka_dataframe(self):
         with self.assertRaises(NotImplementedError):

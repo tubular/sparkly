@@ -22,7 +22,7 @@ import shutil
 from unittest import TestCase
 
 from sparkly.exceptions import FixtureError
-from sparkly import SparklyContext
+from sparkly import SparklySession
 
 if sys.version_info.major == 3:
     from http.client import HTTPConnection
@@ -55,24 +55,24 @@ except ImportError:
 logger = logging.getLogger()
 
 
-_test_context_cache = None
+_test_session_cache = None
 
 
 class SparklyTest(TestCase):
     """Base test for spark scrip tests.
 
-    Initializes and shuts down Context specified in `context` param.
+    Initialize and shut down Session specified in `session` attribute.
 
     Example:
 
         >>> class MyTestCase(SparklyTest):
         ...     def test(self):
         ...         self.assertDataFrameEqual(
-        ...              self.hc.sql('SELECT 1 as one').collect(),
+        ...              self.spark.sql('SELECT 1 as one').collect(),
         ...              [{'one': 1}],
         ...         )
     """
-    context = SparklyContext
+    session = SparklySession
     class_fixtures = []
     fixtures = []
     maxDiff = None
@@ -82,20 +82,20 @@ class SparklyTest(TestCase):
         super(SparklyTest, cls).setUpClass()
 
         # In case if project has a mix of SparklyTest and SparklyGlobalContextTest-based tests
-        global _test_context_cache
-        if _test_context_cache:
-            logger.info('Found a global context, stopping it %r', _test_context_cache)
-            _test_context_cache._sc.stop()
-            _test_context_cache = None
+        global _test_session_cache
+        if _test_session_cache:
+            logger.info('Found a global session, stopping it %r', _test_session_cache)
+            _test_session_cache.stop()
+            _test_session_cache = None
 
-        cls.hc = cls.context()
+        cls.spark = cls.session()
 
         for fixture in cls.class_fixtures:
             fixture.setup_data()
 
     @classmethod
     def tearDownClass(cls):
-        cls.hc._sc.stop()
+        cls.spark.stop()
         super(SparklyTest, cls).tearDownClass()
 
         try:
@@ -143,35 +143,35 @@ class SparklyTest(TestCase):
                 self.assertItemsEqual(actual_data, expected_data)
 
 
-class SparklyGlobalContextTest(SparklyTest):
-    """Base test case that keeps a single instance for the given context class across all tests.
+class SparklyGlobalSessionTest(SparklyTest):
+    """Base test case that keeps a single instance for the given session class across all tests.
 
     Integration tests are slow, especially when you have to start/stop Spark context
-    for each test case. This class allows you to reuse Spark context across multiple test cases.
+    for each test case. This class allows you to reuse Spark session across multiple test cases.
     """
     @classmethod
     def setUpClass(cls):
-        global _test_context_cache
+        global _test_session_cache
 
-        if _test_context_cache and cls.context == type(_test_context_cache):
-            logger.info('Reusing the global context for %r', cls.context)
-            hc = _test_context_cache
+        if _test_session_cache and cls.session == type(_test_session_cache):
+            logger.info('Reusing the global session for %r', cls.session)
+            spark = _test_session_cache
         else:
-            if _test_context_cache:
-                logger.info('Stopping the previous global context %r', _test_context_cache)
-                _test_context_cache._sc.stop()
+            if _test_session_cache:
+                logger.info('Stopping the previous global session %r', _test_session_cache)
+                _test_session_cache.stop()
 
-            logger.info('Starting the new global context for %r', cls.context)
-            hc = _test_context_cache = cls.context()
+            logger.info('Starting the new global session for %r', cls.session)
+            spark = _test_session_cache = cls.session()
 
-        cls.hc = hc
+        cls.spark = spark
 
         for fixture in cls.class_fixtures:
             fixture.setup_data()
 
     @classmethod
     def tearDownClass(cls):
-        cls.hc.clearCache()
+        cls.spark.catalog.clearCache()
 
         for fixture in cls.class_fixtures:
             fixture.teardown_data()
@@ -267,9 +267,6 @@ class CassandraFixture(Fixture):
 class ElasticFixture(Fixture):
     """Fixture for elastic integration tests.
 
-    Notes:
-     * Data upload uses bulk api.
-
     Examples:
 
            >>> class MyTestCase(SparklyTest):
@@ -347,7 +344,7 @@ class MysqlFixture(Fixture):
     """Fixture for mysql integration tests.
 
     Notes:
-     * depends on PyMySql lib.
+        * depends on PyMySql lib.
 
     Examples:
 
@@ -393,12 +390,12 @@ class KafkaFixture(Fixture):
     """Fixture for kafka integration tests.
 
     Notes:
-     * depends on kafka-python lib.
-     * json file should contain array of dicts: [{'key': ..., 'value': ...}]
+        * depends on kafka-python lib.
+        * json file should contain array of dicts: [{'key': ..., 'value': ...}]
 
     Examples:
 
-        >>> class MyTestCase(SparklyContext):
+        >>> class MyTestCase(SparklySession):
         ...     fixtures = [
         ...         KafkaFixture(
         ...             'kafka.host', 'topic',

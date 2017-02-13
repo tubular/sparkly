@@ -1,53 +1,56 @@
 Welcome to sparkly's documentation!
 ===================================
 
-Sparkly is a lib which makes usage of pyspark more convenient and consistent.
+Sparkly is a library that makes usage of pyspark more convenient and consistent.
 
-A brief tour on Sparkly features by example:
+A brief tour on Sparkly features:
 
 .. code-block:: python
 
-   # The main thing and the entry point of the Sparkly lib is SparklyContext
-   from sparkly import SparklyContext
-
-   class CustomSparklyContext(SparklyContext):
-      # Install custom spark packages instead of hacking with `spark-submit`:
-      packages = ['com.databricks:spark-csv_2.10:1.4.0']
-
-      # Install jars and import udfs from them as simple as:
-      jars = ['/path/to/brickhouse-0.7.1.jar'],
-      udfs = {
-        'collect_max': 'brickhouse.udf.collect.CollectMaxUDAF',
-      }
+   # The main entry point is SparklySession,
+   # you can think of it as of a combination of SparkSession and SparkSession.builder.
+   from sparkly import SparklySession
 
 
-   ctx = CustomSparklyContext()
+   # Define dependencies in the code instead of messing with `spark-submit`.
+   class MySession(SparklySession):
+       # Spark packages and dependencies from Maven.
+       packages = [
+           'datastax:spark-cassandra-connector:2.0.0-M2-s_2.11',
+           'mysql:mysql-connector-java:5.1.39',
+       ]
 
-   # Operate with easily interchangable URL-like data source definitions,
-   # instead of untidy default interface:
-   df = ctx.read_ext.by_url('mysql://<my-sql.host>/my_database/my_database')
-   df.write_ext('parquet:s3://<my-bucket>/<path>/data?partition_by=<field_name1>,<field_name1>')
+       # Jars and Hive UDFs
+       jars = ['/path/to/brickhouse-0.7.1.jar'],
+       udfs = {
+           'collect_max': 'brickhouse.udf.collect.CollectMaxUDAF',
+       }
 
-   # Operate with Hive Metastore with convenient python api,
-   # instead of verbose Hive queries:
-   ctx.hms.create_table(
-      'my_custom_table',
-      df,
-      location='s3://<my-bucket>/<path>/data',
-      partition_by=[<field_name1>,<field_name1>],
-      output_format='parquet'
-   )
 
-   # Make integration testing more convenient with Fixtures and base test classes:
-   # SparklyTest, SparklyGlobalContextTest, instead of implementing you own spark testing
-   # mini frameworks:
+   spark = MySession()
+
+   # Operate with interchangeable URL-like data source definitions:
+   df = spark.read_ext.by_url('mysql://<my-sql.host>/my_database/my_database')
+   df.write_ext('parquet:s3://<my-bucket>/<path>/data?partition_by=<field_name1>')
+
+   # Interact with Hive Metastore via convenient python api,
+   # instead of verbose SQL queries:
+   spark.catalog_ext.has_table('my_custom_table')
+   spark.catalog_ext.get_table_properties('my_custom_table')
+
+   # Easy integration testing with Fixtures and base test classes.
+   from sparkly.testing import SparklyTest
+
+
    class TestMyShinySparkScript(SparklyTest):
-      fixtures = [
-         MysqlFixture('<my-testing-host>', '<test-user>', '<test-pass>', '/path/to/data.sql', '/path/to/clear.sql')
-      ]
+       session = MySession
+
+       fixtures = [
+           MysqlFixture('<my-testing-host>', '<test-user>', '<test-pass>', '/path/to/data.sql', '/path/to/clear.sql')
+       ]
 
       def test_job_works_with_mysql(self):
-         df = self.hc.read_ext.by_url('mysql://<my-testing-host>/<test-db>/<test-table>?user=<test-usre>&password=<test-password>')
+         df = self.spark.read_ext.by_url('mysql://<my-testing-host>/<test-db>/<test-table>?user=<test-usre>&password=<test-password>')
          res_df = my_shiny_script(df)
          self.assertDataFrameEqual(
             res_df,
@@ -57,20 +60,18 @@ A brief tour on Sparkly features by example:
 .. toctree::
    :maxdepth: 2
 
-   context
+   session
    reader_and_writer
-   hive_metastore_manager
-   schema_parser
+   catalog
+   testing
    utils
-   exceptions
-   test
    license
 
 .. automodule:: sparkly
    :members:
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`

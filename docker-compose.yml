@@ -16,7 +16,7 @@
 
 version: '2'
 services:
-  dev-spark-1.6:
+  dev:
     build: .
     volumes:
       - .:/opt/sparkly/
@@ -26,7 +26,7 @@ services:
       - mysql.docker
       - kafka.docker
 
-  test-spark-1.6:
+  test:
     build: .
     depends_on:
       - cassandra.docker

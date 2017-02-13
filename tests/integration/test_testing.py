@@ -20,10 +20,10 @@ from sparkly.testing import (
     CassandraFixture,
     ElasticFixture,
     MysqlFixture,
-    SparklyGlobalContextTest,
+    SparklyGlobalSessionTest,
     KafkaFixture)
 from sparkly.utils import absolute_path
-from tests.integration.base import _TestContext
+from tests.integration.base import SparklyTestSession
 
 try:
     from kafka import KafkaConsumer
@@ -31,14 +31,14 @@ except ImportError:
     pass
 
 
-class TestAssertions(SparklyGlobalContextTest):
-    context = _TestContext
+class TestAssertions(SparklyGlobalSessionTest):
+    session = SparklyTestSession
 
     def test_assert_dataframe_equal(self):
-        df = self.hc.createDataFrame([('Alice', 1),
-                                      ('Kelly', 1),
-                                      ('BigBoss', 999)],
-                                     ['name', 'age'])
+        df = self.spark.createDataFrame([('Alice', 1),
+                                         ('Kelly', 1),
+                                         ('BigBoss', 999)],
+                                        ['name', 'age'])
         self.assertDataFrameEqual(
             df,
             [{'name': 'Alice', 'age': 1},
@@ -59,8 +59,8 @@ class TestAssertions(SparklyGlobalContextTest):
             )
 
 
-class TestCassandraFixtures(SparklyGlobalContextTest):
-    context = _TestContext
+class TestCassandraFixtures(SparklyGlobalSessionTest):
+    session = SparklyTestSession
 
     def test_cassandra_fixture(self):
         data_in_cassandra = CassandraFixture(
@@ -70,7 +70,7 @@ class TestCassandraFixtures(SparklyGlobalContextTest):
         )
 
         with data_in_cassandra:
-            df = self.hc.read_ext.by_url('cassandra://cassandra.docker/sparkly_test/test')
+            df = self.spark.read_ext.by_url('cassandra://cassandra.docker/sparkly_test/test')
             self.assertDataFrameEqual(df, [
                 {
                     'uid': '1',
@@ -79,9 +79,9 @@ class TestCassandraFixtures(SparklyGlobalContextTest):
             ], fields=['uid', 'countries'])
 
 
-class TestMysqlFixtures(SparklyGlobalContextTest):
+class TestMysqlFixtures(SparklyGlobalSessionTest):
 
-    context = _TestContext
+    session = SparklyTestSession
 
     fixtures = [
         MysqlFixture(
@@ -94,15 +94,15 @@ class TestMysqlFixtures(SparklyGlobalContextTest):
     ]
 
     def test_mysql_fixture(self):
-        df = self.hc.read_ext.by_url('mysql://mysql.docker/sparkly_test/test?user=root&password=')
+        df = self.spark.read_ext.by_url('mysql://mysql.docker/sparkly_test/test?user=root&password=')
         self.assertDataFrameEqual(df, [
             {'id': 1, 'name': 'john', 'surname': 'sk', 'age': 111},
         ])
 
 
-class TestElasticFixture(SparklyGlobalContextTest):
+class TestElasticFixture(SparklyGlobalSessionTest):
 
-    context = _TestContext
+    session = SparklyTestSession
 
     class_fixtures = [
         ElasticFixture(
@@ -115,16 +115,16 @@ class TestElasticFixture(SparklyGlobalContextTest):
     ]
 
     def test_elastic_fixture(self):
-        df = self.hc.read_ext.by_url('elastic://elastic.docker/sparkly_test_fixture/test?'
+        df = self.spark.read_ext.by_url('elastic://elastic.docker/sparkly_test_fixture/test?'
                                      'es.read.metadata=false')
         self.assertDataFrameEqual(df, [
             {'name': 'John', 'age': 56},
         ])
 
 
-class TestKafkaFixture(SparklyGlobalContextTest):
+class TestKafkaFixture(SparklyGlobalSessionTest):
 
-    context = _TestContext
+    session = SparklyTestSession
 
     topic = 'sparkly.test.fixture.{}'.format(uuid.uuid4().hex[:10])
     fixtures = [
@@ -152,7 +152,7 @@ class TestKafkaFixture(SparklyGlobalContextTest):
             data = {'key': message.key, 'value': message.value}
             actual_data.append(data)
 
-        expected_data = self.hc.read.json(
+        expected_data = self.spark.read.json(
             absolute_path(__file__, 'resources', 'test_fixtures', 'kafka.json')
         )
         self.assertDataFrameEqual(expected_data, actual_data)
