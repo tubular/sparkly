@@ -25,11 +25,11 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 # Get version
 with open(os.path.join(here, 'sparkly/__init__.py')) as init_py:
-    version = re.search('__version__ = \'([\w.]+)\'', init_py.read()).group(1)
+    version = re.search('__version__ = \'([\w.]+)\'', init_py.read().decode('utf-8')).group(1)
 
 # Get the long description from the relevant file
 with open(os.path.join(here, 'README.rst')) as readme_rst:
-    long_description = readme_rst.read()
+    long_description = readme_rst.read().decode('utf-8')
 
 # Get requirements
 with open(os.path.join(here, 'requirements.txt')) as requirements_txt:
