@@ -3,6 +3,7 @@
 * Rename `SparklyContext` to `SparklySession` and derive it from `SparkSession`.
 * Use built-in csv reader.
 * Replace `hms` with `catalog_ext`.
+* `parse_schema` is now consistent with `DataType.simpleString` method.
 
 ## 1.1.1
 * Fix: kafka import error.
