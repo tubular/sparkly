@@ -76,10 +76,10 @@ Supported Spark Versions
 At the moment we support:
 
 +-------------------------------------------+
+| sparkly 2.x | Spark 2.0.x and Spark 2.1.x |
++-------------------------------------------+
 | sparkly 1.x | Spark 1.6.x                 |
 +-------------------------------------------+
-| sparkly 2.x | Spark 2.0.x and Spark 2.1.x |
-+--------------------------------------------
 
 .. |Sparkly PyPi Version| image:: http://img.shields.io/pypi/v/sparkly.svg
    :target: https://pypi.python.org/pypi/sparkly
