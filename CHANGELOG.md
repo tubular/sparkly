@@ -1,5 +1,8 @@
+## 2.0.2
+* Fix: #40 write_ext.kafka ignores errors.
+
 ## 2.0.1
-* Migrate to Spark 2, Spark 1.6.x isn't supported by sparkly 2.x. 
+* Migrate to Spark 2, Spark 1.6.x isn't supported by sparkly 2.x.
 * Rename `SparklyContext` to `SparklySession` and derive it from `SparkSession`.
 * Use built-in csv reader.
 * Replace `hms` with `catalog_ext`.

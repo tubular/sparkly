@@ -49,8 +49,10 @@ RUN apt-get update && apt-get install -y git
 ENV CASS_DRIVER_NO_EXTENSIONS=1
 COPY requirements.txt /tmp/requirements.txt
 COPY requirements_dev.txt /tmp/requirements_dev.txt
+COPY requirements_extras.txt /tmp/requirements_extras.txt
 RUN python3 -m pip install -r /tmp/requirements.txt
 RUN python3 -m pip install -r /tmp/requirements_dev.txt
+RUN python3 -m pip install -r /tmp/requirements_extras.txt
 
 # Provision Sparkly
 ADD . /opt/sparkly/

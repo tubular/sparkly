@@ -27,6 +27,8 @@ except ImportError:
 
 from pyspark.sql import DataFrame
 
+from sparkly.exceptions import WriteError
+
 
 class SparklyWriter(object):
     """A set of tools to write DataFrames to external storages.
@@ -237,7 +239,9 @@ class SparklyWriter(object):
             )
             for message in messages:
                 as_dict = message.asDict(recursive=True)
-                producer.send(topic, key=as_dict['key'], value=as_dict['value'])
+                result = producer.send(topic, key=as_dict['key'], value=as_dict['value'])
+                if result.failed():
+                    raise WriteError('Error publishing to kafka: {}'.format(result.exception))
 
             producer.flush()
             producer.close()
