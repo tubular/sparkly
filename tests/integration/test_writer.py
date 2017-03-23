@@ -19,6 +19,8 @@ import uuid
 from shutil import rmtree
 from tempfile import mkdtemp
 
+from py4j.protocol import Py4JJavaError
+
 from sparkly.utils import absolute_path
 from sparkly.testing import (
     SparklyGlobalSessionTest,
@@ -200,3 +202,19 @@ class TestWriteKafka(SparklyGlobalSessionTest):
             actual_data.append(data)
 
         self.assertDataFrameEqual(self.expected_data, actual_data)
+
+    def test_write_kafka_dataframe_error(self):
+        def _errored_serializer(data):
+            raise ValueError
+
+        try:
+            self.expected_data.write_ext.kafka(
+                'kafka.docker',
+                self.topic,
+                key_serializer=_errored_serializer,
+                value_serializer=_errored_serializer,
+            )
+        except Py4JJavaError as ex:
+            self.assertIn('WriteError(\'Error publishing to kafka', str(ex))
+        else:
+            raise AssertionError('WriteError exception not raised')
