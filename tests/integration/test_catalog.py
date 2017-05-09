@@ -14,9 +14,6 @@
 # limitations under the License.
 #
 
-import uuid
-import os
-
 from sparkly.testing import SparklyGlobalSessionTest
 from tests.integration.base import SparklyTestSession
 

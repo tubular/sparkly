@@ -14,12 +14,6 @@
 # limitations under the License.
 #
 
-import logging
-import re
-
-from pyspark.sql import DataFrame
-from pyspark.sql.types import StructType
-
 
 class SparklyCatalog(object):
     """A set of tools to interact with HiveMetastore."""

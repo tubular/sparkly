@@ -14,10 +14,9 @@
 # limitations under the License.
 #
 
-from collections import OrderedDict
+import inspect
 import os
 import re
-import inspect
 
 try:
     from kafka import SimpleClient
