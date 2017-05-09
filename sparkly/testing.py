@@ -21,8 +21,9 @@ import os
 import shutil
 from unittest import TestCase
 
-from sparkly.exceptions import FixtureError
 from sparkly import SparklySession
+from sparkly.exceptions import FixtureError
+from sparkly.utils import kafka_get_topics_offsets
 
 if sys.version_info.major == 3:
     from http.client import HTTPConnection
@@ -46,7 +47,7 @@ except ImportError:
         MYSQL_FIXTURES_SUPPORT = False
 
 try:
-    from kafka import KafkaProducer
+    from kafka import KafkaProducer, SimpleClient
     KAFKA_FIXTURES_SUPPORT = True
 except ImportError:
     KAFKA_FIXTURES_SUPPORT = False
@@ -447,3 +448,105 @@ class KafkaFixture(Fixture):
 
     def teardown_data(self):
         pass
+
+
+class KafkaWatcher:
+    """Context manager that tracks Kafka data published to a topic
+
+    Provides access to the new items that were written to a kafka topic by code running
+    within this context.
+
+    NOTE: This is mainly useful in integration test cases and may produce unexpected results in
+    production environments, since there are no guarantees about who else may be publishing to
+    a kafka topic.
+
+    Usage:
+        my_deserializer = lambda item: json.loads(item.decode('utf-8'))
+        kafka_watcher = KafkaWatcher(
+            my_sparkly_session,
+            expected_output_dataframe_schema,
+            my_deserializer,
+            my_deserializer,
+            'my.kafkaserver.net',
+            'my_kafka_topic',
+        )
+        with kafka_watcher:
+            # do stuff that publishes messages to 'my_kafka_topic'
+        self.assertEqual(kafka_watcher.count, expected_number_of_new_messages)
+        self.assertDataFrameEqual(kafka_watcher.df, expected_df)
+    """
+
+    def __init__(
+        self,
+        spark,
+        df_schema,
+        key_deserializer,
+        value_deserializer,
+        host,
+        topic,
+        port=9092,
+    ):
+        """Initialize context manager
+
+        Parameters `key_deserializer` and `value_deserializer` are callables
+        which get bytes as input and should return python structures as output.
+
+        Args:
+            spark (SparklySession): currently active SparklySession
+            df_schema (pyspark.sql.types.StructType): schema of dataframe to be generated
+            key_deserializer (function): function used to deserialize the key
+            value_deserializer (function): function used to deserialize the value
+            host (basestring): host or ip address of the kafka server to connect to
+            topic (basestring): Kafka topic to monitor
+            port (int): port number of the Kafka server to connect to
+        """
+        self.spark = spark
+        self.topic = topic
+        self.df_schema = df_schema
+        self.key_deser, self.val_deser = key_deserializer, value_deserializer
+        self.host, self.port = host, port
+        self._df = None
+        self.count = 0
+
+        kafka_client = SimpleClient(host)
+        kafka_client.ensure_topic_exists(topic)
+
+    def __enter__(self):
+        self._df = None
+        self.count = 0
+        self.pre_offsets = kafka_get_topics_offsets(
+            topic=self.topic,
+            host=self.host,
+            port=self.port,
+        )
+
+    def __exit__(self, e_type, e_value, e_trace):
+        self.post_offsets = kafka_get_topics_offsets(
+            topic=self.topic,
+            host=self.host,
+            port=self.port,
+        )
+        self.count = sum([
+            post[2] - pre[2]
+            for pre, post in zip(self.pre_offsets, self.post_offsets)
+        ])
+
+    @property
+    def df(self):
+        if not self.count:
+            return None
+        if not self._df:
+            offset_ranges = [
+                [pre[0], pre[2], post[2]]
+                for pre, post in zip(self.pre_offsets, self.post_offsets)
+            ]
+            self._df = self.spark.read_ext.kafka(
+                topic=self.topic,
+                offset_ranges=offset_ranges,
+                schema=self.df_schema,
+                key_deserializer=self.key_deser,
+                value_deserializer=self.val_deser,
+                host=self.host,
+                port=self.port,
+            )
+        return self._df

@@ -1,3 +1,7 @@
+## 2.0.3
+* Add KafkaWatcher to facilitate testing of writing to Kafka
+* Fix a few minor pyflakes warnings and typos
+
 ## 2.0.2
 * Fix: #40 write_ext.kafka ignores errors.
 

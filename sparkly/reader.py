@@ -233,7 +233,7 @@ class SparklyReader(object):
         `key` and `value`.
 
         Parameters `key_deserializer` and `value_deserializer` are callables
-        which get's bytes as input and should return python structures as output.
+        which get bytes as input and should return python structures as output.
 
         Args:
             host (str): Kafka host.

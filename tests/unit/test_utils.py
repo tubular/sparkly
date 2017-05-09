@@ -16,7 +16,6 @@
 
 from unittest import TestCase
 
-from sparkly.exceptions import UnsupportedDataType
 from sparkly.utils import parse_schema
 
 

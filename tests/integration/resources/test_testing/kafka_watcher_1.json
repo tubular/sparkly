@@ -1,0 +1,4 @@
+{"key": {"user_id": 1}, "value": {"meal": "dinner", "food": ["spaghetti", "meatballs"]}}
+{"key": {"user_id": 2}, "value": {"meal": "lunch", "food": ["soylent"]}}
+{"key": {"user_id": 3}, "value": {"meal": "breakfast", "food": []}}
+{"key": {"user_id": 2}, "value": {"meal": "second dinner", "food": ["galbi", "ice cream"]}}

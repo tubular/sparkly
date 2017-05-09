@@ -15,18 +15,20 @@
 #
 import json
 import uuid
+import pickle
 
 from sparkly.testing import (
     CassandraFixture,
     ElasticFixture,
     MysqlFixture,
     SparklyGlobalSessionTest,
-    KafkaFixture)
+    KafkaFixture,
+    KafkaWatcher)
 from sparkly.utils import absolute_path
 from tests.integration.base import SparklyTestSession
 
 try:
-    from kafka import KafkaConsumer
+    from kafka import KafkaConsumer, KafkaProducer
 except ImportError:
     pass
 
@@ -156,3 +158,56 @@ class TestKafkaFixture(SparklyGlobalSessionTest):
             absolute_path(__file__, 'resources', 'test_fixtures', 'kafka.json')
         )
         self.assertDataFrameEqual(expected_data, actual_data)
+
+
+class TestKafkaWatcher(SparklyGlobalSessionTest):
+    session = SparklyTestSession
+
+    def test_write_kafka_dataframe(self):
+        host = 'kafka.docker'
+        topic = 'test.topic.kafkawatcher.{}'.format(uuid.uuid4().hex[:10])
+        port = 9092
+        input_df, expected_data = self.get_test_data('kafka_watcher_1.json')
+
+        kafka_watcher = KafkaWatcher(
+            self.spark,
+            input_df.schema,
+            pickle.loads,
+            pickle.loads,
+            host,
+            topic,
+            port,
+        )
+        with kafka_watcher:
+            expected_count = self.write_data(input_df, host, topic, port)
+        self.assertEqual(kafka_watcher.count, expected_count)
+        self.assertDataFrameEqual(kafka_watcher.df, expected_data)
+
+        with kafka_watcher:
+            pass
+        self.assertEqual(kafka_watcher.count, 0)
+        self.assertIsNone(kafka_watcher.df, None)
+
+        input_df, expected_data = self.get_test_data('kafka_watcher_2.json')
+        with kafka_watcher:
+            expected_count = self.write_data(input_df, host, topic, port)
+        self.assertEqual(kafka_watcher.count, expected_count)
+        self.assertDataFrameEqual(kafka_watcher.df, expected_data)
+
+    def get_test_data(self, filename):
+        file_path = absolute_path(__file__, 'resources', 'test_testing', filename)
+        df = self.spark.read.json(file_path)
+        data = [item.asDict(recursive=True) for item in df.collect()]
+        return df, data
+
+    def write_data(self, df, host, topic, port):
+        producer = KafkaProducer(
+            bootstrap_servers=['{}:{}'.format(host, port)],
+            key_serializer=pickle.dumps,
+            value_serializer=pickle.dumps,
+        )
+        rows = df.collect()
+        for row in rows:
+            producer.send(topic, key=row.key, value=row.value)
+        producer.flush()
+        return len(rows)
