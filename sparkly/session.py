@@ -74,8 +74,8 @@ class SparklySession(SparkSession):
 
         # Init SparkContext
         spark_conf = SparkConf()
-        spark_conf.setAll(self._setup_options(additional_options))
         spark_conf.set('spark.sql.catalogImplementation', 'hive')
+        spark_conf.setAll(self._setup_options(additional_options))
         spark_context = SparkContext(conf=spark_conf)
 
         # Init HiveContext

@@ -1,3 +1,6 @@
+## 2.0.4
+* Make it possible to override default value of spark.sql.catalogImplementation
+
 ## 2.0.3
 * Add KafkaWatcher to facilitate testing of writing to Kafka
 * Fix a few minor pyflakes warnings and typos
