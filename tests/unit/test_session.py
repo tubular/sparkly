@@ -26,6 +26,12 @@ from pyspark import SparkConf, SparkContext
 from sparkly import SparklySession
 
 
+os_mock = mock.Mock(**{
+    'environ': {},
+    'path.exists.return_value': False,
+})
+
+
 class TestSparklySession(unittest.TestCase):
     def setUp(self):
         super(TestSparklySession, self).setUp()
@@ -56,10 +62,8 @@ class TestSparklySession(unittest.TestCase):
         hc.jars = ['mysql-connector-java-5.1.39-bin.jar']
         self.assertTrue(hc.has_jar('mysql-connector-java'))
 
-    @mock.patch('sparkly.session.os')
-    def test_session_with_packages(self, os_mock):
-        os_mock.environ = {}
-
+    @mock.patch('sparkly.session.os', os_mock)
+    def test_session_with_packages(self):
         class _Session(SparklySession):
             packages = ['package1', 'package2']
 
@@ -70,10 +74,8 @@ class TestSparklySession(unittest.TestCase):
             'PYSPARK_SUBMIT_ARGS': '--packages package1,package2  pyspark-shell',
         })
 
-    @mock.patch('sparkly.session.os')
-    def test_session_with_jars(self, os_mock):
-        os_mock.environ = {}
-
+    @mock.patch('sparkly.session.os', os_mock)
+    def test_session_with_jars(self):
         class _Session(SparklySession):
             jars = ['file_a.jar', 'file_b.jar']
 
@@ -99,10 +101,8 @@ class TestSparklySession(unittest.TestCase):
             ('spark.option.c', 'value_c'),
         ])
 
-    @mock.patch('sparkly.session.os')
-    def test_session_without_packages_jars_and_options(self, os_mock):
-        os_mock.environ = {}
-
+    @mock.patch('sparkly.session.os', os_mock)
+    def test_session_without_packages_jars_and_options(self):
         SparklySession()
 
         self.assertEqual(os_mock.environ, {
