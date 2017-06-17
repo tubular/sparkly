@@ -95,9 +95,9 @@ class SparklySession(SparkSession):
 
             if gateway_port:
                 os.environ['PYSPARK_GATEWAY_PORT'] = str(gateway_port)
-                gateway = launch_gateway(spark_conf)
+                gateway = launch_gateway()
             else:
-                gateway = launch_gateway(spark_conf)
+                gateway = launch_gateway()
                 pid = os.fork()
                 if pid == 0:
                     signal.pause()
