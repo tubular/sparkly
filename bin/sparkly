@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+
+import argparse
+import json
+import logging
+import os
+import signal
+import sys
+
+from sparkly.session import interactive_testing_lock
+
+
+logging.basicConfig(
+    stream=sys.stderr, level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(name)s: %(message)s',
+    datefmt='%y/%m/%d %H:%M:%S'
+)
+
+logger = logging.getLogger(__name__)
+
+def testing_up():
+    if os.path.exists(interactive_testing_lock):
+        logger.error('Interactive testing mode is already activated, call test-down first.')
+    else:
+        with open(interactive_testing_lock, 'w'):
+            logger.info('Interactive testing mode has been activated.')
+
+
+def testing_down():
+    if not os.path.exists(interactive_testing_lock):
+        logger.error('Interactive testing mode is not enabled, call test-up first')
+    else:
+        with open(interactive_testing_lock) as lock:
+            state = lock.read()
+            if state:
+                session_pid = json.loads(state)['session_pid']
+                os.kill(session_pid, signal.SIGTERM)
+
+        os.remove(interactive_testing_lock)
+
+    logger.info('Interactive testing mode has been deactivated.')
+
+
+parser = argparse.ArgumentParser()
+subparsers = parser.add_subparsers()
+
+testing_up_command = subparsers.add_parser('test-up')
+testing_up_command.set_defaults(func=testing_up)
+
+testing_down_command = subparsers.add_parser('test-down')
+testing_down_command.set_defaults(func=testing_down)
+
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    args.func()

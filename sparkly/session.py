@@ -15,14 +15,22 @@
 #
 
 import os
+import signal
 import sys
+import tempfile
+import json
 
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession
+from pyspark.java_gateway import launch_gateway
+from py4j.java_gateway import java_import
 
 from sparkly.catalog import SparklyCatalog
 from sparkly.reader import SparklyReader
 from sparkly.writer import attach_writer_to_dataframe
+
+
+interactive_testing_lock = os.path.join(tempfile.gettempdir(), 'sparkly_testing_lock')
 
 
 class SparklySession(SparkSession):
@@ -76,11 +84,49 @@ class SparklySession(SparkSession):
         spark_conf = SparkConf()
         spark_conf.set('spark.sql.catalogImplementation', 'hive')
         spark_conf.setAll(self._setup_options(additional_options))
-        spark_context = SparkContext(conf=spark_conf)
 
-        # Init HiveContext
-        super(SparklySession, self).__init__(spark_context)
-        self._setup_udfs()
+        if os.path.exists(interactive_testing_lock):
+            with open(interactive_testing_lock) as lock:
+                state = lock.read()
+                if state:
+                    gateway_port = json.loads(state)['gateway_port']
+                else:
+                    gateway_port = None
+
+            if gateway_port:
+                os.environ['PYSPARK_GATEWAY_PORT'] = str(gateway_port)
+                gateway = launch_gateway(spark_conf)
+            else:
+                gateway = launch_gateway(spark_conf)
+                pid = os.fork()
+                if pid == 0:
+                    signal.pause()
+                else:
+                    with open(interactive_testing_lock, 'w') as lock:
+                        json.dump({
+                            'gateway_port': gateway.java_gateway_server.getListeningPort(),
+                            'session_pid': pid,
+                        }, lock)
+
+            java_import(gateway.jvm, 'org.apache.spark.SparkContext')
+            jvm_spark_context = gateway.jvm.SparkContext.getOrCreate()
+            jvm_spark_session = gateway.jvm.SparkSession.builder().getOrCreate()
+            jvm_java_spark_context = gateway.jvm.JavaSparkContext(jvm_spark_context)
+
+            spark_context = SparkContext(
+                appName=jvm_spark_context.appName(),
+                master=jvm_spark_context.master(),
+                gateway=gateway,
+                conf=spark_conf,
+                jsc=jvm_java_spark_context,
+            )
+            super(SparklySession, self).__init__(spark_context, jvm_spark_session)
+        else:
+            spark_context = SparkContext(conf=spark_conf)
+
+            # Init HiveContext
+            super(SparklySession, self).__init__(spark_context)
+            self._setup_udfs()
 
         self.read_ext = SparklyReader(self)
         self.catalog_ext = SparklyCatalog(self)
