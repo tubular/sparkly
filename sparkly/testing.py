@@ -17,8 +17,6 @@
 import json
 import logging
 import sys
-import os
-import shutil
 from unittest import TestCase
 
 from sparkly import SparklySession
@@ -74,6 +72,13 @@ class SparklyTest(TestCase):
         ...         )
     """
     session = SparklySession
+    session_additional_options = {
+        'spark.hadoop.javax.jdo.option.ConnectionURL':
+            'jdbc:derby:memory:databaseName=metastore_db;create=true',
+        'spark.hadoop.javax.jdo.option.ConnectionDriverName':
+            'org.apache.derby.jdbc.EmbeddedDriver',
+    }
+
     class_fixtures = []
     fixtures = []
     maxDiff = None
@@ -89,7 +94,7 @@ class SparklyTest(TestCase):
             _test_session_cache.stop()
             _test_session_cache = None
 
-        cls.spark = cls.session()
+        cls.spark = cls.session(cls.session_additional_options)
 
         for fixture in cls.class_fixtures:
             fixture.setup_data()
@@ -98,16 +103,6 @@ class SparklyTest(TestCase):
     def tearDownClass(cls):
         cls.spark.stop()
         super(SparklyTest, cls).tearDownClass()
-
-        try:
-            shutil.rmtree('metastore_db')
-        except OSError:
-            pass
-
-        try:
-            os.unlink('derby.log')
-        except OSError:
-            pass
 
         for fixture in cls.class_fixtures:
             fixture.teardown_data()
@@ -163,7 +158,7 @@ class SparklyGlobalSessionTest(SparklyTest):
                 _test_session_cache.stop()
 
             logger.info('Starting the new global session for %r', cls.session)
-            spark = _test_session_cache = cls.session()
+            spark = _test_session_cache = cls.session(cls.session_additional_options)
 
         cls.spark = spark
 

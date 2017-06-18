@@ -81,10 +81,6 @@ class SparklySession(SparkSession):
         )
 
         # Init SparkContext
-        spark_conf = SparkConf()
-        spark_conf.set('spark.sql.catalogImplementation', 'hive')
-        spark_conf.setAll(self._setup_options(additional_options))
-
         if os.path.exists(interactive_testing_lock):
             with open(interactive_testing_lock) as lock:
                 state = lock.read()
@@ -95,38 +91,19 @@ class SparklySession(SparkSession):
 
             if gateway_port:
                 os.environ['PYSPARK_GATEWAY_PORT'] = str(gateway_port)
-                gateway = launch_gateway()
+                self._recover_existing_context()
             else:
-                gateway = launch_gateway()
+                self._create_new_context(additional_options)
                 pid = os.fork()
                 if pid == 0:
                     signal.pause()
                 else:
+                    gateway = self.sparkContext._gateway
+                    gateway_port = gateway.java_gateway_server.getListeningPort()
                     with open(interactive_testing_lock, 'w') as lock:
-                        json.dump({
-                            'gateway_port': gateway.java_gateway_server.getListeningPort(),
-                            'session_pid': pid,
-                        }, lock)
-
-            java_import(gateway.jvm, 'org.apache.spark.SparkContext')
-            jvm_spark_context = gateway.jvm.SparkContext.getOrCreate()
-            jvm_spark_session = gateway.jvm.SparkSession.builder().getOrCreate()
-            jvm_java_spark_context = gateway.jvm.JavaSparkContext(jvm_spark_context)
-
-            spark_context = SparkContext(
-                appName=jvm_spark_context.appName(),
-                master=jvm_spark_context.master(),
-                gateway=gateway,
-                conf=spark_conf,
-                jsc=jvm_java_spark_context,
-            )
-            super(SparklySession, self).__init__(spark_context, jvm_spark_session)
+                        json.dump({'gateway_port': gateway_port, 'session_pid': pid}, lock)
         else:
-            spark_context = SparkContext(conf=spark_conf)
-
-            # Init HiveContext
-            super(SparklySession, self).__init__(spark_context)
-            self._setup_udfs()
+            self._create_new_context(additional_options)
 
         self.read_ext = SparklyReader(self)
         self.catalog_ext = SparklyCatalog(self)
@@ -185,8 +162,42 @@ class SparklySession(SparkSession):
     def _setup_udfs(self):
         for name, defn in self.udfs.items():
             if isinstance(defn, str):
+                self.sql('drop temporary function if exists "{}"'.format(name))
                 self.sql('create temporary function {} as "{}"'.format(name, defn))
             elif isinstance(defn, tuple):
                 self.catalog.registerFunction(name, *defn)
             else:
                 raise NotImplementedError('Incorrect UDF definition: {}: {}'.format(name, defn))
+
+    def _create_new_context(self, additional_options):
+        spark_conf = SparkConf()
+        spark_conf.set('spark.sql.catalogImplementation', 'hive')
+        spark_conf.setAll(self._setup_options(additional_options))
+        spark_context = SparkContext(conf=spark_conf)
+
+        super(SparklySession, self).__init__(spark_context)
+
+        self._setup_udfs()
+
+    def _recover_existing_context(self):
+        gateway = launch_gateway()
+
+        java_import(gateway.jvm, 'org.apache.spark.SparkContext')
+
+        jvm_spark_context = gateway.jvm.SparkContext.getOrCreate()
+        jvm_spark_session = gateway.jvm.SparkSession.builder().getOrCreate()
+        jvm_java_spark_context = gateway.jvm.JavaSparkContext(jvm_spark_context)
+
+        SparkContext._gateway = gateway
+        SparkContext._jvm = gateway.jvm
+
+        spark_context = SparkContext(
+            appName=jvm_spark_context.appName(),
+            master=jvm_spark_context.master(),
+            gateway=gateway,
+            jsc=jvm_java_spark_context,
+        )
+
+        super(SparklySession, self).__init__(spark_context, jvm_spark_session)
+
+        self._setup_udfs()
