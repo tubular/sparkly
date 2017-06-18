@@ -162,7 +162,7 @@ class SparklySession(SparkSession):
     def _setup_udfs(self):
         for name, defn in self.udfs.items():
             if isinstance(defn, str):
-                self.sql('drop temporary function if exists "{}"'.format(name))
+                self.sql('drop temporary function if exists {}'.format(name))
                 self.sql('create temporary function {} as "{}"'.format(name, defn))
             elif isinstance(defn, tuple):
                 self.catalog.registerFunction(name, *defn)
