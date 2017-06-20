@@ -1,3 +1,6 @@
+## 2.3.0
+* Overwrite existing tables in the metastore
+
 # 2.2.1
 * `spark.sql.shuffle.partitions` in `SparklyTest` should be set to string,
 because `int` value breaks integration testing in Spark 2.0.2. 

@@ -48,6 +48,27 @@ class TestSparklyCatalog(SparklyGlobalSessionTest):
         self.assertTrue(self.spark.catalog_ext.has_database('test_db'))
         self.assertFalse(self.spark.catalog_ext.has_database('not_exists'))
 
+    def test_create_table_when_exists(self):
+        self.assertTrue(self.spark.catalog_ext.has_table('test_table'))
+
+        new_df = self.spark.createDataFrame([('row_5', 'hi')], schema=('c', 'd'))
+        new_df.write.save('/tmp/test_table_2', format='parquet', mode='overwrite')
+
+        self.spark.catalog_ext.create_table(
+            'test_table',
+            path='/tmp/test_table_2',
+            schema=new_df.schema,
+            mode='overwrite',
+        )
+
+        self.assertTrue(self.spark.catalog_ext.has_table('test_table'))
+
+        new_table = self.spark.table('test_table')
+        self.assertEqual(
+            [r.asDict() for r in new_table.collect()],
+            [{'c': 'row_5', 'd': 'hi'}],
+        )
+
     def test_drop_table(self):
         self.assertTrue(self.spark.catalog_ext.has_table('test_table'))
 

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import uuid
 
 
 class SparklyCatalog(object):
@@ -25,6 +26,63 @@ class SparklyCatalog(object):
             spark (sparkly.SparklySession)
         """
         self._spark = spark
+
+    def create_table(self, table_name, path=None, source=None, schema=None, **options):
+        """Create table in the metastore.
+
+        Extend ``SparkSession.Catalog.createExternalTable`` by accepting
+        a ``mode='overwrite'`` option which creates the table even if a
+        table with the same name already exists. All other args are
+        exactly the same.
+
+        Note:
+            If the table exists, create two unique names, one for the
+            new and one for the old instance, then try to swap names
+            and drop the "old" instance. If any step fails, the metastore
+            might be currently left at a broken state.
+
+        Args:
+            mode (str): if set to ``'overwrite'``, drop any table of the
+                same name from the metastore. Given as a kwarg. Default
+                is error out if table already exists.
+
+        Returns:
+            pyspark.sql.DataFrame: DataFrame associated with the created
+            table.
+        """
+        overwrite_existing_table = (
+            options.pop('mode', '').lower() == 'overwrite' and
+            self.has_table(table_name)
+        )
+
+        def _append_unique_suffix(*args):
+            return '__'.join(args + (uuid.uuid4().hex, ))
+
+        if overwrite_existing_table:
+            new_table_name = _append_unique_suffix(table_name, 'new')
+        else:
+            new_table_name = table_name
+
+        if hasattr(self._spark.catalog, 'createTable'):
+            createTable = self._spark.catalog.createTable
+        else:  # before Spark 2.2
+            createTable = self._spark.catalog.createExternalTable
+
+        df = createTable(
+            new_table_name,
+            path=path,
+            source=source,
+            schema=schema,
+            **options
+        )
+
+        if overwrite_existing_table:
+            old_table_name = _append_unique_suffix(table_name, 'old')
+            self.rename_table(table_name, old_table_name)
+            self.rename_table(new_table_name, table_name)
+            self.drop_table(old_table_name)
+
+        return df
 
     def drop_table(self, table_name, checkfirst=True):
         """Drop table from the metastore.

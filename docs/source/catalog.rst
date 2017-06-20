@@ -31,7 +31,7 @@ or set it dynamically via ``SparklySession`` options:
 Tables management
 -----------------
 
-**Why:** sometimes you need more than just to create a table.
+**Why:** you need to check if tables exist, rename them, drop them, or even overwrite existing aliases in your catalog.
 
 .. code-block:: python
 
@@ -42,6 +42,7 @@ Tables management
 
     assert spark.catalog_ext.has_table('my_table') in {True, False}
     spark.catalog_ext.rename_table('my_table', 'my_new_table')
+    spark.catalog_ext.create_table('my_new_table', path='s3://my/parquet/data', source='parquet', mode='overwrite')
     spark.catalog_ext.drop_table('my_new_table')
 
 Table properties management
