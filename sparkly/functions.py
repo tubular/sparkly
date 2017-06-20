@@ -14,10 +14,68 @@
 # limitations under the License.
 #
 
+from collections import defaultdict
 from functools import reduce
 
 from pyspark.sql import Column
 from pyspark.sql import functions as F
+
+
+def multijoin(dfs, on=None, how=None, coalesce=None):
+    """Join multiple dataframes.
+
+    Args:
+        dfs (list[pyspark.sql.DataFrame]).
+        on: same as ``pyspark.sql.DataFrame.join``.
+        how: same as ``pyspark.sql.DataFrame.join``.
+        coalesce (list[str]): column names to disambiguate by coalescing
+            across the input dataframes. A column must be of the same type
+            across all dataframes that define it; if different types appear
+            coalesce will do a best-effort attempt in merging them. The
+            selected value is the first non-null one in order of appearance
+            of the dataframes in the input list. Default is None - don't
+            coalesce any ambiguous columns.
+
+    Returns:
+        pyspark.sql.DataFrame or None if provided dataframe list is empty.
+
+    Example:
+        Assume we have two DataFrames, the first is
+        ``first = [{'id': 1, 'value': None}, {'id': 2, 'value': 2}]``
+        and the second is
+        ``second = [{'id': 1, 'value': 1}, {'id': 2, 'value': 22}]``
+
+        Then collecting the ``DataFrame`` produced by
+
+        ``multijoin([first, second], on='id', how='inner', coalesce=['value'])``
+
+        yields ``[{'id': 1, 'value': 1}, {'id': 2, 'value': 2}]``.
+    """
+    if not dfs:
+        return None
+
+    # Go over the input dataframes and rename each to-be-resolved
+    # column to ensure name uniqueness
+    coalesce = set(coalesce or [])
+    renamed_columns = defaultdict(list)
+    for idx, df in enumerate(dfs):
+        for col in df.columns:
+            if col in coalesce:
+                disambiguation = '__{}_{}'.format(idx, col)
+                df = df.withColumnRenamed(col, disambiguation)
+                renamed_columns[col].append(disambiguation)
+        dfs[idx] = df
+
+    # Join the dataframes
+    joined_df = reduce(lambda x, y: x.join(y, on=on, how=how), dfs)
+
+    # And coalesce the would-have-been-ambiguities
+    for col, disambiguations in renamed_columns.items():
+        joined_df = joined_df.withColumn(col, F.coalesce(*disambiguations))
+        for disambiguation in disambiguations:
+            joined_df = joined_df.drop(disambiguation)
+
+    return joined_df
 
 
 def switch_case(switch, case=None, default=None, **additional_cases):

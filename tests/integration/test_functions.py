@@ -16,10 +16,120 @@
 
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
+from pyspark.sql import utils as U
 
 from sparkly import functions as SF
 from sparkly.testing import SparklyGlobalSessionTest
 from tests.integration.base import SparklyTestSession
+
+
+class TestMultiJoin(SparklyGlobalSessionTest):
+    session = SparklyTestSession
+
+    def test_no_dataframes_in_the_input(self):
+        joined_df = SF.multijoin([])
+        self.assertIsNone(joined_df)
+
+    def test_inner_join(self):
+        first_df = self.spark.createDataFrame(
+            data=[(1, ), (2, ), (3, )],
+            schema=T.StructType([T.StructField('id', T.IntegerType())]),
+        )
+        second_df = self.spark.createDataFrame(
+            data=[(2, ), (3, ), (4, )],
+            schema=T.StructType([T.StructField('id', T.IntegerType())]),
+        )
+        third_df = self.spark.createDataFrame(
+            data=[(3, ), (4, ), (5, )],
+            schema=T.StructType([T.StructField('id', T.IntegerType())]),
+        )
+
+        joined_df = SF.multijoin([first_df, second_df, third_df], on='id', how='inner')
+
+        self.assertDataFrameEqual(joined_df, [{'id': 3}])
+
+    def test_outer_join(self):
+        first_df = self.spark.createDataFrame(
+            data=[(1, ), (2, ), (3, )],
+            schema=T.StructType([T.StructField('id', T.IntegerType())]),
+        )
+        second_df = self.spark.createDataFrame(
+            data=[(2, ), (3, ), (4, )],
+            schema=T.StructType([T.StructField('id', T.IntegerType())]),
+        )
+        third_df = self.spark.createDataFrame(
+            data=[(3, ), (4, ), (5, )],
+            schema=T.StructType([T.StructField('id', T.IntegerType())]),
+        )
+
+        joined_df = SF.multijoin([first_df, second_df, third_df], on='id', how='outer')
+
+        self.assertDataFrameEqual(joined_df, [{'id': i} for i in [1, 2, 3, 4, 5]])
+
+    def test_coalescing(self):
+        first_df = self.spark.createDataFrame(
+            data=[(1, None), (2, 'hi'), (3, None), (4, 'may')],
+            schema=T.StructType([
+                T.StructField('id', T.IntegerType()),
+                T.StructField('value', T.StringType()),
+            ]),
+        )
+        second_df = self.spark.createDataFrame(
+            data=[(2, 'hey'), (3, 'you'), (4, None)],
+            schema=T.StructType([
+                T.StructField('id', T.IntegerType()),
+                T.StructField('value', T.StringType()),
+            ]),
+        )
+
+        joined_df = SF.multijoin([first_df, second_df], on='id', how='inner', coalesce=['value'])
+
+        self.assertDataFrameEqual(
+            joined_df,
+            [{'id': 2, 'value': 'hi'}, {'id': 3, 'value': 'you'}, {'id': 4, 'value': 'may'}],
+        )
+
+    def test_coalescing_light_type_mismatch(self):
+        first_df = self.spark.createDataFrame(
+            data=[(1, None), (2, 'hi'), (3, None), (4, 'may')],
+            schema=T.StructType([
+                T.StructField('id', T.IntegerType()),
+                T.StructField('value', T.StringType()),
+            ]),
+        )
+        second_df = self.spark.createDataFrame(
+            data=[(2, 2), (3, 3), (4, None)],
+            schema=T.StructType([
+                T.StructField('id', T.IntegerType()),
+                T.StructField('value', T.IntegerType()),
+            ]),
+        )
+
+        joined_df = SF.multijoin([first_df, second_df], on='id', how='inner', coalesce=['value'])
+
+        self.assertDataFrameEqual(
+            joined_df,
+            [{'id': 2, 'value': 'hi'}, {'id': 3, 'value': '3'}, {'id': 4, 'value': 'may'}],
+        )
+
+    def test_coalescing_heavy_type_mismatch(self):
+        first_df = self.spark.createDataFrame(
+            data=[(1, None), (2, 'hi'), (3, None), (4, 'may')],
+            schema=T.StructType([
+                T.StructField('id', T.IntegerType()),
+                T.StructField('value', T.StringType()),
+            ]),
+        )
+        second_df = self.spark.createDataFrame(
+            data=[(2, [2, ]), (3, [3, ]), (4, None)],
+            schema=T.StructType([
+                T.StructField('id', T.IntegerType()),
+                T.StructField('value', T.ArrayType(T.IntegerType())),
+            ]),
+        )
+
+        with self.assertRaises(U.AnalysisException):
+            SF.multijoin([first_df, second_df], on='id', how='inner', coalesce=['value'])
 
 
 class TestSwitchCase(SparklyGlobalSessionTest):
