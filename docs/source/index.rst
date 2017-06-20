@@ -64,6 +64,7 @@ A brief tour on Sparkly features:
    reader_and_writer
    catalog
    testing
+   functions
    utils
    license
 
