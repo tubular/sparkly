@@ -1,3 +1,6 @@
+## 2.1.0
+* Add ability to specify custom maven repositories.
+
 ## 2.0.4
 * Make it possible to override default value of spark.sql.catalogImplementation
 

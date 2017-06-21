@@ -64,10 +64,13 @@ class SparklySession(SparkSession):
     packages = []
     jars = []
     udfs = {}
+    repositories = []
 
     def __init__(self, additional_options=None):
         os.environ['PYSPARK_PYTHON'] = sys.executable
-        os.environ['PYSPARK_SUBMIT_ARGS'] = '{packages} {jars} pyspark-shell'.format(
+        os.environ['PYSPARK_SUBMIT_ARGS'] = \
+            '{repositories} {packages} {jars} pyspark-shell'.format(
+            repositories=self._setup_repositories(),
             packages=self._setup_packages(),
             jars=self._setup_jars(),
         )
@@ -116,6 +119,12 @@ class SparklySession(SparkSession):
             bool
         """
         return any(jar for jar in self.jars if jar_name in jar)
+
+    def _setup_repositories(self):
+        if self.repositories:
+            return '--repositories {}'.format(','.join(self.repositories))
+        else:
+            return ''
 
     def _setup_packages(self):
         if self.packages:

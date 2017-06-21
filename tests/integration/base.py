@@ -26,6 +26,11 @@ class SparklyTestSession(SparklySession):
         'org.elasticsearch:elasticsearch-spark-20_2.11:5.1.1',
         'org.apache.spark:spark-streaming-kafka-0-8_2.11:2.1.0',
         'mysql:mysql-connector-java:5.1.39',
+        'io.confluent:kafka-avro-serializer:3.0.1',
+    ]
+
+    repositories = [
+        'http://packages.confluent.io/maven/',
     ]
 
     jars = [
