@@ -68,12 +68,13 @@ class SparklySession(SparkSession):
 
     def __init__(self, additional_options=None):
         os.environ['PYSPARK_PYTHON'] = sys.executable
-        os.environ['PYSPARK_SUBMIT_ARGS'] = \
-            '{repositories} {packages} {jars} pyspark-shell'.format(
-            repositories=self._setup_repositories(),
-            packages=self._setup_packages(),
-            jars=self._setup_jars(),
-        )
+        submit_args = [
+            self._setup_repositories(),
+            self._setup_packages(),
+            self._setup_jars(),
+            'pyspark-shell',
+        ]
+        os.environ['PYSPARK_SUBMIT_ARGS'] = ' '.join(filter(None, submit_args))
 
         # Init SparkContext
         spark_conf = SparkConf()
