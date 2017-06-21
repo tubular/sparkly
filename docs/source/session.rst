@@ -66,6 +66,26 @@ declared as part of the job.
     df = spark.read_ext.by_url('cassandra://<cassandra-host>/<db>/<table>?consistency=QUORUM')
 
 
+Custom Maven repositories
+-------------------------
+
+**Why**: If you have a private maven repository, this is the way how to point spark to it to make package lookup.
+
+**For example**: Let's assume your maven repository is available on: http://my.repo.net/maven,
+and there is some spark package published there, with identifier: `my.corp:spark-handy-util:0.0.1`
+You can install it to a spark session like this:
+
+..code-block:: python
+
+    from sparkly import SparklySession
+
+    class MySession(SparklySession):
+        repositories = ['http://my.repo.net/maven']
+        packages = ['my.corp:spark-handy-util:0.0.1']
+
+    spark = MySession()
+
+
 Tuning options
 --------------
 
@@ -130,6 +150,7 @@ We think it's too many actions for such simple functionality.
 
     spark.sql('SELECT collect_max(amount) FROM my_data GROUP BY ...')
     spark.sql('SELECT my_udf(amount) FROM my_data')
+
 
 API documentation
 -----------------

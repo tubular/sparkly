@@ -36,6 +36,7 @@ class SparklySession(SparkSession):
 
         class MySession(sparkly.SparklySession):
             options = {'spark.sql.shuffle.partitions': '2000'}
+            repositories = ['http://packages.confluent.io/maven/']
             packages = ['com.databricks:spark-csv_2.10:1.4.0']
             jars = ['../path/to/brickhouse-0.7.1.jar']
             udfs = {
@@ -51,6 +52,7 @@ class SparklySession(SparkSession):
         options (dict[str,str]): Configuration options that are passed to SparkConf.
             See `the list of possible options
             <https://spark.apache.org/docs/2.1.0/configuration.html#available-properties>`_.
+        repositories (list[str]): List of additional maven repositories for package lookup.
         packages (list[str]): Spark packages that should be installed.
             See https://spark-packages.org/
         jars (list[str]): Full paths to jar files that we want to include to the session.
