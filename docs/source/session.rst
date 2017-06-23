@@ -69,7 +69,11 @@ declared as part of the job.
 Custom Maven repositories
 -------------------------
 
-**Why**: If you have a private maven repository, this is the way how to point spark to it to make package lookup.
+**Why**: If you have a private maven repository, this is how to point spark to it when it performs a package lookup.
+Order in which dependencies will be resolved is next:
+ - Local cache
+ - Custom maven repositories (if specified)
+ - Maven Central
 
 **For example**: Let's assume your maven repository is available on: http://my.repo.net/maven,
 and there is some spark package published there, with identifier: `my.corp:spark-handy-util:0.0.1`
