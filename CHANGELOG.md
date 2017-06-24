@@ -1,6 +1,7 @@
 ## 2.3.0
 * Overwrite existing tables in the metastore
 * Add functions module and provide switch_case column generation and multijoin
+* Add implicit test target import and extended assertEqual variation
 
 # 2.2.1
 * `spark.sql.shuffle.partitions` in `SparklyTest` should be set to string,

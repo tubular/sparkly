@@ -16,6 +16,7 @@
 import json
 import uuid
 import pickle
+import unittest
 
 from sparkly.testing import (
     CassandraFixture,
@@ -59,6 +60,20 @@ class TestAssertions(SparklyGlobalSessionTest):
                  ],
                 ordered=True,
             )
+
+
+class TestSparklyGlobalSessionTest(unittest.TestCase):
+
+    def test_imports_test_target(self):
+
+        class MyGlobalTest(SparklyGlobalSessionTest):
+            session = SparklyTestSession
+            test_target = 'tests.integration.fake_modules.testing.is_fake'
+
+
+        MyGlobalTest.setUpClass()
+
+        self.assertTrue(is_fake)
 
 
 class TestCassandraFixtures(SparklyGlobalSessionTest):

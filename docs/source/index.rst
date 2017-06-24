@@ -39,6 +39,7 @@ A brief tour on Sparkly features:
    spark.catalog_ext.get_table_properties('my_custom_table')
 
    # Easy integration testing with Fixtures and base test classes.
+   from pyspark.sql import types as T
    from sparkly.testing import SparklyTest
 
 
@@ -52,9 +53,9 @@ A brief tour on Sparkly features:
       def test_job_works_with_mysql(self):
          df = self.spark.read_ext.by_url('mysql://<my-testing-host>/<test-db>/<test-table>?user=<test-usre>&password=<test-password>')
          res_df = my_shiny_script(df)
-         self.assertDataFrameEqual(
-            res_df,
-            {'fieldA': 'DataA', 'fieldB': 'DataB', 'fieldC': 'DataC'},
+         self.assertRowsEqual(
+            res_df.collect(),
+            [T.Row(fieldA='DataA', fieldB='DataB', fieldC='DataC')],
          )
 
 .. toctree::
