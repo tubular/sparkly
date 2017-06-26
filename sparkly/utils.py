@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+import functools
 import inspect
 from itertools import islice
 import os
@@ -24,6 +25,9 @@ try:
     from kafka.structs import OffsetRequestPayload
 except ImportError:
     pass
+import pylru
+from pyspark import StorageLevel
+from pyspark.sql import DataFrame
 from pyspark.sql import types as T
 
 from sparkly.exceptions import UnsupportedDataType
@@ -92,6 +96,45 @@ def kafka_get_topics_offsets(host, topic, port=9092):
                         end_offset.offsets[0]))
 
     return offsets
+
+
+class lru_cache(object):
+    """LRU cache that supports DataFrames.
+
+    Enables caching of both the dataframe object and the data that df
+    contains by persisting it according to user specs. It's the user's
+    responsibility to make sure that the dataframe contents are not
+    evicted from memory and/or disk should this feature get overused.
+
+    Args:
+        maxsize (int|128): maximum number of items to cache.
+        storage_level (pyspark.StorageLevel|MEMORY_ONLY): how to cache
+            the contents of a dataframe (only used when the cached
+            function results in a dataframe).
+    """
+    def __init__(self, maxsize=128, storage_level=StorageLevel.MEMORY_ONLY):
+        self.maxsize = maxsize
+        self.storage_level = storage_level
+
+    def __call__(self, func):
+        # Whenever an object is evicted from the cache we want to
+        # unpersist its contents too if it's a dataframe
+        def eviction_callback(key, value):
+            if isinstance(value, DataFrame):
+                value.unpersist()
+
+        lru_decorator = pylru.lrudecorator(self.maxsize)
+        lru_decorator.cache.callback = eviction_callback
+
+        @lru_decorator
+        @functools.wraps(func)
+        def func_and_persist(*args, **kwargs):
+            result = func(*args, **kwargs)
+            if isinstance(result, DataFrame):
+                result.persist(self.storage_level)
+            return result
+
+        return func_and_persist
 
 
 def parse_schema(schema):

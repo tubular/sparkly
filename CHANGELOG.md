@@ -3,6 +3,7 @@
 * Add functions module and provide switch_case column generation and multijoin
 * Add implicit test target import and extended assertEqual variation
 * Support writing to redis:// and rediss:// URLs
+* Add LRU cache that persists DataFrames under the hood
 
 # 2.2.1
 * `spark.sql.shuffle.partitions` in `SparklyTest` should be set to string,
