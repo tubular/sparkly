@@ -92,6 +92,7 @@ setup(
     install_requires=requirements,
     extras_require={
         'kafka': ['kafka-python>=1.2.2,<1.3'],
-        'test': ['cassandra-driver>=3.7,<3.8', 'PyMySQL>=0.7,<0.8', 'kafka-python>=1.2.2,<1.3'],
+        'redis': ['redis>=2.10,<3', 'ujson>=1.33,<2'],
+        'test': ['cassandra-driver>=3.7,<3.8', 'PyMySQL>=0.7,<0.8', 'kafka-python>=1.2.2,<1.3', 'redis>=2.10,<3', 'ujson>=1.33,<2'],
     },
 )

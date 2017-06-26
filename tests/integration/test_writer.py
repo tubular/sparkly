@@ -14,12 +14,20 @@
 # limitations under the License.
 #
 
-import json
+from functools import partial
+import gzip
 import uuid
 from shutil import rmtree
 from tempfile import mkdtemp
+from time import sleep
+import zlib
 
+from pyspark.sql import functions as F
+from pyspark.sql import types as T
 from py4j.protocol import Py4JJavaError
+import redis
+import six
+import ujson as json
 
 from sparkly.utils import absolute_path
 from sparkly.testing import (
@@ -218,3 +226,1287 @@ class TestWriteKafka(SparklyGlobalSessionTest):
             self.assertIn('WriteError(\'Error publishing to kafka', str(ex))
         else:
             raise AssertionError('WriteError exception not raised')
+
+
+class TestWriteRedis(SparklyGlobalSessionTest):
+    session = SparklyTestSession
+
+    def tearDown(self):
+        redis.StrictRedis('redis.docker', 6379).flushdb()
+        super(TestWriteRedis, self).tearDown()
+
+    @staticmethod
+    def _gzip_decompress(data):
+        try:
+            return gzip.decompress(data)
+        except AttributeError:  #py27
+            return zlib.decompress(data, zlib.MAX_WBITS | 16)
+
+    def test_simple_key_uncompressed(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        df.write_ext.redis(
+            key_by=['key_2'],
+            max_pipeline_size=3,
+            host='redis.docker',
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'k11', b'k12', b'k13', b'k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key)) for key in ['k11', 'k12', 'k13', 'k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_composite_key_compressed(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        df.write_ext.redis(
+            key_by=['key_1', 'key_2'],
+            compression='gzip',
+            max_pipeline_size=3,
+            host='redis.docker',
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'k1.k11', b'k1.k12', b'k1.k13', b'k1.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(self._gzip_decompress(redis_client.get(key)))
+            for key in ['k1.k11', 'k1.k12', 'k1.k13', 'k1.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_composite_key_with_prefix_compressed(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        df.write_ext.redis(
+            key_by=['key_1', 'key_2'],
+            key_prefix='hello',
+            compression='gzip',
+            max_pipeline_size=3,
+            host='redis.docker',
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k1.k11', b'hello.k1.k12', b'hello.k1.k13', b'hello.k1.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(self._gzip_decompress(redis_client.get(key)))
+            for key in ['hello.k1.k11', 'hello.k1.k12', 'hello.k1.k13', 'hello.k1.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_group_by(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k4', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        df.write_ext.redis(
+            key_by=['key_1'],
+            group_by_key=True,
+            max_pipeline_size=2,
+            host='redis.docker',
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        self.assertRowsEqual(redis_client.keys(), [b'k1', b'k4'], ignore_order=True)
+
+        written_data = [json.loads(redis_client.get(key)) for key in [b'k1', b'k4']]
+
+        expected = [
+            [
+                {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+                {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+                {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            ],
+            [{'key_1': 'k4', 'key_2': 'k14', 'aux_data': [1, 14, 141]}],
+        ]
+
+        self.assertRowsEqual(written_data, expected, ignore_order=True)
+
+    def test_exclude_key_columns(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        # simple key
+        df.write_ext.redis(
+            key_by=['key_2'],
+            key_prefix='hello',
+            exclude_key_columns=True,
+            host='redis.docker',
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k11', b'hello.k12', b'hello.k13', b'hello.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k11', 'hello.k12', 'hello.k13', 'hello.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+        redis_client.flushdb()
+
+        # composite key
+        df.write_ext.redis(
+            key_by=['key_1', 'key_2'],
+            key_prefix='hello',
+            exclude_key_columns=True,
+            host='redis.docker',
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k1.k11', b'hello.k1.k12', b'hello.k1.k13', b'hello.k1.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k1.k11', 'hello.k1.k12', 'hello.k1.k13', 'hello.k1.k14']
+        ]
+
+        expected = [
+            {'aux_data': [1, 11, 111]},
+            {'aux_data': [1, 12, 121]},
+            {'aux_data': [1, 13, 131]},
+            {'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_exclude_null_fields(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                (None, 'k12', [1, 12, 121]),
+                ('k1', 'k11', None),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        df.write_ext.redis(
+            key_by=['key_2'],
+            key_prefix='hello',
+            exclude_null_fields=True,
+            host='redis.docker',
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k11', b'hello.k12', b'hello.k13', b'hello.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k11', 'hello.k12', 'hello.k13', 'hello.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11'},
+            {'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_exclude_key_columns(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        # simple key
+        df.write_ext.redis(
+            key_by=['key_2'],
+            key_prefix='hello',
+            exclude_key_columns=True,
+            host='redis.docker',
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k11', b'hello.k12', b'hello.k13', b'hello.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k11', 'hello.k12', 'hello.k13', 'hello.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+        redis_client.flushdb()
+
+        # composite key
+        df.write_ext.redis(
+            key_by=['key_1', 'key_2'],
+            key_prefix='hello',
+            exclude_key_columns=True,
+            host='redis.docker',
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k1.k11', b'hello.k1.k12', b'hello.k1.k13', b'hello.k1.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k1.k11', 'hello.k1.k12', 'hello.k1.k13', 'hello.k1.k14']
+        ]
+
+        expected = [
+            {'aux_data': [1, 11, 111]},
+            {'aux_data': [1, 12, 121]},
+            {'aux_data': [1, 13, 131]},
+            {'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_exclude_null_fields(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                (None, 'k12', [1, 12, 121]),
+                ('k1', 'k11', None),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        df.write_ext.redis(
+            key_by=['key_2'],
+            key_prefix='hello',
+            exclude_null_fields=True,
+            host='redis.docker',
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k11', b'hello.k12', b'hello.k13', b'hello.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k11', 'hello.k12', 'hello.k13', 'hello.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11'},
+            {'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_expiration(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        df.write_ext.redis(
+            key_by=['key_2'],
+            key_prefix='hello',
+            expire=2,
+            host='redis.docker',
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k11', b'hello.k12', b'hello.k13', b'hello.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k11', 'hello.k12', 'hello.k13', 'hello.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+        sleep(3)
+
+        self.assertEqual(redis_client.keys(), [])
+
+    def test_mode(self):
+        redis_client = redis.StrictRedis('redis.docker')
+        redis_client.set('k11', '"hey!"')
+        redis_client.set('k13', '"you!"')
+        redis_client.set('k14', '"brick!"')
+
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        # test ignore
+        df.write_ext.redis(
+            key_by=['key_2'],
+            mode='ignore',
+            host='redis.docker',
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'k11', b'k12', b'k13', b'k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key)) for key in ['k11', 'k12', 'k13', 'k14']
+        ]
+
+        expected = [
+            'hey!',
+            {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            'you!',
+            'brick!',
+        ]
+
+        self.assertEqual(written_data, expected)
+
+        # test append
+        df.write_ext.redis(
+            key_by=['key_2'],
+            mode='append',
+            host='redis.docker',
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'k11', b'k12', b'k13', b'k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key)) for key in ['k11', 'k12', 'k13', 'k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+        # test overwrite
+        df.where(F.col('key_2') == 'k11').write_ext.redis(
+            key_by=['key_2'],
+            mode='overwrite',
+            host='redis.docker',
+        )
+
+        self.assertEqual(redis_client.keys(), [b'k11'])
+
+        written_data = [json.loads(redis_client.get('k11'))]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_db(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        df.write_ext.redis(
+            key_by=['key_2'],
+            max_pipeline_size=3,
+            host='redis.docker',
+            db=1,
+        )
+
+        redis_client = redis.StrictRedis('redis.docker', db=1)
+
+        self.assertEqual(redis_client.keys(), [b'k14'])
+
+        written_data = json.loads(redis_client.get('k14'))
+        expected = {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]}
+        self.assertEqual(written_data, expected)
+
+    def test_redis_client_init(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        df.write_ext.redis(
+            key_by=['key_2'],
+            max_pipeline_size=3,
+            redis_client_init=partial(redis.StrictRedis, 'redis.docker'),
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        self.assertEqual(redis_client.keys(), [b'k14'])
+
+        written_data = json.loads(redis_client.get('k14'))
+        expected = {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]}
+        self.assertEqual(written_data, expected)
+
+    def test_invalid_input(self):
+        df = self.spark.createDataFrame(
+            data=[],
+            schema=T.StructType([T.StructField('key_1', T.StringType())]),
+        )
+
+        with six.assertRaisesRegex(
+                self,
+                ValueError,
+                'redis: expire must be positive',
+        ):
+            df.write_ext.redis(
+                key_by=['key_1'],
+                expire=0,
+                host='redis.docker',
+            )
+
+        with six.assertRaisesRegex(
+                self,
+                ValueError,
+                'redis: bzip2, gzip and zlib are the only supported compression codecs',
+        ):
+            df.write_ext.redis(
+                key_by=['key_1'],
+                compression='snappy',
+                host='redis.docker',
+            )
+
+        with six.assertRaisesRegex(
+                self,
+                ValueError,
+                'redis: max pipeline size must be positive',
+        ):
+            df.write_ext.redis(
+                key_by=['key_1'],
+                max_pipeline_size=0,
+                host='redis.docker',
+            )
+
+        with six.assertRaisesRegex(
+                self,
+                ValueError,
+                'redis: only append \(default\), ignore and overwrite modes are supported',
+        ):
+            df.write_ext.redis(
+                key_by=['key_1'],
+                mode='error',
+                host='redis.docker',
+            )
+
+        with six.assertRaisesRegex(
+                self,
+                AssertionError,
+                'redis: At least one of host or redis_client_init must be provided',
+        ):
+            df.write_ext.redis(
+                key_by=['key_1'],
+            )
+
+
+class TestWriteRedisByURL(SparklyGlobalSessionTest):
+    # similar to TestWriteRedis, but integrates URL parsing
+    session = SparklyTestSession
+
+    def tearDown(self):
+        redis.StrictRedis('redis.docker', 6379).flushdb()
+        super(TestWriteRedisByURL, self).tearDown()
+
+    @staticmethod
+    def _gzip_decompress(data):
+        try:
+            return gzip.decompress(data)
+        except AttributeError:  #py27
+            return zlib.decompress(data, zlib.MAX_WBITS | 16)
+
+    def test_simple_key_uncompressed(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        df.write_ext.by_url('redis://redis.docker?keyBy=key_2&maxPipelineSize=3')
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'k11', b'k12', b'k13', b'k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key)) for key in ['k11', 'k12', 'k13', 'k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_composite_key_compressed(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        df.write_ext.by_url(
+            'redis://redis.docker?keyBy=key_1,key_2&compression=gzip&maxPipelineSize=3'
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'k1.k11', b'k1.k12', b'k1.k13', b'k1.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(self._gzip_decompress(redis_client.get(key)))
+            for key in ['k1.k11', 'k1.k12', 'k1.k13', 'k1.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_composite_key_with_prefix_compressed(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        df.write_ext.by_url(
+            'redis://redis.docker?'
+            'keyBy=key_1,key_2&'
+            'keyPrefix=hello&'
+            'compression=gzip&'
+            'maxPipelineSize=3'
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k1.k11', b'hello.k1.k12', b'hello.k1.k13', b'hello.k1.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(self._gzip_decompress(redis_client.get(key)))
+            for key in ['hello.k1.k11', 'hello.k1.k12', 'hello.k1.k13', 'hello.k1.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_group_by(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k4', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        df.write_ext.by_url(
+            'redis://redis.docker?keyBy=key_1&groupByKey=true&maxPipelineSize=2'
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        self.assertRowsEqual(redis_client.keys(), [b'k1', b'k4'], ignore_order=True)
+
+        written_data = [json.loads(redis_client.get(key)) for key in [b'k1', b'k4']]
+
+        expected = [
+            [
+                {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+                {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+                {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            ],
+            [{'key_1': 'k4', 'key_2': 'k14', 'aux_data': [1, 14, 141]}],
+        ]
+
+        self.assertRowsEqual(written_data, expected, ignore_order=True)
+
+
+    def test_exclude_key_columns(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        # simple key
+        df.write_ext.by_url(
+            'redis://redis.docker?keyBy=key_2&keyPrefix=hello&excludeKeyColumns=true'
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k11', b'hello.k12', b'hello.k13', b'hello.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k11', 'hello.k12', 'hello.k13', 'hello.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+        redis_client.flushdb()
+
+        # composite key
+        df.write_ext.by_url(
+            'redis://redis.docker?keyBy=key_1,key_2&keyPrefix=hello&excludeKeyColumns=true'
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k1.k11', b'hello.k1.k12', b'hello.k1.k13', b'hello.k1.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k1.k11', 'hello.k1.k12', 'hello.k1.k13', 'hello.k1.k14']
+        ]
+
+        expected = [
+            {'aux_data': [1, 11, 111]},
+            {'aux_data': [1, 12, 121]},
+            {'aux_data': [1, 13, 131]},
+            {'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_exclude_null_fields(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                (None, 'k12', [1, 12, 121]),
+                ('k1', 'k11', None),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        df.write_ext.by_url(
+            'redis://redis.docker?keyBy=key_2&keyPrefix=hello&excludeNullFields=true'
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k11', b'hello.k12', b'hello.k13', b'hello.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k11', 'hello.k12', 'hello.k13', 'hello.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11'},
+            {'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+
+    def test_exclude_key_columns(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        # simple key
+        df.write_ext.by_url(
+            'redis://redis.docker?keyBy=key_2&keyPrefix=hello&excludeKeyColumns=true'
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k11', b'hello.k12', b'hello.k13', b'hello.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k11', 'hello.k12', 'hello.k13', 'hello.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+        redis_client.flushdb()
+
+        # composite key
+        df.write_ext.by_url(
+            'redis://redis.docker?keyBy=key_1,key_2&keyPrefix=hello&excludeKeyColumns=true'
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k1.k11', b'hello.k1.k12', b'hello.k1.k13', b'hello.k1.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k1.k11', 'hello.k1.k12', 'hello.k1.k13', 'hello.k1.k14']
+        ]
+
+        expected = [
+            {'aux_data': [1, 11, 111]},
+            {'aux_data': [1, 12, 121]},
+            {'aux_data': [1, 13, 131]},
+            {'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_exclude_null_fields(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                (None, 'k12', [1, 12, 121]),
+                ('k1', 'k11', None),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        df.write_ext.by_url(
+            'redis://redis.docker?keyBy=key_2&keyPrefix=hello&excludeNullFields=true'
+        )
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k11', b'hello.k12', b'hello.k13', b'hello.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k11', 'hello.k12', 'hello.k13', 'hello.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11'},
+            {'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_expiration(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        df.write_ext.by_url('redis://redis.docker?keyBy=key_2&keyPrefix=hello&expire=2')
+
+        redis_client = redis.StrictRedis('redis.docker')
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'hello.k11', b'hello.k12', b'hello.k13', b'hello.k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key))
+            for key in ['hello.k11', 'hello.k12', 'hello.k13', 'hello.k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+        sleep(3)
+
+        self.assertEqual(redis_client.keys(), [])
+
+    def test_mode(self):
+        redis_client = redis.StrictRedis('redis.docker')
+        redis_client.set('k11', '"hey!"')
+        redis_client.set('k13', '"you!"')
+        redis_client.set('k14', '"brick!"')
+
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+                ('k1', 'k12', [1, 12, 121]),
+                ('k1', 'k11', [1, 11, 111]),
+                ('k1', 'k13', [1, 13, 131]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        # test ignore
+        df.write_ext.by_url('redis://redis.docker?keyBy=key_2&mode=ignore')
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'k11', b'k12', b'k13', b'k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key)) for key in ['k11', 'k12', 'k13', 'k14']
+        ]
+
+        expected = [
+            'hey!',
+            {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            'you!',
+            'brick!',
+        ]
+
+        self.assertEqual(written_data, expected)
+
+        # test append
+        df.write_ext.by_url('redis://redis.docker?keyBy=key_2&mode=append')
+
+        self.assertRowsEqual(
+            redis_client.keys(),
+            [b'k11', b'k12', b'k13', b'k14'],
+            ignore_order=True,
+        )
+
+        written_data = [
+            json.loads(redis_client.get(key)) for key in ['k11', 'k12', 'k13', 'k14']
+        ]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+            {'key_1': 'k1', 'key_2': 'k12', 'aux_data': [1, 12, 121]},
+            {'key_1': 'k1', 'key_2': 'k13', 'aux_data': [1, 13, 131]},
+            {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+        # test overwrite
+        df.where(F.col('key_2') == 'k11').write_ext.by_url(
+            'redis://redis.docker?keyBy=key_2&mode=overwrite'
+        )
+
+        self.assertEqual(redis_client.keys(), [b'k11'])
+
+        written_data = [json.loads(redis_client.get('k11'))]
+
+        expected = [
+            {'key_1': 'k1', 'key_2': 'k11', 'aux_data': [1, 11, 111]},
+        ]
+
+        self.assertEqual(written_data, expected)
+
+    def test_db(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('k1', 'k14', [1, 14, 141]),
+            ],
+            schema=T.StructType([
+                T.StructField('key_1', T.StringType()),
+                T.StructField('key_2', T.StringType()),
+                T.StructField('aux_data', T.ArrayType(T.IntegerType())),
+            ])
+        )
+
+        df.write_ext.by_url('redis://redis.docker/1?keyBy=key_2&maxPipelineSize=3')
+
+        redis_client = redis.StrictRedis('redis.docker', db=1)
+
+        self.assertEqual(redis_client.keys(), [b'k14'])
+
+        written_data = json.loads(redis_client.get('k14'))
+        expected = {'key_1': 'k1', 'key_2': 'k14', 'aux_data': [1, 14, 141]}
+        self.assertEqual(written_data, expected)
+
+    def test_invalid_input(self):
+        df = self.spark.createDataFrame(
+            data=[],
+            schema=T.StructType([T.StructField('key_1', T.StringType())]),
+        )
+
+        with six.assertRaisesRegex(
+                self,
+                AssertionError,
+                'redis: url must define keyBy columns to construct redis key',
+        ):
+            df.write_ext.by_url('redis://redis.docker')
+
+        with six.assertRaisesRegex(
+                self,
+                ValueError,
+                'redis: true and false \(default\) are the only supported groupByKey values',
+        ):
+            df.write_ext.by_url('redis://redis.docker?keyBy=key_1&groupByKey=tru')
+
+        with six.assertRaisesRegex(
+                self,
+                ValueError,
+                'redis: true and false \(default\) are the only supported excludeKeyColumns '
+                'values',
+        ):
+            df.write_ext.by_url('redis://redis.docker?keyBy=key_1&excludeKeyColumns=tru')
+
+        with six.assertRaisesRegex(
+                self,
+                ValueError,
+                'redis: expire must be positive',
+        ):
+            df.write_ext.by_url('redis://redis.docker?keyBy=key_1&expire=0')
+
+        with six.assertRaisesRegex(
+                self,
+                ValueError,
+                'redis: expire must be a base 10, positive integer',
+        ):
+            df.write_ext.by_url('redis://redis.docker?keyBy=key_1&expire=0x11')
+
+        with six.assertRaisesRegex(
+                self,
+                ValueError,
+                'redis: bzip2, gzip and zlib are the only supported compression codecs',
+        ):
+            df.write_ext.by_url('redis://redis.docker?keyBy=key_1&compression=snappy')
+
+        with six.assertRaisesRegex(
+                self,
+                ValueError,
+                'redis: max pipeline size must be positive',
+        ):
+            df.write_ext.by_url('redis://redis.docker?keyBy=key_1&maxPipelineSize=0')
+
+        with six.assertRaisesRegex(
+                self,
+                ValueError,
+                'redis: maxPipelineSize must be a base 10, positive integer',
+        ):
+            df.write_ext.by_url('redis://redis.docker?keyBy=key_1&maxPipelineSize=0x11')
+
+        with six.assertRaisesRegex(
+                self,
+                ValueError,
+                'redis: only append \(default\), ignore and overwrite modes are supported',
+        ):
+            df.write_ext.by_url('redis://redis.docker?keyBy=key_1&mode=error')

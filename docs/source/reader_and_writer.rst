@@ -172,6 +172,39 @@ Basically, it's just a high level api on top of the native
         'rewriteBatchedStatements': 'true',  # improves write throughput dramatically
     })
 
+.. _redis:
+
+Redis
+-----
+
+Sparkly provides a writer for Redis that is built on top of the official redis python library
+`redis-py <https://github.com/andymccurdy/redis-py>`_ .
+It is currently capable of exporting your DataFrame as a JSON blob per row or group of rows.
+
+.. note::
+    - To interact with Redis, ``sparkly`` needs the ``redis`` library. You can get it via:
+      ``pip install sparkly[redis]``
+
+.. code-block:: python
+
+    import json
+
+    from sparkly import SparklySession
+
+
+    spark = SparklySession()
+
+    # Write JSON.gz data indexed by col1.col2 that will expire in a day
+    df.write_ext.redis(
+        host='localhost',
+        port=6379,
+        key_by=['col1', 'col2'],
+        exclude_key_columns=True,
+        expire=24 * 60 * 60,
+        compression='gzip',
+    )
+
+
 .. _universal-reader-and-writer:
 
 Universal reader/writer

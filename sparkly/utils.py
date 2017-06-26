@@ -15,6 +15,7 @@
 #
 
 import inspect
+from itertools import islice
 import os
 import re
 
