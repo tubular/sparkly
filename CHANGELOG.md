@@ -4,6 +4,7 @@
 * Add implicit test target import and extended assertEqual variation
 * Support writing to redis:// and rediss:// URLs
 * Add LRU cache that persists DataFrames under the hood
+* Add ability to check whether a complex type defines specific fields
 
 # 2.2.1
 * `spark.sql.shuffle.partitions` in `SparklyTest` should be set to string,
