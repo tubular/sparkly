@@ -36,6 +36,7 @@ class SparklySession(SparkSession):
 
         class MySession(sparkly.SparklySession):
             options = {'spark.sql.shuffle.partitions': '2000'}
+            repositories = ['http://packages.confluent.io/maven/']
             packages = ['com.databricks:spark-csv_2.10:1.4.0']
             jars = ['../path/to/brickhouse-0.7.1.jar']
             udfs = {
@@ -51,6 +52,7 @@ class SparklySession(SparkSession):
         options (dict[str,str]): Configuration options that are passed to SparkConf.
             See `the list of possible options
             <https://spark.apache.org/docs/2.1.0/configuration.html#available-properties>`_.
+        repositories (list[str]): List of additional maven repositories for package lookup.
         packages (list[str]): Spark packages that should be installed.
             See https://spark-packages.org/
         jars (list[str]): Full paths to jar files that we want to include to the session.
@@ -64,13 +66,17 @@ class SparklySession(SparkSession):
     packages = []
     jars = []
     udfs = {}
+    repositories = []
 
     def __init__(self, additional_options=None):
         os.environ['PYSPARK_PYTHON'] = sys.executable
-        os.environ['PYSPARK_SUBMIT_ARGS'] = '{packages} {jars} pyspark-shell'.format(
-            packages=self._setup_packages(),
-            jars=self._setup_jars(),
-        )
+        submit_args = [
+            self._setup_repositories(),
+            self._setup_packages(),
+            self._setup_jars(),
+            'pyspark-shell',
+        ]
+        os.environ['PYSPARK_SUBMIT_ARGS'] = ' '.join(filter(None, submit_args))
 
         # Init SparkContext
         spark_conf = SparkConf()
@@ -116,6 +122,12 @@ class SparklySession(SparkSession):
             bool
         """
         return any(jar for jar in self.jars if jar_name in jar)
+
+    def _setup_repositories(self):
+        if self.repositories:
+            return '--repositories {}'.format(','.join(self.repositories))
+        else:
+            return ''
 
     def _setup_packages(self):
         if self.packages:

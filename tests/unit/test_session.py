@@ -67,7 +67,27 @@ class TestSparklySession(unittest.TestCase):
 
         self.assertEqual(os_mock.environ, {
             'PYSPARK_PYTHON': sys.executable,
-            'PYSPARK_SUBMIT_ARGS': '--packages package1,package2  pyspark-shell',
+            'PYSPARK_SUBMIT_ARGS': '--packages package1,package2 pyspark-shell',
+        })
+
+    @mock.patch('sparkly.session.os')
+    def test_session_with_repositories(self, os_mock):
+        os_mock.environ = {}
+
+        class _Session(SparklySession):
+            packages = ['package1', 'package2']
+            repositories = [
+                'http://my.maven.repo',
+                'http://another.maven.repo',
+            ]
+
+        _Session()
+
+        self.assertEqual(os_mock.environ, {
+            'PYSPARK_PYTHON': sys.executable,
+            'PYSPARK_SUBMIT_ARGS':
+                '--repositories http://my.maven.repo,http://another.maven.repo '
+                '--packages package1,package2 pyspark-shell',
         })
 
     @mock.patch('sparkly.session.os')
@@ -81,7 +101,7 @@ class TestSparklySession(unittest.TestCase):
 
         self.assertEqual(os_mock.environ, {
             'PYSPARK_PYTHON': sys.executable,
-            'PYSPARK_SUBMIT_ARGS': ' --jars file_a.jar,file_b.jar pyspark-shell',
+            'PYSPARK_SUBMIT_ARGS': '--jars file_a.jar,file_b.jar pyspark-shell',
         })
 
     def test_session_with_options(self):
@@ -107,7 +127,7 @@ class TestSparklySession(unittest.TestCase):
 
         self.assertEqual(os_mock.environ, {
             'PYSPARK_PYTHON': sys.executable,
-            'PYSPARK_SUBMIT_ARGS': '  pyspark-shell',
+            'PYSPARK_SUBMIT_ARGS': 'pyspark-shell',
         })
 
     def test_broken_udf(self):
