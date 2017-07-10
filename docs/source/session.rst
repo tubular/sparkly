@@ -79,7 +79,7 @@ Order in which dependencies will be resolved is next:
 and there is some spark package published there, with identifier: `my.corp:spark-handy-util:0.0.1`
 You can install it to a spark session like this:
 
-..code-block:: python
+.. code-block:: python
 
     from sparkly import SparklySession
 
