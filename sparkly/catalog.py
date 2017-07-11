@@ -77,12 +77,14 @@ class SparklyCatalog(object):
         Returns:
             bool
         """
-        try:
-            self._spark.catalog.listTables(db_name)
-        except Exception:
-            return False
-        else:
+        if not db_name:
             return True
+
+        for db in self._spark.catalog.listDatabases():
+            if db_name == db.name:
+                return True
+
+        return False
 
     def rename_table(self, old_table_name, new_table_name):
         """Rename table in the metastore.
