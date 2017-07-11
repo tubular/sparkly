@@ -38,24 +38,51 @@ class SparklyCatalog(object):
             table_name (str): A table name.
             checkfirst (bool): Only issue DROPs for tables that are presented in the database.
         """
-        drop_statement = 'DROP TABLE IF EXISTS' if checkfirst else 'DROP TABLE'
-        return self._spark.sql('{} `{}`'.format(drop_statement, table_name))
+        db_name = get_db_name(table_name)
+        if checkfirst and not self.has_database(db_name):
+            return
 
-    def has_table(self, table_name, db_name=None):
+        drop_statement = 'DROP TABLE IF EXISTS' if checkfirst else 'DROP TABLE'
+        return self._spark.sql(
+            '{} {}'.format(drop_statement, table_name)
+        )
+
+    def has_table(self, table_name):
         """Check if table is available in the metastore.
 
         Args:
             table_name (str): A table name.
-            db_name (str): A database name.
 
         Returns:
             bool
         """
+        db_name = get_db_name(table_name)
+        rel_table_name = get_table_name(table_name)
+
+        if not self.has_database(db_name):
+            return False
+
         for table in self._spark.catalog.listTables(db_name):
-            if table.name == table_name:
+            if table.name == rel_table_name:
                 return True
 
         return False
+
+    def has_database(self, db_name):
+        """Check if database exists in the metastore.
+
+        Args:
+            db_name (str): Database name.
+
+        Returns:
+            bool
+        """
+        try:
+            self._spark.catalog.listTables(db_name)
+        except Exception:
+            return False
+        else:
+            return True
 
     def rename_table(self, old_table_name, new_table_name):
         """Rename table in the metastore.
@@ -69,7 +96,7 @@ class SparklyCatalog(object):
             old_table_name (str): The current table name.
             new_table_name (str): An expected table name.
         """
-        self._spark.sql('ALTER TABLE `{}` RENAME TO `{}`'.format(old_table_name, new_table_name))
+        self._spark.sql('ALTER TABLE {} RENAME TO {}'.format(old_table_name, new_table_name))
 
     def get_table_property(self, table_name, property_name, to_type=None):
         """Get table property value from the metastore.
@@ -86,7 +113,7 @@ class SparklyCatalog(object):
         if not to_type:
             to_type = str
 
-        df = self._spark.sql("SHOW TBLPROPERTIES `{}`('{}')".format(table_name, property_name))
+        df = self._spark.sql("SHOW TBLPROPERTIES {}('{}')".format(table_name, property_name))
         prop_val = df.collect()[0].value.strip()
 
         if 'does not have property' not in prop_val:
@@ -101,7 +128,7 @@ class SparklyCatalog(object):
         Returns:
             dict[str,str]: Key/value for properties.
         """
-        rows = self._spark.sql('SHOW TBLPROPERTIES `{}`'.format(table_name)).collect()
+        rows = self._spark.sql('SHOW TBLPROPERTIES {}'.format(table_name)).collect()
         return {row.key: row.value for row in rows}
 
     def set_table_property(self, table_name, property_name, value):
@@ -112,6 +139,21 @@ class SparklyCatalog(object):
             property_name (str): A property name to set value for.
             value (Any): Will be automatically casted to string.
         """
-        self._spark.sql("ALTER TABLE `{}` SET TBLPROPERTIES ('{}'='{}')".format(
+        self._spark.sql("ALTER TABLE {} SET TBLPROPERTIES ('{}'='{}')".format(
             table_name, property_name, value
         ))
+
+
+def get_db_name(table_name):
+    """Get database name from full table name."""
+    parts = table_name.split('.', 1)
+    if len(parts) == 1:
+        return None
+    else:
+        return parts[0]
+
+
+def get_table_name(table_name):
+    """Get table name from full table name."""
+    parts = table_name.split('.', 1)
+    return parts[-1]

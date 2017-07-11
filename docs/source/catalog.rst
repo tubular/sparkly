@@ -65,6 +65,35 @@ We implemented a more convenient interface to make your code cleaner.
 In case if you need other types, consider using a serialisation format, e.g. JSON.
 
 
+Using non-default database
+--------------------------
+
+**Why** to split your warehouse into logical groups (for example by system components).
+In all catalog_ext.* methods you can specify full table names <db-name>.<table-name> and
+it should operate properly
+
+.. code-block:: python
+
+    from time import time
+    from sparkly import SparklySession
+
+    spark = SparklySession()
+
+    if spark.catalog_ext.has_database('my_database'):
+        self.catalog_ext.rename_table(
+            'my_database.my_badly_named_table',
+            'new_shiny_name',
+        )
+        self.catalog_ext.set_table_property(
+            'my_database.new_shiny_name',
+            'last_update_at',
+            time(),
+        )
+
+*Note* be careful using 'USE' statements like: spark.sql('USE my_database'),
+it's stateful and may lead to weird errors, if code assumes correct current database.
+
+
 API documentation
 -----------------
 
