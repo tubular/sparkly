@@ -24,11 +24,29 @@ class TestSparklyCatalog(SparklyGlobalSessionTest):
     def setUp(self):
         self.spark.catalog_ext.drop_table('test_table')
 
+        if self.spark.catalog_ext.has_database('test_db'):
+            for table in self.spark.catalog.listTables('test_db'):
+                self.spark.catalog_ext.drop_table('test_db.{}'.format(table.name))
+            self.spark.sql('DROP DATABASE test_db')
+
         df = self.spark.createDataFrame([('row_1', 1), ('row_2', 2)], schema=('a', 'b'))
         df.write.saveAsTable('test_table', format='parquet', location='/tmp/test_table')
 
         self.spark.catalog_ext.set_table_property('test_table', 'property_a', 'str_value')
         self.spark.catalog_ext.set_table_property('test_table', 'property_b', 2)
+
+        self.spark.sql('CREATE DATABASE test_db')
+        df.write.saveAsTable('test_db.test_table', format='parquet', location='/tmp/test_table')
+        self.spark.catalog_ext.set_table_property('test_db.test_table',
+                                                  'property_a',
+                                                  'str_value')
+        self.spark.catalog_ext.set_table_property('test_db.test_table',
+                                                  'property_b',
+                                                  2)
+
+    def test_has_database(self):
+        self.assertTrue(self.spark.catalog_ext.has_database('test_db'))
+        self.assertFalse(self.spark.catalog_ext.has_database('not_exists'))
 
     def test_drop_table(self):
         self.assertTrue(self.spark.catalog_ext.has_table('test_table'))
@@ -37,10 +55,18 @@ class TestSparklyCatalog(SparklyGlobalSessionTest):
 
         self.assertFalse(self.spark.catalog_ext.has_table('test_table'))
 
+    def test_drop_table_non_default_db(self):
+        self.assertTrue(self.spark.catalog_ext.has_table('test_db.test_table'))
+
+        self.spark.catalog_ext.drop_table('test_db.test_table')
+
+        self.assertFalse(self.spark.catalog_ext.has_table('test_db.test_table'))
+
     def test_has_table(self):
         self.assertTrue(self.spark.catalog_ext.has_table('test_table'))
-        self.assertTrue(self.spark.catalog_ext.has_table('test_table', db_name='default'))
+        self.assertTrue(self.spark.catalog_ext.has_table('test_db.test_table'))
         self.assertFalse(self.spark.catalog_ext.has_table('test_unknown_table'))
+        self.assertFalse(self.spark.catalog_ext.has_table('non_exists.test_unknown_table'))
 
     def test_rename_table(self):
         self.spark.catalog_ext.drop_table('new_test_table')
@@ -53,6 +79,17 @@ class TestSparklyCatalog(SparklyGlobalSessionTest):
         self.assertTrue(self.spark.catalog_ext.has_table('new_test_table'))
         self.assertEqual(self.spark.table('new_test_table').count(), 2)
 
+    def test_rename_table_non_default_db(self):
+        self.spark.catalog_ext.drop_table('test_db.new_test_table')
+        self.assertTrue(self.spark.catalog_ext.has_table('test_db.test_table'))
+        self.assertFalse(self.spark.catalog_ext.has_table('test_db.new_test_table'))
+
+        self.spark.catalog_ext.rename_table('test_db.test_table', 'new_test_table')
+
+        self.assertFalse(self.spark.catalog_ext.has_table('test_db.test_table'))
+        self.assertTrue(self.spark.catalog_ext.has_table('default.new_test_table'))
+        self.assertEqual(self.spark.table('default.new_test_table').count(), 2)
+
     def test_get_table_properties(self):
         properties = self.spark.catalog_ext.get_table_properties('test_table')
 
@@ -64,12 +101,25 @@ class TestSparklyCatalog(SparklyGlobalSessionTest):
             self.spark.catalog_ext.get_table_property('test_table', 'property_a'),
             'str_value',
         )
+        self.assertEqual(
+            self.spark.catalog_ext.get_table_property('test_db.test_table', 'property_a'),
+            'str_value',
+        )
 
     def test_get_table_property_to_type(self):
         self.assertEqual(
             self.spark.catalog_ext.get_table_property('test_table', 'property_b', to_type=int),
             2,
         )
+        self.assertEqual(
+            self.spark.catalog_ext.get_table_property('test_db.test_table',
+                                                      'property_b',
+                                                      to_type=int),
+            2,
+        )
 
     def test_get_table_property_unknown(self):
         self.assertIsNone(self.spark.catalog_ext.get_table_property('test_table', 'unknown'))
+        self.assertIsNone(
+            self.spark.catalog_ext.get_table_property('test_db.test_table', 'unknown')
+        )

@@ -1,3 +1,6 @@
+## 2.1.1
+* Fix: remove backtick quoting from catalog utils to ease work with different databases.
+
 ## 2.1.0
 * Add ability to specify custom maven repositories.
 
