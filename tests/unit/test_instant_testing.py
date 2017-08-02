@@ -38,18 +38,18 @@ class TestInstantTesting(TestCase):
 
     def test_activate(self):
         self.assertFalse(InstantTesting.is_activated())
-        InstantTesting.active()
+        InstantTesting.activate()
         self.assertTrue(InstantTesting.is_activated())
 
     def test_deactivate(self):
-        InstantTesting.active()
+        InstantTesting.activate()
         self.assertTrue(InstantTesting.is_activated())
         InstantTesting.deactivate()
         self.assertFalse(InstantTesting.is_activated())
 
     def test_double_activation(self):
-        InstantTesting.active()
-        InstantTesting.active()
+        InstantTesting.activate()
+        InstantTesting.activate()
 
     def test_double_deactivation(self):
         InstantTesting.deactivate()

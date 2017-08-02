@@ -43,7 +43,7 @@ class TestInstantTesting(SparklyGlobalSessionTest):
             pass
 
     def test_set_context(self):
-        InstantTesting.active()
+        InstantTesting.activate()
         InstantTesting.set_context(self.spark.sparkContext)
 
         with open(_MOCK_LOCK_FILE_PATH) as f:
@@ -57,7 +57,7 @@ class TestInstantTesting(SparklyGlobalSessionTest):
     def test_get_context(self):
         initial_context = self.spark.sparkContext
 
-        InstantTesting.active()
+        InstantTesting.activate()
         InstantTesting.set_context(initial_context)
 
         with mock.patch.object(SparkContext, '_active_spark_context', None):

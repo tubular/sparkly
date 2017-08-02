@@ -17,8 +17,6 @@
 import json
 import logging
 import sys
-import os
-import shutil
 import tempfile
 from unittest import TestCase
 
@@ -116,16 +114,6 @@ class SparklyTest(TestCase):
     def tearDownClass(cls):
         cls.spark.stop()
         super(SparklyTest, cls).tearDownClass()
-
-        try:
-            shutil.rmtree('metastore_db')
-        except OSError:
-            pass
-
-        try:
-            os.unlink('derby.log')
-        except OSError:
-            pass
 
         for fixture in cls.class_fixtures:
             fixture.teardown_data()

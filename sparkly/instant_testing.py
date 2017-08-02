@@ -31,11 +31,6 @@ logger = logging.getLogger(__name__)
 class InstantTesting(object):
     """The set of tools to run tests using Spark Context running in the background.
 
-    Notes:
-        The slowest part in Spark-based testing: context initialisation.
-        We decided to keep JVM with initialised context running in the background
-        and re-connect to it when needed. Such trick allows us speed up iterative development.
-
     Implementation:
         We create a lock file that will contain Python gateway port (exposed by JVM).
 
@@ -51,7 +46,7 @@ class InstantTesting(object):
     LOCK_FILE_PATH = os.path.join(tempfile.gettempdir(), 'sparkly_instant_testing_lock')
 
     @classmethod
-    def active(cls):
+    def activate(cls):
         """Activate instant testing mode."""
         if os.path.exists(cls.LOCK_FILE_PATH):
             logger.error('Instant testing mode is already activate, deactivate it first.')
@@ -63,22 +58,30 @@ class InstantTesting(object):
     def deactivate(cls):
         """Deactivate instance testing mode."""
         if not os.path.exists(cls.LOCK_FILE_PATH):
-            logger.info('Instant testing mode is not activated, activate it first.')
+            logger.error('Instant testing mode is not activated, activate it first.')
         else:
             try:
                 with open(cls.LOCK_FILE_PATH) as lock:
                     state = lock.read()
                     if state:
                         session_pid = json.loads(state)['session_pid']
-                        os.kill(session_pid, signal.SIGTERM)
-                        logger.info('Killed background Spark Context (pid %d)', session_pid)
+                        try:
+                            os.kill(session_pid, signal.SIGTERM)
+                        except OSError:
+                            logger.exception(
+                                'Can not kill background SparkContext (pid %d)', session_pid,
+                            )
+                        else:
+                            logger.info(
+                                'Killed background SparkContext (pid %d)', session_pid,
+                            )
             finally:
                 try:
                     os.remove(cls.LOCK_FILE_PATH)
                 except OSError:
                     logger.exception('Can not remove lock file')
 
-        logger.info('Instant testing mode has been deactivated.')
+            logger.info('Instant testing mode has been deactivated.')
 
     @classmethod
     def is_activated(cls):
