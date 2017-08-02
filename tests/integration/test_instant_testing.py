@@ -54,13 +54,15 @@ class TestInstantTesting(SparklyGlobalSessionTest):
                 'session_pid': os.getpid(),
             })
 
-    # def test_get_context(self):
-    #     initial_context = self.spark.sparkContext
-    #
-    #     InstantTesting.active()
-    #     InstantTesting.set_context(initial_context)
-    #     recovered_context = InstantTesting.get_context()
-    #
-    #     self.assertIsInstance(recovered_context, SparkContext)
-    #     self.assertEqual(initial_context.appName, recovered_context.appName)
-    #     self.assertEqual(initial_context.master, recovered_context.master)
+    def test_get_context(self):
+        initial_context = self.spark.sparkContext
+
+        InstantTesting.active()
+        InstantTesting.set_context(initial_context)
+
+        with mock.patch.object(SparkContext, '_active_spark_context', None):
+            recovered_context = InstantTesting.get_context()
+
+            self.assertIsInstance(recovered_context, SparkContext)
+            self.assertEqual(initial_context.appName, recovered_context.appName)
+            self.assertEqual(initial_context.master, recovered_context.master)

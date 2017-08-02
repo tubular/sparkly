@@ -134,6 +134,12 @@ class InstantTesting(object):
                     )
 
         if state:
+            logger.info(
+                'Recovering context for the instant testing [pid=%s, gateway=%s]',
+                state['session_pid'], state['gateway_port'],
+            )
+
+            os.environ['PYSPARK_GATEWAY_PORT'] = str(state['gateway_port'])
             gateway = launch_gateway()
             java_import(gateway.jvm, 'org.apache.spark.SparkContext')
             jvm_spark_context = gateway.jvm.SparkContext.getOrCreate()
