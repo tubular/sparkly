@@ -79,7 +79,7 @@ class InstantTesting(object):
                 try:
                     os.remove(cls.LOCK_FILE_PATH)
                 except OSError:
-                    logger.exception('Can not remove lock file')
+                    logger.exception('Can not remove lock file: %s', cls.LOCK_FILE_PATH)
 
             logger.info('Instant testing mode has been deactivated.')
 
