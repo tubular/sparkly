@@ -14,25 +14,33 @@
 # limitations under the License.
 #
 
-version: '2'
+version: '2.1'
 services:
   dev:
     build: .
+    depends_on:
+      cassandra.docker:
+        condition: service_healthy
+      elastic.docker:
+        condition: service_healthy
+      kafka.docker:
+        condition: service_healthy
+      mysql.docker:
+        condition: service_healthy
     volumes:
       - .:/opt/sparkly/
-    depends_on:
-      - cassandra.docker
-      - elastic.docker
-      - mysql.docker
-      - kafka.docker
 
   test:
     build: .
     depends_on:
-      - cassandra.docker
-      - elastic.docker
-      - mysql.docker
-      - kafka.docker
+      cassandra.docker:
+        condition: service_healthy
+      elastic.docker:
+        condition: service_healthy
+      kafka.docker:
+        condition: service_healthy
+      mysql.docker:
+        condition: service_healthy
 
   cassandra.docker:
     image: cassandra:2.1.13
@@ -41,9 +49,13 @@ services:
     environment:
       MAX_HEAP_SIZE: 500M
       HEAP_NEWSIZE: 200M
+    healthcheck:
+      test: ps ax | grep cassandra
 
   elastic.docker:
-    image: elasticsearch:1.7.0
+    image: elasticsearch:5.5.1
+    healthcheck:
+      test: ps ax | grep elastic
 
   mysql.docker:
     image: mysql
@@ -51,9 +63,14 @@ services:
       MYSQL_DATABASE: sparkly_test
       MYSQL_USER: root
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    healthcheck:
+      test: ps ax | grep mysql
 
   kafka.docker:
-    image: wurstmeister/kafka
+    image: confluent/kafka
+    depends_on:
+      zookeeper.docker:
+        condition: service_healthy
     expose:
       - "9092"
     environment:
@@ -62,10 +79,12 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_ZOOKEEPER_CONNECT: zookeeper.docker:2181
       KAFKA_NUM_PARTITIONS: 3
-    depends_on:
-      - zookeeper.docker
+    healthcheck:
+      test: ps ax | grep kafka
 
   zookeeper.docker:
-    image: wurstmeister/zookeeper
+    image: confluent/zookeeper
     expose:
       - "2181"
+    healthcheck:
+      test: ps ax | grep zookeeper
