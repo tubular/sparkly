@@ -1,3 +1,7 @@
+# 2.2.1
+* `spark.sql.shuffle.partitions` in `SparklyTest` should be set to string,
+because `int` value breaks integration testing in Spark 2.0.2. 
+
 # 2.2.0
 * Add instant iterative development mode. `sparkly-testing --help` for more details.
 * Use in-memory db for Hive Metastore in `SparklyTest` (faster tests).
