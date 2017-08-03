@@ -15,12 +15,14 @@
 #
 
 import os
+import signal
 import sys
 
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession
 
 from sparkly.catalog import SparklyCatalog
+from sparkly.instant_testing import InstantTesting
 from sparkly.reader import SparklyReader
 from sparkly.writer import attach_writer_to_dataframe
 
@@ -78,11 +80,25 @@ class SparklySession(SparkSession):
         ]
         os.environ['PYSPARK_SUBMIT_ARGS'] = ' '.join(filter(None, submit_args))
 
-        # Init SparkContext
-        spark_conf = SparkConf()
-        spark_conf.set('spark.sql.catalogImplementation', 'hive')
-        spark_conf.setAll(self._setup_options(additional_options))
-        spark_context = SparkContext(conf=spark_conf)
+        def _create_spark_context():
+            spark_conf = SparkConf()
+            spark_conf.set('spark.sql.catalogImplementation', 'hive')
+            spark_conf.setAll(self._setup_options(additional_options))
+            return SparkContext(conf=spark_conf)
+
+        # If we are in instant testing mode
+        if InstantTesting.is_activated():
+            spark_context = InstantTesting.get_context()
+
+            # It's the first run, so we have to create context and demonise the process.
+            if spark_context is None:
+                spark_context = _create_spark_context()
+                if os.fork() == 0:  # Detached process.
+                    signal.pause()
+                else:
+                    InstantTesting.set_context(spark_context)
+        else:
+            spark_context = _create_spark_context()
 
         # Init HiveContext
         super(SparklySession, self).__init__(spark_context)

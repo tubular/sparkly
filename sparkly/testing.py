@@ -17,8 +17,7 @@
 import json
 import logging
 import sys
-import os
-import shutil
+import tempfile
 from unittest import TestCase
 
 from sparkly import SparklySession
@@ -74,9 +73,26 @@ class SparklyTest(TestCase):
         ...         )
     """
     session = SparklySession
+
     class_fixtures = []
     fixtures = []
     maxDiff = None
+
+    @classmethod
+    def setup_session(cls):
+        return cls.session({
+            # Use in-memory hive metastore (faster tests).
+            'spark.hadoop.javax.jdo.option.ConnectionURL':
+                'jdbc:derby:memory:databaseName=metastore_db;create=true',
+            'spark.hadoop.javax.jdo.option.ConnectionDriverName':
+                'org.apache.derby.jdbc.EmbeddedDriver',
+
+            # Isolate the warehouse inside of a random temporary directory (no side effects).
+            'spark.sql.warehouse.dir': tempfile.mkdtemp(suffix='sparkly'),
+
+            # Reduce number of shuffle partitions (faster tests).
+            'spark.sql.shuffle.partitions': 4,
+        })
 
     @classmethod
     def setUpClass(cls):
@@ -89,7 +105,7 @@ class SparklyTest(TestCase):
             _test_session_cache.stop()
             _test_session_cache = None
 
-        cls.spark = cls.session()
+        cls.spark = cls.setup_session()
 
         for fixture in cls.class_fixtures:
             fixture.setup_data()
@@ -98,16 +114,6 @@ class SparklyTest(TestCase):
     def tearDownClass(cls):
         cls.spark.stop()
         super(SparklyTest, cls).tearDownClass()
-
-        try:
-            shutil.rmtree('metastore_db')
-        except OSError:
-            pass
-
-        try:
-            os.unlink('derby.log')
-        except OSError:
-            pass
 
         for fixture in cls.class_fixtures:
             fixture.teardown_data()
@@ -163,7 +169,7 @@ class SparklyGlobalSessionTest(SparklyTest):
                 _test_session_cache.stop()
 
             logger.info('Starting the new global session for %r', cls.session)
-            spark = _test_session_cache = cls.session()
+            spark = _test_session_cache = cls.setup_session()
 
         cls.spark = spark
 

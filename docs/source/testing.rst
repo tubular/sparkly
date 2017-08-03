@@ -49,6 +49,35 @@ There are two main test cases available in Sparkly:
 
     ...
 
+Instant Iterative Development
+-----------------------------
+
+The slowest part in Spark integration testing is context initialisation.
+``SparklyGlobalSessionTest`` allows you to keep the same instance of spark context between different test cases,
+but it still kills the context at the end. It's especially annoying if you work in `TDD fashion <https://en.wikipedia.org/wiki/Test-driven_development>`_.
+On each run you have to wait 25-30 seconds till a new context is ready.
+We added a tool to preserve spark context between multiple test runs.
+
+.. code-block::
+
+    # Activate instant testing mode.
+    sparkly-testing up
+
+    # The first run is slow (context is created).
+    py.test tests/my_integration_test_with_sparkly.py
+
+    # The second run and all after it are fast (context is reused).
+    py.test tests/my_integration_test_with_sparkly.py
+
+    # Deactivate instant testing mode (when you are done with testing).
+    sparkly-testing down
+
+.. note::
+    In case if you change ``SparklySession`` definition (new options, jars or packages)
+    you have to refresh the context via ``sparkly-testing refresh``.
+    However, you don't need to refresh context if ``udfs`` are changed.
+
+
 Fixtures
 --------
 
