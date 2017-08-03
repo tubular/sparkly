@@ -91,7 +91,7 @@ class SparklyTest(TestCase):
             'spark.sql.warehouse.dir': tempfile.mkdtemp(suffix='sparkly'),
 
             # Reduce number of shuffle partitions (faster tests).
-            'spark.sql.shuffle.partitions': 4,
+            'spark.sql.shuffle.partitions': '4',
         })
 
     @classmethod
