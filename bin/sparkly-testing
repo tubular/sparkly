@@ -72,4 +72,8 @@ if __name__ == '__main__':
     ).set_defaults(func=lambda _: InstantTesting.deactivate() or InstantTesting.activate())
 
     args = parser.parse_args()
-    args.func(args)
+
+    if hasattr(args, 'func'):
+        args.func(args)
+    else:
+        parser.print_help()
