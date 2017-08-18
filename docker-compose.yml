@@ -27,6 +27,8 @@ services:
         condition: service_healthy
       mysql.docker:
         condition: service_healthy
+      redis.docker:
+        condition: service_healthy
     volumes:
       - .:/opt/sparkly/
 
@@ -40,6 +42,8 @@ services:
       kafka.docker:
         condition: service_healthy
       mysql.docker:
+        condition: service_healthy
+      redis.docker:
         condition: service_healthy
 
   cassandra.docker:
@@ -81,6 +85,13 @@ services:
       KAFKA_NUM_PARTITIONS: 3
     healthcheck:
       test: ps ax | grep kafka
+
+  redis.docker:
+    image: redis:3.2.4
+    expose:
+      - 6379
+    healthcheck:
+      test: ps ax | grep redis
 
   zookeeper.docker:
     image: confluent/zookeeper

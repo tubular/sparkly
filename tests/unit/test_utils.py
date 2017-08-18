@@ -15,8 +15,17 @@
 #
 
 from unittest import TestCase
+try:
+    from unittest import mock
+except ImportError:
+    import mock
 
-from sparkly.utils import parse_schema
+from pyspark import StorageLevel
+from pyspark.sql import DataFrame
+from pyspark.sql import types as T
+import six
+
+from sparkly.utils import lru_cache, parse_schema, schema_has
 
 
 class TestParseSchema(TestCase):
@@ -44,3 +53,238 @@ class TestParseSchema(TestCase):
 
     def assert_parsed_properly(self, schema):
         self.assertEqual(parse_schema(schema).simpleString(), schema)
+
+
+class TestLruCache(TestCase):
+    def test_caching(self):
+        df = mock.MagicMock(spec=DataFrame)
+
+        called = [0]
+
+        @lru_cache(storage_level=StorageLevel.DISK_ONLY)
+        def func(*args, **kwargs):
+            called[0] += 1
+            return df
+
+        func()
+        df.persist.assert_called_once_with(StorageLevel.DISK_ONLY)
+        self.assertEqual(df.unpersist.mock_calls, [])
+        self.assertEqual(called[0], 1)
+
+        cached_df = func()
+        self.assertEqual(cached_df, df)
+        self.assertEqual(called[0], 1)
+
+    def test_eviction(self):
+        first_df = mock.MagicMock(spec=DataFrame)
+        second_df = mock.MagicMock(spec=DataFrame)
+
+        @lru_cache(maxsize=1, storage_level=StorageLevel.DISK_ONLY)
+        def func(uid):
+            if uid == 'first':
+                return first_df
+            else:
+                return second_df
+
+        func('first')
+        first_df.persist.assert_called_once_with(StorageLevel.DISK_ONLY)
+        self.assertEqual(first_df.unpersist.mock_calls, [])
+
+        func('second')
+        first_df.persist.assert_called_once_with(StorageLevel.DISK_ONLY)
+        first_df.unpersist.assert_called_once_with()
+        second_df.persist.assert_called_once_with(StorageLevel.DISK_ONLY)
+        self.assertEqual(second_df.unpersist.mock_calls, [])
+
+
+class TestSchemaHas(TestCase):
+    def test_structs_equal(self):
+        schema_has(
+            T.StructType([
+                T.StructField('f1', T.IntegerType()),
+                T.StructField('f2', T.FloatType()),
+                T.StructField('f3', T.StringType()),
+            ]),
+            T.StructType([
+                T.StructField('f3', T.StringType()),
+                T.StructField('f2', T.FloatType()),
+                T.StructField('f1', T.IntegerType()),
+            ]),
+        )
+
+    def test_structs_equal_with_dict(self):
+        schema_has(
+            T.StructType([
+                T.StructField('f1', T.IntegerType()),
+                T.StructField('f2', T.FloatType()),
+                T.StructField('f3', T.StringType()),
+            ]),
+            {
+                'f1': T.IntegerType(),
+                'f2': T.FloatType(),
+                'f3': T.StringType(),
+            },
+        )
+
+    def test_structs_subset(self):
+        schema_has(
+            T.StructType([
+                T.StructField('f1', T.IntegerType()),
+                T.StructField('f2', T.FloatType()),
+                T.StructField('f3', T.StringType()),
+            ]),
+            T.StructType([
+                T.StructField('f2', T.FloatType()),
+            ]),
+        )
+
+    def test_structs_nested_subset(self):
+        schema_has(
+            T.StructType([
+                T.StructField(
+                    'f1',
+                    T.ArrayType(T.StructType([
+                        T.StructField('f11', T.IntegerType()),
+                        T.StructField('f12', T.StringType()),
+                    ])),
+                ),
+            ]),
+            T.StructType([
+                T.StructField(
+                    'f1',
+                    T.ArrayType(T.StructType([T.StructField('f11', T.IntegerType())])),
+                ),
+            ]),
+        )
+
+    def test_arrays_equal(self):
+        schema_has(
+            T.ArrayType(T.ArrayType(T.ArrayType(T.LongType()))),
+            T.ArrayType(T.ArrayType(T.ArrayType(T.LongType()))),
+        )
+
+    def test_arrays_nested_subset(self):
+        schema_has(
+            T.ArrayType(T.ArrayType(T.StructType([
+                T.StructField('f1', T.ArrayType(T.LongType())),
+                T.StructField('f2', T.ArrayType(T.StringType())),
+            ]))),
+            T.ArrayType(T.ArrayType(T.StructType([
+                T.StructField('f1', T.ArrayType(T.LongType()))
+            ]))),
+        )
+
+    def test_maps_equal(self):
+        schema_has(
+            T.MapType(T.StringType(), T.MapType(T.StringType(), T.LongType())),
+            T.MapType(T.StringType(), T.MapType(T.StringType(), T.LongType())),
+        )
+
+    def test_maps_nested_subset(self):
+        schema_has(
+            T.MapType(
+                T.StringType(),
+                T.MapType(
+                    T.StringType(),
+                    T.StructType([
+                        T.StructField('f1', T.MapType(T.StringType(), T.LongType())),
+                        T.StructField('f2', T.MapType(T.StringType(), T.IntegerType())),
+                    ]),
+                ),
+            ),
+            T.MapType(
+                T.StringType(),
+                T.MapType(
+                    T.StringType(),
+                    T.StructType([
+                        T.StructField('f1', T.MapType(T.StringType(), T.LongType())),
+                    ]),
+                ),
+            ),
+        )
+
+    def test_type_mismatch(self):
+        with six.assertRaisesRegex(self, AssertionError, 'Cannot compare heterogeneous types'):
+            schema_has(
+                T.StructType([T.StructField('f1', T.IntegerType())]),
+                T.ArrayType(T.IntegerType()),
+            )
+
+        with six.assertRaisesRegex(self, AssertionError, 'Cannot compare heterogeneous types'):
+            schema_has(
+                T.ArrayType(T.IntegerType()),
+                {'f1': T.IntegerType()},
+            )
+
+        with six.assertRaisesRegex(self, TypeError, 'f1 is IntegerType, expected LongType'):
+            schema_has(
+                T.StructType([T.StructField('f1', T.IntegerType())]),
+                T.StructType([T.StructField('f1', T.LongType())]),
+            )
+
+        with six.assertRaisesRegex(
+                self,
+                TypeError,
+                'f1\.element\.s1 is IntegerType, expected LongType',
+        ):
+            schema_has(
+                T.StructType([
+                    T.StructField(
+                        'f1',
+                        T.ArrayType(T.StructType([T.StructField('s1', T.IntegerType())])),
+                    ),
+                ]),
+                T.StructType([
+                    T.StructField(
+                        'f1',
+                        T.ArrayType(T.StructType([T.StructField('s1', T.LongType())])),
+                    ),
+                ]),
+            )
+
+        with six.assertRaisesRegex(self, TypeError, 'element is IntegerType, expected LongType'):
+            schema_has(
+                T.ArrayType(T.IntegerType()),
+                T.ArrayType(T.LongType()),
+            )
+
+        with six.assertRaisesRegex(self, TypeError, 'key is StringType, expected LongType'):
+            schema_has(
+                T.MapType(T.StringType(), T.IntegerType()),
+                T.MapType(T.LongType(), T.IntegerType()),
+            )
+
+        with six.assertRaisesRegex(self, TypeError, 'value is IntegerType, expected LongType'):
+            schema_has(
+                T.MapType(T.StringType(), T.IntegerType()),
+                T.MapType(T.StringType(), T.LongType()),
+            )
+
+    def test_undefined_field(self):
+        with six.assertRaisesRegex(self, KeyError, 'f2'):
+            schema_has(
+                T.StructType([T.StructField('f1', T.IntegerType())]),
+                T.StructType([T.StructField('f2', T.LongType())]),
+            )
+
+        with six.assertRaisesRegex(self, KeyError, 'f1\.element\.s2'):
+            schema_has(
+                T.StructType([
+                    T.StructField(
+                        'f1',
+                        T.ArrayType(T.StructType([T.StructField('s1', T.IntegerType())])),
+                    ),
+                ]),
+                T.StructType([
+                    T.StructField(
+                        'f1',
+                        T.ArrayType(T.StructType([T.StructField('s2', T.LongType())])),
+                    ),
+                ]),
+            )
+
+        with six.assertRaisesRegex(self, TypeError, 'element is IntegerType, expected LongType'):
+            schema_has(
+                T.ArrayType(T.IntegerType()),
+                T.ArrayType(T.LongType()),
+            )

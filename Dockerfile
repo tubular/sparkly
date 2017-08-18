@@ -30,8 +30,8 @@ ENV SPARK_HOME "/usr/local/spark/"
 ENV PYTHONPATH "/usr/local/spark/python/lib/pyspark.zip:/usr/local/spark/python/lib/py4j-0.10.4-src.zip:/opt/sparkly"
 ENV SPARK_TESTING true
 
-# Install Python testing utils
-RUN apt-get update && apt-get install -y python python3-pip
+# Install Python development & testing utils
+RUN apt-get update && apt-get install -y python python-dev python3-pip
 RUN python3 -m pip install tox==2.4.1
 
 # Remove noisy spark logging

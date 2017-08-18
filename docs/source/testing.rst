@@ -10,6 +10,8 @@ There are two main test cases available in Sparkly:
 
 .. code-block:: python
 
+    from pyspark.sql import types as T
+
     from sparkly import SparklySession
     from sparkly.test import SparklyTest
 
@@ -21,22 +23,12 @@ There are two main test cases available in Sparkly:
             df = self.spark.read_ext.by_url(...)
 
             # Compare all fields
-            self.assertDataFrameEqual(
-                actual_df=df,
-                expected_data=[
-                    {'col1': 'row1', 'col2': 1},
-                    {'col1': 'row2', 'col2': 2},
+            self.assertRowsEqual(
+                df.collect(),
+                [
+                    T.Row(col1='row1', col2=1),
+                    T.Row(col1='row2', col2=2),
                 ],
-            )
-
-            # Compare a subset of fields
-            self.assertDataFrameEqual(
-                actual_df=df,
-                expected_data=[
-                    {'col1': 'row1'},
-                    {'col1': 'row2'},
-                ],
-                fields=['col1'],
             )
 
     ...
@@ -48,6 +40,72 @@ There are two main test cases available in Sparkly:
             df = self.spark.read_ext.by_url(...)
 
     ...
+
+
+DataFrame Assertions
+--------------------
+
+Asserting that the dataframe produced by your transformation is equal to some expected
+output can be unnecessarily complicated at times. Common issues include:
+
+- Ignoring the order in which elements appear in an array.
+  This could be particularly useful when that array is generated as part of a
+  ``groupBy`` aggregation, and you only care about all elements being part of the end
+  result, rather than the order in which Spark encountered them.
+- Comparing floats that could be arbitrarily nested in complicated datatypes
+  within a given tolerance; exact matching is either fragile or impossible.
+- Ignoring whether a field of a complex datatype is nullable.
+  Spark infers this based on the applied transformations, but it is oftentimes
+  inaccurate. As a result, assertions on complex data types might fail, even
+  though in theory they shouldn't have.
+- Having rows with different field names compare equal if the values match in
+  alphabetical order of the names (see unit tests for example).
+- Unhelpful diffs in case of mismatches.
+
+Sparkly addresses these issues by providing ``assertRowsEqual``:
+
+.. code-block:: python
+
+    from pyspark.sql import types as T
+
+    from sparkly import SparklySession
+    from sparkly.test import SparklyTest
+
+
+    def my_transformation(spark):
+        return spark.createDataFrame(
+            data=[
+                ('row1', {'field': 'value_1'}, [1.1, 2.2, 3.3]),
+                ('row2', {'field': 'value_2'}, [4.1, 5.2, 6.3]),
+            ],
+            schema=T.StructType([
+                T.StructField('id', T.StringType()),
+                T.StructField(
+                    'st',
+                    T.StructType([
+                        T.StructField('field', T.StringType()),
+                    ]),
+                ),
+                T.StructField('ar', T.ArrayType(T.FloatType())),
+            ]),
+        )
+
+
+    class MyTestCase(SparklyTest):
+        session = SparklySession
+
+        def test(self):
+            df = my_transformation(self.spark)
+
+            self.assertRowsEqual(
+                df.collect(),
+                [
+                    T.Row(id='row2', st=T.Row(field='value_2'), ar=[6.0, 5.0, 4.0]),
+                    T.Row(id='row1', st=T.Row(field='value_1'), ar=[2.0, 3.0, 1.0]),
+                ],
+                atol=0.5,
+            )
+
 
 Instant Iterative Development
 -----------------------------
@@ -88,7 +146,7 @@ There are several storages supported in Sparkly:
     - Elastic
     - Cassandra (requires ``cassandra-driver``)
     - Mysql (requires ``PyMySql``)
-    _ Kafka (requires ``kafka-python``)
+    - Kafka (requires ``kafka-python``)
 
 .. code-block:: python
 

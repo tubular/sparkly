@@ -14,11 +14,27 @@
 # limitations under the License.
 #
 
+import collections
+import contextlib
+import copy
+import difflib
+from functools import partial, total_ordering
+import importlib
 import json
 import logging
+import math
+import operator
+import os
+import pprint
+import shutil
 import sys
 import tempfile
 from unittest import TestCase
+from unittest.util import safe_repr
+import warnings
+
+from pyspark.sql import types as T
+import six
 
 from sparkly import SparklySession
 from sparkly.exceptions import FixtureError
@@ -64,12 +80,12 @@ class SparklyTest(TestCase):
     Initialize and shut down Session specified in `session` attribute.
 
     Example:
-
+        >>> from pyspark.sql import types as T
         >>> class MyTestCase(SparklyTest):
         ...     def test(self):
-        ...         self.assertDataFrameEqual(
+        ...         self.assertRowsEqual(
         ...              self.spark.sql('SELECT 1 as one').collect(),
-        ...              [{'one': 1}],
+        ...              [T.Row(one=1)],
         ...         )
     """
     session = SparklySession
@@ -77,6 +93,10 @@ class SparklyTest(TestCase):
     class_fixtures = []
     fixtures = []
     maxDiff = None
+
+    # (str|None) import the function/class to be tested programmatically
+    # by specifying the path to it here, e.g. 'module_a.submodule_b.my_func'
+    test_target = None
 
     @classmethod
     def setup_session(cls):
@@ -95,9 +115,7 @@ class SparklyTest(TestCase):
         })
 
     @classmethod
-    def setUpClass(cls):
-        super(SparklyTest, cls).setUpClass()
-
+    def _init_session(cls):
         # In case if project has a mix of SparklyTest and SparklyGlobalContextTest-based tests
         global _test_session_cache
         if _test_session_cache:
@@ -107,8 +125,28 @@ class SparklyTest(TestCase):
 
         cls.spark = cls.setup_session()
 
+    @classmethod
+    def setUpClass(cls):
+        super(SparklyTest, cls).setUpClass()
+
+        cls._init_session()
+
         for fixture in cls.class_fixtures:
             fixture.setup_data()
+
+        # HACK: When pyspark.sql.functions.udf is used as a decorator
+        #   it is evaluated on import time; this has the side effect of
+        #   creating a spark context if one doesn't exist, messing up
+        #   with this class creating its own for test purposes. As a
+        #   result, any transformations to be tested are imported here
+        #   programmatically after the test class initialization if
+        #   the user wishes.
+        if not cls.test_target:
+            return
+
+        test_module_path, test_target = cls.test_target.rsplit('.', 1)
+        test_module = importlib.import_module(test_module_path)
+        setattr(sys.modules[cls.__module__], test_target, getattr(test_module, test_target))
 
     @classmethod
     def tearDownClass(cls):
@@ -126,8 +164,15 @@ class SparklyTest(TestCase):
         for fixture in self.fixtures:
             fixture.teardown_data()
 
-    def assertDataFrameEqual(self, actual_df, expected_data, fields=None, ordered=False):
+    def assertDataFrameEqual(self,
+                             actual_df,
+                             expected_data,
+                             fields=None,
+                             ordered=False):
         """Ensure that DataFrame has the right data inside.
+
+        ``assertDataFrameEqual`` is being deprecated. Please use
+        ``assertRowsEqual`` instead.
 
         Args:
             actual_df (pyspark.sql.DataFrame|list[pyspark.sql.Row]): Dataframe to test data in.
@@ -135,19 +180,311 @@ class SparklyTest(TestCase):
             fields (list[str]): Compare only certain fields.
             ordered (bool): Does order of rows matter?
         """
+        warnings.warn(
+            'assertDataFrameEqual is being deprecated. Please use assertRowsEqual instead.',
+            DeprecationWarning,
+        )
+
         if fields:
             actual_df = actual_df.select(*fields)
 
         actual_rows = actual_df.collect() if hasattr(actual_df, 'collect') else actual_df
         actual_data = [row.asDict(recursive=True) for row in actual_rows]
 
-        if ordered:
-            self.assertEqual(actual_data, expected_data)
-        else:
-            try:
-                self.assertCountEqual(actual_data, expected_data)
-            except AttributeError:
-                self.assertItemsEqual(actual_data, expected_data)
+        return self.assertRowsEqual(
+            actual_data,
+            expected_data,
+            ignore_order=not ordered,
+            ignore_order_depth=1,
+            atol=0,
+            rtol=0,
+            equal_nan=False,
+            ignore_nullability=False,
+        )
+
+    def assertRowsEqual(self,
+                        first,
+                        second,
+                        msg=None,
+                        # ordering parameters
+                        ignore_order=True,
+                        ignore_order_depth=None,
+                        # float comparison parameters
+                        atol=0,
+                        rtol=1e-07,
+                        equal_nan=True,
+                        # DataType comparison parameters
+                        ignore_nullability=True):
+        """Assert equal on steroids.
+
+        Extend this classic function signature to work better with
+        comparisons involving rows, datatypes, dictionaries, lists and
+        floats by:
+
+        - ignoring the order of lists and datatypes recursively,
+        - comparing floats within a given tolerance,
+        - assuming NaNs are equal,
+        - ignoring the nullability requirements of datatypes (since
+          Spark can be inaccurate when inferring it),
+        - providing better diffs for rows and datatypes.
+
+        Float comparisons are inspired by NumPy's ``assert_allclose``. The
+        main formula used is
+        ``| float1 - float2 | <= atol + rtol * float2``.
+
+        Args:
+            first: see ``unittest.TestCase.assertEqual``.
+            second: see ``unittest.TestCase.assertEqual``.
+            msg: see ``unittest.TestCase.assertEqual``.
+            ignore_order (bool|True): ignore the order in lists and
+                datatypes (rows, dicts are inherently orderless).
+            ignore_order_depth (int|None): if ignore_order is true, do
+                ignore order up to this level of nested lists or
+                datatypes (exclusive). Setting this to 0 or None means
+                ignore order infinitely, 1 means ignore order only at the
+                top level, 2 will ignore order within lists of lists and
+                so on. Default is ignore order arbitrarily deep.
+            atol (int, float|0): Absolute tolerance in float comparisons.
+            rtol (int, float|1e-07): Relative tolerance in float
+                comparisons.
+            equal_nan (bool|True): If set, NaNs will compare equal.
+            ignore_nullability (bool|True): If set, ignore all
+                nullability fields in dataTypes. This includes
+                ``containsNull`` in arrays, ``valueContainsNull`` in maps
+                and ``nullable`` in struct fields.
+
+        Returns:
+            None iff the two objects are equal.
+
+        Raises
+            AssertionError: iff the two objects are not equal. See
+            ``unittest.TestCase.assertEqual`` for details.
+        """
+        # Our approach here is to redefine the 5 container objects that
+        # this function expects to work with - floats, dataTypes, rows,
+        # dicts and lists - to introduce generic ordering and extend
+        # the meaning of equality where applicable. We can then change
+        # all such objects to our custom containers, provide new asserters
+        # for some, and then feed them to the vanilla assertEqual.
+
+        # Define our custom containers
+        def cast_to_test_friendly_container(value, ignore_order_depth):
+            if isinstance(value, float):
+                return Float(value)
+            if isinstance(value, T.DataType):
+                return DataType(value, ignore_order_depth)
+            if isinstance(value, T.Row):
+                return Row(value, ignore_order_depth)
+            if isinstance(value, dict):
+                return Dict(value, ignore_order_depth)
+            if isinstance(value, list):
+                return List(value, ignore_order_depth)
+            return value
+
+        @total_ordering
+        class Float(object):
+            def __init__(self, f):
+                self._f = f
+
+            def __eq__(self, other):
+                return other is not None and (
+                    (equal_nan and math.isnan(self._f) and math.isnan(other._f)) or
+                    abs(self._f - other._f) <= atol + rtol * abs(other._f)
+                )
+
+            def __lt__(self, other):
+                return self._f != other._f and self._f < other._f
+
+            def __repr__(self):
+                return repr(self._f)
+
+
+        @total_ordering
+        class DataType(object):
+            def __init__(self, dt, ignore_order_depth=0):
+                # update recursively all T.StructTypes to define their
+                # fields in sorted order
+                def _sort_structs(dt, ignore_order_depth):
+                    if ignore_order_depth == 0:
+                        return dt
+                    if dt.typeName() == 'array':
+                        return T.ArrayType(
+                            elementType=_sort_structs(dt.elementType, ignore_order_depth),
+                            containsNull=ignore_nullability or dt.containsNull,
+                        )
+                    if dt.typeName() == 'map':
+                        return T.MapType(
+                            keyType=_sort_structs(dt.keyType, ignore_order_depth),
+                            valueType=_sort_structs(dt.valueType, ignore_order_depth),
+                            valueContainsNull=ignore_nullability or dt.valueContainsNull,
+                        )
+                    if dt.typeName() == 'struct':
+                        return T.StructType([
+                            _sort_structs(f, ignore_order_depth - 1)
+                            for f in sorted(dt.fields, key=lambda f: f.name)
+                        ])
+                    if dt.typeName() == 'structf':
+                        return T.StructField(
+                            dt.name,
+                            _sort_structs(dt.dataType, ignore_order_depth),
+                            nullable=ignore_nullability or dt.nullable,
+                            metadata=dt.metadata,
+                        )
+                    return dt
+
+                self._dt = _sort_structs(dt, ignore_order_depth)
+
+            def __eq__(self, other):
+                return self._dt == other._dt
+
+            def __ne__(self, other):
+                # Only needed for Py27...
+                return self._dt != other._dt
+
+            def __lt__(self, other):
+                return other is not None and repr(self._dt) < repr(other._dt)
+
+            def __repr__(self):
+                return repr(self._dt)
+
+            def pretty_repr(self):
+                # useful to get a nice diff later
+                return pprint.pformat(self._dt.jsonValue()).splitlines()
+
+
+        @total_ordering
+        class Row(collections.OrderedDict):
+            def __init__(self, row, ignore_order_depth=0):
+                super(Row, self).__init__(
+                    (field, cast_to_test_friendly_container(row[field], ignore_order_depth))
+                    # Rows currently store their fields in order either
+                    # way but we ensure this is the case here too
+                    for field in sorted(row.__fields__)
+                )
+
+            def __lt__(self, other):
+                return other is not None and (
+                    List(zip(self.keys(), self.values())) < List(zip(other.keys(), other.values()))
+                )
+
+            def __repr__(self):
+                return 'Row({})'.format(', '.join(['{!r}={!r}'.format(*i) for i in self.items()]))
+
+
+        @total_ordering
+        class Dict(collections.OrderedDict):
+            def __init__(self, dictionary, ignore_order_depth=0):
+                super(Dict, self).__init__(
+                    sorted([
+                        (
+                            cast_to_test_friendly_container(k, ignore_order_depth),
+                            cast_to_test_friendly_container(v, ignore_order_depth),
+                        )
+                        for k, v in dictionary.items()
+                    ])
+                )
+
+            def __lt__(self, other):
+                return other is not None and (
+                    List(zip(self.keys(), self.values())) < List(zip(other.keys(), other.values()))
+                )
+
+            def __repr__(self):
+                return '{{{}}}'.format(', '.join(['{!r}: {!r}'.format(*i) for i in self.items()]))
+
+
+        @total_ordering
+        class List(list):
+            def __init__(self, sequence, ignore_order_depth=0):
+                if ignore_order_depth == 0:
+                    _sort_or_pass = lambda l: l
+                else:
+                    ignore_order_depth = ignore_order_depth - 1
+                    _sort_or_pass = sorted
+
+                super(List, self).__init__(
+                    _sort_or_pass([
+                        cast_to_test_friendly_container(v, ignore_order_depth)
+                        for v in sequence
+                    ])
+                )
+
+            def __lt__(self, other):
+                # None is not a nice value to compare to when trying to
+                # order things, as TypeErrors are raised. Instead, we
+                # transform it to a tuple - if the first entry doesn't
+                # match (is it None?) we don't need to compare further
+                def _neutralize_none(entry):
+                    if isinstance(entry, tuple):
+                        return entry is None, tuple(_neutralize_none(e) for e in entry)
+                    return entry is None, entry
+                return [_neutralize_none(e) for e in self] < [_neutralize_none(e) for e in other]
+
+
+        # Define new equality asserters for floats, rows and datatypes
+        def assert_float_equal(self, float1, float2, msg=None):
+            if not isinstance(float1, Float):
+                float1 = Float(float1)
+            if not isinstance(float2, Float):
+                float2 = Float(float2)
+
+            if float1 == float2:
+                return
+
+            if not atol and not rtol:
+                standard_msg = '{} != {}'.format(float1, float2)
+            else:
+                standard_msg = (
+                    '{} != {} within absolute tolerance {} and relative tolerance {}'
+                    .format(float1, float2, atol, rtol)
+                )
+            self.fail(self._formatMessage(msg, standard_msg))
+
+        def assert_row_equal(self, row1, row2, msg=None):
+            self.assertEqual(Row(row1), Row(row2), msg)
+
+        def assert_datatype_equal(self, dt1, dt2, msg=None):
+            if not isinstance(dt1, DataType):
+                dt1 = DataType(dt1)
+            if not isinstance(dt2, DataType):
+                dt2 = DataType(dt2)
+
+            if dt1 != dt2:
+                standard_msg = '{} != {}'.format(safe_repr(dt1, True), safe_repr(dt2, True))
+                diff = '\n' + '\n'.join(difflib.ndiff(dt1.pretty_repr(), dt2.pretty_repr()))
+                standard_msg = self._truncateMessage(standard_msg, diff)
+                self.fail(self._formatMessage(msg, standard_msg))
+
+        # Create a context manager to temporarily register our asserters,
+        # then restore them to defaults after this function is finished
+        # since they might depend on specific parameters provided here
+        # (e.g., atol/rtol for floats)
+        @contextlib.contextmanager
+        def temp_add_type_equality_func(self, typeobj, function):
+            old_asserter = self._type_equality_funcs.get(typeobj)
+            self.addTypeEqualityFunc(typeobj, function)
+            yield
+            self.addTypeEqualityFunc(typeobj, old_asserter)
+
+        temp_add_type_equality_func = partial(temp_add_type_equality_func, self)
+
+        # Register equality asserters
+        with temp_add_type_equality_func(float, partial(assert_float_equal, self)), \
+             temp_add_type_equality_func(Float, partial(assert_float_equal, self)), \
+             temp_add_type_equality_func(DataType, partial(assert_datatype_equal, self)), \
+             temp_add_type_equality_func(T.DataType, partial(assert_datatype_equal, self)), \
+             temp_add_type_equality_func(Row, self.assertDictEqual), \
+             temp_add_type_equality_func(T.Row, partial(assert_row_equal, self)), \
+             temp_add_type_equality_func(Dict, self.assertDictEqual), \
+             temp_add_type_equality_func(List, self.assertListEqual):
+
+            # And finally (phew!) run the actual comparisons
+            ignore_order_depth = ignore_order_depth or -1 if ignore_order else 0
+
+            first = cast_to_test_friendly_container(first, ignore_order_depth)
+            second = cast_to_test_friendly_container(second, ignore_order_depth)
+
+            self.assertEqual(first, second, msg)
 
 
 class SparklyGlobalSessionTest(SparklyTest):
@@ -157,7 +494,7 @@ class SparklyGlobalSessionTest(SparklyTest):
     for each test case. This class allows you to reuse Spark session across multiple test cases.
     """
     @classmethod
-    def setUpClass(cls):
+    def _init_session(cls):
         global _test_session_cache
 
         if _test_session_cache and cls.session == type(_test_session_cache):
@@ -172,9 +509,6 @@ class SparklyGlobalSessionTest(SparklyTest):
             spark = _test_session_cache = cls.setup_session()
 
         cls.spark = spark
-
-        for fixture in cls.class_fixtures:
-            fixture.setup_data()
 
     @classmethod
     def tearDownClass(cls):

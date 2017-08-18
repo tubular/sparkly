@@ -14,7 +14,9 @@
 # limitations under the License.
 #
 
+import functools
 import inspect
+from itertools import islice
 import os
 import re
 
@@ -23,6 +25,9 @@ try:
     from kafka.structs import OffsetRequestPayload
 except ImportError:
     pass
+import pylru
+from pyspark import StorageLevel
+from pyspark.sql import DataFrame
 from pyspark.sql import types as T
 
 from sparkly.exceptions import UnsupportedDataType
@@ -91,6 +96,45 @@ def kafka_get_topics_offsets(host, topic, port=9092):
                         end_offset.offsets[0]))
 
     return offsets
+
+
+class lru_cache(object):
+    """LRU cache that supports DataFrames.
+
+    Enables caching of both the dataframe object and the data that df
+    contains by persisting it according to user specs. It's the user's
+    responsibility to make sure that the dataframe contents are not
+    evicted from memory and/or disk should this feature get overused.
+
+    Args:
+        maxsize (int|128): maximum number of items to cache.
+        storage_level (pyspark.StorageLevel|MEMORY_ONLY): how to cache
+            the contents of a dataframe (only used when the cached
+            function results in a dataframe).
+    """
+    def __init__(self, maxsize=128, storage_level=StorageLevel.MEMORY_ONLY):
+        self.maxsize = maxsize
+        self.storage_level = storage_level
+
+    def __call__(self, func):
+        # Whenever an object is evicted from the cache we want to
+        # unpersist its contents too if it's a dataframe
+        def eviction_callback(key, value):
+            if isinstance(value, DataFrame):
+                value.unpersist()
+
+        lru_decorator = pylru.lrudecorator(self.maxsize)
+        lru_decorator.cache.callback = eviction_callback
+
+        @lru_decorator
+        @functools.wraps(func)
+        def func_and_persist(*args, **kwargs):
+            result = func(*args, **kwargs)
+            if isinstance(result, DataFrame):
+                result.persist(self.storage_level)
+            return result
+
+        return func_and_persist
 
 
 def parse_schema(schema):
@@ -182,3 +226,68 @@ COMPLEX_TYPES = {
     'struct': _init_struct,
     'array': _init_array,
 }
+
+
+def schema_has(t, required_fields):
+    """Check whether a complex dataType has specific fields.
+
+    Args:
+        t (pyspark.sql.types.ArrayType, MapType, StructType): type to
+            check.
+        required_fields (same with t or dict[str, pyspark.sql.DataType]):
+            fields that need to be present in t. For convenience, a user
+            can define a ``dict`` in place of a
+            ``pyspark.sql.types.StructType``, but other than that this
+            argument must have the same type as t.
+
+    Raises:
+        AssertionError: if t and required_fields cannot be compared
+           because they aren't instances of the same complex dataType.
+        KeyError: if a required field is not found in the struct.
+        TypeError: if a required field exists but its actual type does
+            not match the required one.
+    """
+    if isinstance(required_fields, dict):
+        required_fields = T.StructType([
+            T.StructField(*field_def) for field_def in required_fields.items()
+        ])
+
+    assert type(t) == type(required_fields), 'Cannot compare heterogeneous types'
+
+    def _unpack(t):
+        if isinstance(t, T.ArrayType):
+            return {'element': t.elementType}
+        elif isinstance(t, T.MapType):
+            return {'key': t.keyType, 'value': t.valueType}
+        elif isinstance(t, T.StructType):
+            return {field.name: field.dataType for field in t.fields}
+        return {}
+
+    def _is_complex(t):
+        return isinstance(t, (T.ArrayType, T.MapType, T.StructType))
+
+    existing_fields = _unpack(t)
+    required_fields = _unpack(required_fields)
+
+    for required_field, required_type in required_fields.items():
+        try:
+            current_type = existing_fields[required_field]
+        except KeyError:
+            raise KeyError(required_field)
+
+        if _is_complex(current_type):
+            try:
+                schema_has(current_type, required_type)
+            except (KeyError, TypeError) as e:
+                raise type(e)('{}.{}'.format(required_field, e.args[0]))
+            except AssertionError:
+                pass
+            else:
+                continue
+
+        if required_type != current_type:
+            raise TypeError(
+                '{} is {}, expected {}'.format(required_field, current_type, required_type)
+            )
+
+    return True
