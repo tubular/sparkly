@@ -13,7 +13,7 @@ There are two main test cases available in Sparkly:
     from pyspark.sql import types as T
 
     from sparkly import SparklySession
-    from sparkly.test import SparklyTest
+    from sparkly.testing import SparklyTest, SparklyGlobalSessionTest
 
 
     class MyTestCase(SparklyTest):
