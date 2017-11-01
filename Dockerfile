@@ -16,7 +16,7 @@
 
 FROM ubuntu:16.04
 
-MAINTAINER "dev@tubularlabs.com"
+LABEL maintainer="dev@tubularlabs.com"
 
 # Install OpenJDK 8
 RUN apt-get update && apt-get install -y default-jre
