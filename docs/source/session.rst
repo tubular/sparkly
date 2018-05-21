@@ -37,6 +37,9 @@ The example below shows both imperative and declarative approaches:
     # In case you want to change default options
     spark = MySession({'spark.app.name': 'My Awesome App'})
 
+    # In case you want to access the session singleton
+    spark = MySession.get_or_create()
+
 
 Installing dependencies
 -----------------------
@@ -154,6 +157,45 @@ We think it's too many actions for such simple functionality.
 
     spark.sql('SELECT collect_max(amount) FROM my_data GROUP BY ...')
     spark.sql('SELECT my_udf(amount) FROM my_data')
+
+
+Lazy access / initialization
+----------------------------
+
+**Why**: A lot of times you might need access to the sparkly session at a low-level,
+deeply nested function in your code. A first approach is to declare a global sparkly
+session instance that you access explicitly, but this usually makes testing painful
+because of unexpected importing side effects. A second approach is to pass the session
+instance explicitly as a function argument, but this makes the code ugly since you then
+need to propagate that argument all the way up to every caller of that function.
+
+Other times you might want to be able to glue together and run one after the other
+different code segments, where each segment initializes its own sparkly session,
+despite the sessions being identical. This situation could occur when you are doing
+investigative work in a notebook.
+
+In both cases, ``SparklySession.get_or_create`` is the answer, as it solves the
+problems mentioned above while keeping your code clean and tidy.
+
+
+**For example**: You want to use a read function within a transformation.
+
+.. code-block:: python
+
+    from sparkly import SparklySession
+
+
+    class MySession(SparklySession):
+        pass
+
+    def my_awesome_transformation():
+        df = read_dataset('parquet:s3://path/to/my/data')
+        df2 = read_dataset('parquet:s3://path/to/my/other/data')
+	# do something with df and df2...
+
+    def read_dataset(url):
+        spark = MySession.get_or_create()
+        return spark.read_ext.by_url(url)
 
 
 API documentation

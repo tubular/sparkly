@@ -137,3 +137,34 @@ class TestSparklySession(unittest.TestCase):
             }
 
         self.assertRaises(NotImplementedError, _Session)
+
+    @mock.patch('sparkly.session.SparkSession')
+    def test_get_or_create_and_stop(self, spark_session_mock):
+        # Not a great practice to test two functions in one unit test,
+        # but get_or_create and stop are kind of intertwined with each other
+
+        class _Session(SparklySession):
+            pass
+
+        # check stopping a running session
+        original_session = _Session()
+        _Session.stop()
+        spark_session_mock.stop.assert_called_once_with(original_session)
+
+        # check that stopping when there's no session has no impact
+        _Session.stop()
+        spark_session_mock.stop.assert_called_once_with(original_session)
+
+        # check creating a new session thru get_or_create
+        retrieved_session = _Session.get_or_create()
+        self.assertNotEqual(id(retrieved_session), id(original_session))
+
+        # check retrieving a session thru get_or_create
+        original_session = _Session()
+        retrieved_session = _Session.get_or_create()
+        self.assertEqual(id(retrieved_session), id(original_session))
+
+        # check retrieving a session thru SparklySession.get_or_create
+        original_session = _Session()
+        retrieved_session = SparklySession.get_or_create()
+        self.assertEqual(id(retrieved_session), id(original_session))

@@ -50,6 +50,10 @@ class SparklySession(SparkSession):
         spark = MySession()
         spark.read_ext.cassandra(...)
 
+        # Alternatively
+        spark = MySession.get_or_create()
+        spark.read_ext.cassandra(...)
+
     Attributes:
         options (dict[str,str]): Configuration options that are passed to SparkConf.
             See `the list of possible options
@@ -69,6 +73,8 @@ class SparklySession(SparkSession):
     jars = []
     udfs = {}
     repositories = []
+
+    _instantiated_session = None
 
     def __init__(self, additional_options=None):
         os.environ['PYSPARK_PYTHON'] = sys.executable
@@ -108,6 +114,29 @@ class SparklySession(SparkSession):
         self.catalog_ext = SparklyCatalog(self)
 
         attach_writer_to_dataframe()
+        SparklySession._instantiated_session = self
+
+    @classmethod
+    def get_or_create(cls):
+        """Access instantiated sparkly session.
+
+        If sparkly session has already been instantiated, return that
+        instance; if not, then instantiate one and return it. Useful
+        for lazy access to the session. Not thread-safe.
+
+        Returns:
+            SparklySession (or subclass).
+        """
+        if SparklySession._instantiated_session is None:
+            cls()
+        return SparklySession._instantiated_session
+
+    @classmethod
+    def stop(cls):
+        """Stop instantiated sparkly session."""
+        if SparklySession._instantiated_session is not None:
+            SparkSession.stop(SparklySession._instantiated_session)
+            SparklySession._instantiated_session = None
 
     @property
     def builder(self):

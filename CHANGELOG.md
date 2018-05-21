@@ -1,3 +1,6 @@
+## 2.4.0
+* Access or initialize SparklySession through get_or_create classmethod
+
 ## 2.3.0
 * Overwrite existing tables in the metastore
 * Add functions module and provide switch_case column generation and multijoin
