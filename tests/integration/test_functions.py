@@ -14,6 +14,9 @@
 # limitations under the License.
 #
 
+from collections import OrderedDict
+
+from pyspark.sql import Column
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
 from pyspark.sql import utils as U
@@ -296,5 +299,63 @@ class TestSwitchCase(SparklyGlobalSessionTest):
                 {'value': 2, 'value_2': 4},
                 {'value': 3, 'value_2': 3},
                 {'value': 0, 'value_2': 0},
+            ],
+        )
+
+    def test_switch_case_with_custom_operand_between(self):
+        df = self.spark.createDataFrame(
+            data=[(1, ), (2, ), (3, ), (0, )],
+            schema=T.StructType([T.StructField('value', T.IntegerType())]),
+        )
+
+        df = df.withColumn(
+            'value_2',
+            SF.switch_case(
+                'value',
+                {
+                    (1, 1): 'aloha',
+                    (2, 3): 'hi',
+                },
+                operand=lambda c, v: c.between(*v),
+            ),
+        )
+
+        self.assertDataFrameEqual(
+            df,
+            [
+                {'value': 1, 'value_2': 'aloha'},
+                {'value': 2, 'value_2': 'hi'},
+                {'value': 3, 'value_2': 'hi'},
+                {'value': 0, 'value_2': None},
+            ],
+        )
+
+    def test_switch_case_with_custom_operand_lt(self):
+        df = self.spark.createDataFrame(
+            data=[(1, ), (2, ), (3, ), (0, )],
+            schema=T.StructType([T.StructField('value', T.IntegerType())]),
+        )
+
+        df = df.withColumn(
+            'value_2',
+            SF.switch_case(
+                'value',
+                OrderedDict([
+                    (1, 'worst'),
+                    (2, 'bad'),
+                    (3, 'good'),
+                    (4, 'best'),
+                ]),
+                operand=Column.__lt__,
+            ),
+        )
+
+        self.assertDataFrameEqual(
+            df,
+            [
+                {'value': 1, 'value_2': 'bad'},
+                {'value': 2, 'value_2': 'good'},
+                {'value': 3, 'value_2': 'best'},
+                {'value': 0, 'value_2': 'worst'},
             ],
         )
