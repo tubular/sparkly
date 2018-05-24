@@ -16,6 +16,7 @@
 
 from collections import defaultdict
 from functools import reduce
+import operator
 
 from pyspark.sql import Column
 from pyspark.sql import functions as F
@@ -78,7 +79,7 @@ def multijoin(dfs, on=None, how=None, coalesce=None):
     return joined_df
 
 
-def switch_case(switch, case=None, default=None, operand=Column.__eq__, **additional_cases):
+def switch_case(switch, case=None, default=None, operand=operator.eq, **additional_cases):
     """Switch/case style column generation.
 
     Args:
@@ -91,7 +92,7 @@ def switch_case(switch, case=None, default=None, operand=Column.__eq__, **additi
         default: default value to be used when the value of the switch
             column doesn't match any keys.
         operand: function to compare the value of the switch column to the
-            value of each case. Default is Column.__eq__. If user-provided,
+            value of each case. Default is Column's eq. If user-provided,
             first argument will always be the switch Column; it's the
             user's responsibility to transform the case value to a column
             if they need to.

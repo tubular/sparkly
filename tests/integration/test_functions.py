@@ -15,8 +15,8 @@
 #
 
 from collections import OrderedDict
+import operator
 
-from pyspark.sql import Column
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
 from pyspark.sql import utils as U
@@ -346,7 +346,7 @@ class TestSwitchCase(SparklyGlobalSessionTest):
                     (3, 'good'),
                     (4, 'best'),
                 ]),
-                operand=Column.__lt__,
+                operand=operator.lt,
             ),
         )
 
