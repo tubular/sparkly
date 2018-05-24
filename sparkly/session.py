@@ -18,7 +18,7 @@ import os
 import signal
 import sys
 
-from pyspark import SparkConf, SparkContext
+from pyspark import SparkContext
 from pyspark.sql import SparkSession
 
 from sparkly.catalog import SparklyCatalog
@@ -28,7 +28,7 @@ from sparkly.writer import attach_writer_to_dataframe
 
 
 class SparklySession(SparkSession):
-    """Wrapper around HiveContext to simplify definition of options, packages, JARs and UDFs.
+    """Wrapper around SparkSession to simplify definition of options, packages, JARs and UDFs.
 
     Example::
 
@@ -55,9 +55,11 @@ class SparklySession(SparkSession):
         spark.read_ext.cassandra(...)
 
     Attributes:
-        options (dict[str,str]): Configuration options that are passed to SparkConf.
+        options (dict[str,str]): Configuration options that are passed to spark-submit.
             See `the list of possible options
             <https://spark.apache.org/docs/2.1.0/configuration.html#available-properties>`_.
+            Note that any options set already through PYSPARK_SUBMIT_ARGS will override
+            these.
         repositories (list[str]): List of additional maven repositories for package lookup.
         packages (list[str]): Spark packages that should be installed.
             See https://spark-packages.org/
@@ -78,19 +80,18 @@ class SparklySession(SparkSession):
 
     def __init__(self, additional_options=None):
         os.environ['PYSPARK_PYTHON'] = sys.executable
+
         submit_args = [
+            # options that were already defined through PYSPARK_SUBMIT_ARGS
+            # take precedence over SparklySession's
+            os.environ.get('PYSPARK_SUBMIT_ARGS', '').replace('pyspark-shell', ''),
             self._setup_repositories(),
             self._setup_packages(),
             self._setup_jars(),
+            self._setup_options(additional_options),
             'pyspark-shell',
         ]
         os.environ['PYSPARK_SUBMIT_ARGS'] = ' '.join(filter(None, submit_args))
-
-        def _create_spark_context():
-            spark_conf = SparkConf()
-            spark_conf.set('spark.sql.catalogImplementation', 'hive')
-            spark_conf.setAll(self._setup_options(additional_options))
-            return SparkContext(conf=spark_conf)
 
         # If we are in instant testing mode
         if InstantTesting.is_activated():
@@ -98,13 +99,13 @@ class SparklySession(SparkSession):
 
             # It's the first run, so we have to create context and demonise the process.
             if spark_context is None:
-                spark_context = _create_spark_context()
+                spark_context = SparkContext()
                 if os.fork() == 0:  # Detached process.
                     signal.pause()
                 else:
                     InstantTesting.set_context(spark_context)
         else:
-            spark_context = _create_spark_context()
+            spark_context = SparkContext()
 
         # Init HiveContext
         super(SparklySession, self).__init__(spark_context)
@@ -187,11 +188,22 @@ class SparklySession(SparkSession):
             return ''
 
     def _setup_options(self, additional_options):
-        options = list(self.options.items())
-        if additional_options:
-            options += list(additional_options.items())
+        options = {}
 
-        return sorted(options)
+        options.update(self.options)
+
+        if additional_options:
+            options.update(additional_options)
+
+        if 'spark.sql.catalogImplementation' not in options:
+            options['spark.sql.catalogImplementation'] = 'hive'
+
+        # Here we massage conf properties with the intent to pass them to
+        # spark-submit; this is convenient as it is unified with the approach
+        # we take for repos, packages and jars, and it also handles precedence
+        # of conf properties already defined by the user in a very
+        # straightforward way (since we always append to PYSPARK_SUBMIT_ARGS)
+        return ' '.join('--conf "{}={}"'.format(*o) for o in sorted(options.items()))
 
     def _setup_udfs(self):
         for name, defn in self.udfs.items():

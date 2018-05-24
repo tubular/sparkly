@@ -21,19 +21,20 @@ try:
 except ImportError:
     import mock
 
-from pyspark import SparkConf, SparkContext
+from pyspark import SparkContext
 
 from sparkly import SparklySession
 
 
 class TestSparklySession(unittest.TestCase):
+
+    maxDiff = None
+
     def setUp(self):
         super(TestSparklySession, self).setUp()
-        self.spark_conf_mock = mock.Mock(spec=SparkConf)
         self.spark_context_mock = mock.Mock(spec=SparkContext)
 
         self.patches = [
-            mock.patch('sparkly.session.SparkConf', self.spark_conf_mock),
             mock.patch('sparkly.session.SparkContext', self.spark_context_mock),
         ]
         [p.start() for p in self.patches]
@@ -67,7 +68,11 @@ class TestSparklySession(unittest.TestCase):
 
         self.assertEqual(os_mock.environ, {
             'PYSPARK_PYTHON': sys.executable,
-            'PYSPARK_SUBMIT_ARGS': '--packages package1,package2 pyspark-shell',
+            'PYSPARK_SUBMIT_ARGS': (
+                '--packages package1,package2 '
+                '--conf "spark.sql.catalogImplementation=hive" '
+                'pyspark-shell'
+            ),
         })
 
     @mock.patch('sparkly.session.os')
@@ -85,9 +90,12 @@ class TestSparklySession(unittest.TestCase):
 
         self.assertEqual(os_mock.environ, {
             'PYSPARK_PYTHON': sys.executable,
-            'PYSPARK_SUBMIT_ARGS':
+            'PYSPARK_SUBMIT_ARGS': (
                 '--repositories http://my.maven.repo,http://another.maven.repo '
-                '--packages package1,package2 pyspark-shell',
+                '--packages package1,package2 '
+                '--conf "spark.sql.catalogImplementation=hive" '
+                'pyspark-shell'
+            ),
         })
 
     @mock.patch('sparkly.session.os')
@@ -101,23 +109,71 @@ class TestSparklySession(unittest.TestCase):
 
         self.assertEqual(os_mock.environ, {
             'PYSPARK_PYTHON': sys.executable,
-            'PYSPARK_SUBMIT_ARGS': '--jars file_a.jar,file_b.jar pyspark-shell',
+            'PYSPARK_SUBMIT_ARGS': (
+                '--jars file_a.jar,file_b.jar '
+                '--conf "spark.sql.catalogImplementation=hive" '
+                'pyspark-shell'
+            ),
         })
 
-    def test_session_with_options(self):
+    @mock.patch('sparkly.session.os')
+    def test_session_with_options(self, os_mock):
+        os_mock.environ = {}
+
+        # test options attached to class definition
         class _Session(SparklySession):
             options = {
                 'spark.option.a': 'value_a',
                 'spark.option.b': 'value_b',
             }
 
-        _Session(additional_options={'spark.option.c': 'value_c'})
+        _Session()
 
-        self.spark_conf_mock.return_value.setAll.assert_called_once_with([
-            ('spark.option.a', 'value_a'),
-            ('spark.option.b', 'value_b'),
-            ('spark.option.c', 'value_c'),
-        ])
+        self.assertEqual(os_mock.environ, {
+            'PYSPARK_PYTHON': sys.executable,
+            'PYSPARK_SUBMIT_ARGS': (
+                '--conf "spark.option.a=value_a" '
+                '--conf "spark.option.b=value_b" '
+                '--conf "spark.sql.catalogImplementation=hive" '
+                'pyspark-shell'
+            ),
+        })
+
+        # test additional_options override/extend options attached to class definition
+        os_mock.environ = {}
+
+        _Session(additional_options={
+            'spark.option.b': 'value_0',
+            'spark.option.c': 'value_c',
+        })
+
+        self.assertEqual(os_mock.environ, {
+            'PYSPARK_PYTHON': sys.executable,
+            'PYSPARK_SUBMIT_ARGS': (
+                '--conf "spark.option.a=value_a" '
+                '--conf "spark.option.b=value_0" '
+                '--conf "spark.option.c=value_c" '
+                '--conf "spark.sql.catalogImplementation=hive" '
+                'pyspark-shell'
+            ),
+        })
+
+        # test catalog implementation is respected
+        os_mock.environ = {}
+
+        _Session.options = {
+            'spark.sql.catalogImplementation': 'my_fancy_catalog',
+        }
+
+        _Session()
+
+        self.assertEqual(os_mock.environ, {
+            'PYSPARK_PYTHON': sys.executable,
+            'PYSPARK_SUBMIT_ARGS': (
+                '--conf "spark.sql.catalogImplementation=my_fancy_catalog" '
+                'pyspark-shell'
+            ),
+        })
 
     @mock.patch('sparkly.session.os')
     def test_session_without_packages_jars_and_options(self, os_mock):
@@ -127,7 +183,46 @@ class TestSparklySession(unittest.TestCase):
 
         self.assertEqual(os_mock.environ, {
             'PYSPARK_PYTHON': sys.executable,
-            'PYSPARK_SUBMIT_ARGS': 'pyspark-shell',
+            'PYSPARK_SUBMIT_ARGS': '--conf "spark.sql.catalogImplementation=hive" pyspark-shell',
+        })
+
+    @mock.patch('sparkly.session.os')
+    def test_session_appends_to_pyspark_submit_args(self, os_mock):
+        os_mock.environ = {
+            'PYSPARK_SUBMIT_ARGS': '--conf "my.conf.here=5g" --and-other-properties',
+        }
+
+        SparklySession()
+
+        self.assertEqual(os_mock.environ, {
+            'PYSPARK_PYTHON': sys.executable,
+            'PYSPARK_SUBMIT_ARGS': (
+                '--conf "my.conf.here=5g" --and-other-properties '
+                '--conf "spark.sql.catalogImplementation=hive" '
+                'pyspark-shell'
+            ),
+        })
+
+        # test more complicated session
+        os_mock.environ = {
+            'PYSPARK_SUBMIT_ARGS': '--conf "my.conf.here=5g" --and-other-properties',
+        }
+
+        class _Session(SparklySession):
+            options = {'my.conf.here': '10g'}
+
+        _Session()
+
+        self.assertEqual(os_mock.environ, {
+            'PYSPARK_PYTHON': sys.executable,
+            'PYSPARK_SUBMIT_ARGS': (
+                '--conf "my.conf.here=5g" --and-other-properties '
+                # Note that spark honors the first conf it sees when multiple
+                # are defined
+                '--conf "my.conf.here=10g" '
+                '--conf "spark.sql.catalogImplementation=hive" '
+                'pyspark-shell'
+            ),
         })
 
     def test_broken_udf(self):
