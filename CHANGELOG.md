@@ -1,5 +1,7 @@
 ## 2.4.0
 * Access or initialize SparklySession through get_or_create classmethod
+* Ammend `sparkly.functions.switch_case` to accept a user defined function for
+  deciding whether the switch column matches a specific case
 
 ## 2.3.0
 * Overwrite existing tables in the metastore

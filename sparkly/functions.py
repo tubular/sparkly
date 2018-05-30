@@ -16,6 +16,7 @@
 
 from collections import defaultdict
 from functools import reduce
+import operator
 
 from pyspark.sql import Column
 from pyspark.sql import functions as F
@@ -78,7 +79,7 @@ def multijoin(dfs, on=None, how=None, coalesce=None):
     return joined_df
 
 
-def switch_case(switch, case=None, default=None, **additional_cases):
+def switch_case(switch, case=None, default=None, operand=operator.eq, **additional_cases):
     """Switch/case style column generation.
 
     Args:
@@ -90,6 +91,11 @@ def switch_case(switch, case=None, default=None, **additional_cases):
             your case condition constants are not strings.
         default: default value to be used when the value of the switch
             column doesn't match any keys.
+        operand: function to compare the value of the switch column to the
+            value of each case. Default is Column's eq. If user-provided,
+            first argument will always be the switch Column; it's the
+            user's responsibility to transform the case value to a column
+            if they need to.
         additional_cases: additional "case" statements, kwargs style.
             Same semantics with cases above. If both are provided,
             cases takes precedence.
@@ -107,6 +113,18 @@ def switch_case(switch, case=None, default=None, **additional_cases):
         ).when(
         ... F.col('state') == 'NY', 'New York'
         ).otherwise('Other')
+
+        If you need to "bucketize" a value
+
+        ``switch_case('age', {(13, 17): 1, (18, 24): 2, ...}, operand=lambda c, v: c.between(*v))``
+
+        is equivalent to
+
+        >>> F.when(
+        ... F.col('age').between(13, 17), F.lit(1)
+        ).when(
+        ... F.col('age').between(18, 24), F.lit(2)
+        )
     """
     if not isinstance(switch, Column):
         switch = F.col(switch)
@@ -118,7 +136,7 @@ def switch_case(switch, case=None, default=None, **additional_cases):
         # transform the case to a pyspark.sql.functions.when statement,
         # then chain it to existing when statements
         condition_constant, assigned_value = case
-        when_args = (switch == F.lit(condition_constant), _column_or_lit(assigned_value))
+        when_args = (operand(switch, condition_constant), _column_or_lit(assigned_value))
         return accumulator.when(*when_args)
 
 
