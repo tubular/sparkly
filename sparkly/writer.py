@@ -28,12 +28,12 @@ else:
 
 try:
     import redis
+    import ujson
 except ImportError:
     REDIS_WRITER_SUPPORT = False
 else:
     import bz2
     import gzip
-    import ujson
     import uuid
     import zlib
     REDIS_WRITER_SUPPORT = True
