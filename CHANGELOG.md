@@ -1,4 +1,5 @@
 ## 2.4.0
+* Fix ujson dependency on environments where redis-py is already installed
 * Access or initialize SparklySession through get_or_create classmethod
 * Ammend `sparkly.functions.switch_case` to accept a user defined function for
   deciding whether the switch column matches a specific case
