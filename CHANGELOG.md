@@ -1,4 +1,6 @@
 ## 2.4.0
+* Respect PYSPARK_SUBMIT_ARGS if it is already set by appending SparklySession related options at the end instead of overwriting.
+* Fix additional_options to always override SparklySession.options when a session is initialized
 * Fix ujson dependency on environments where redis-py is already installed
 * Access or initialize SparklySession through get_or_create classmethod
 * Ammend `sparkly.functions.switch_case` to accept a user defined function for

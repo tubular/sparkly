@@ -123,6 +123,28 @@ Tuning options
     spark = MySession({'spark.sql.shuffle.partitions': 10})
 
 
+Tuning options through shell environment
+----------------------------------------
+
+**Why**: You want to customize your spark session in a way that depends on the
+hardware specifications of your worker (or driver) machine(s), so you'd rather
+define them close to where the actual machine specs are requested / defined.
+Or you just want to test some new configuration without having to change your
+code. In both cases, you can do so by using the environmental variable
+``PYSPARK_SUBMIT_ARGS``. Note that any options defined this way will override
+any conflicting options from your Python code.
+
+**For example**:
+
+    - ``spark.executor.cores`` to tune the cores used by each executor;
+    - ``spark.executor.memory`` to tune the memory available to each executor.
+
+.. code-block:: sh
+
+    PYSPARK_SUBMIT_ARGS='--conf "spark.executor.cores=32" --conf "spark.executor.memory=160g"' \
+        ./my_spark_app.py
+
+
 Using UDFs
 ----------
 
