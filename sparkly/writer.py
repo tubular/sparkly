@@ -266,14 +266,12 @@ class SparklyWriter(object):
             producer.flush()
             producer.close()
 
-            return messages
-
         rdd = self._df.rdd
 
         if parallelism:
             rdd = rdd.coalesce(parallelism)
 
-        rdd.mapPartitions(write_partition_to_kafka).count()
+        rdd.foreachPartition(write_partition_to_kafka)
 
     def redis(self,
               key_by,
