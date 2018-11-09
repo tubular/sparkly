@@ -1,3 +1,6 @@
+## 2.4.1
+* Fix write_ext.kafka: run foreachPartition instead of mapPartitions because returned value can cause spark.driver.maxResultSize excess
+
 ## 2.4.0
 * Respect PYSPARK_SUBMIT_ARGS if it is already set by appending SparklySession related options at the end instead of overwriting.
 * Fix additional_options to always override SparklySession.options when a session is initialized
