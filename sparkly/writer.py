@@ -84,7 +84,7 @@ class SparklyWriter(object):
 
         Is an equivalent for::
 
-            hc.read_ext.elastic(
+            hc.write_ext.elastic(
                 host='localhost',
                 port=9200,
                 es_index='my_index',
