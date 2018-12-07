@@ -1,3 +1,6 @@
+## 2.6.0
+* Add argmax function to sparkly.functions
+
 ## 2.5.1
 * Fix port issue with reading and writing `by_url`. `urlparse` return `netloc` with port, which breaks read and write from MySQL and Cassandra.
 
@@ -28,7 +31,7 @@
 
 # 2.2.1
 * `spark.sql.shuffle.partitions` in `SparklyTest` should be set to string,
-because `int` value breaks integration testing in Spark 2.0.2. 
+because `int` value breaks integration testing in Spark 2.0.2.
 
 # 2.2.0
 * Add instant iterative development mode. `sparkly-testing --help` for more details.

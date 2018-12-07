@@ -17,6 +17,7 @@
 from collections import defaultdict
 from functools import reduce
 import operator
+from six import string_types
 
 from pyspark.sql import Column
 from pyspark.sql import functions as F
@@ -151,5 +152,42 @@ def switch_case(switch, case=None, default=None, operand=operator.eq, **addition
         return default
 
     result = reduce(_execute_case, cases, F).otherwise(default)
+
+    return result
+
+
+def argmax(field, by, condition=None):
+    """Select a value from the row that maximizes other column(s)
+
+    Args:
+        field (string, pyspark.sql.Column): the field to return that maximizes the "by" columns
+        by (*string, *pyspark.sql.Column): field or list of fields to maximize. In reality, this
+            will usually be only one field. But you may use multiple for tiebreakers
+        condition (optional): Only consider the entities that pass this condition
+
+    Returns:
+        pyspark.sql.Column
+
+    Example:
+        df = (
+            df
+            .groupBy('id')
+            .agg(argmax('field1', 'by_field'))
+        )
+
+        argmax('field1', ['by_field1', 'by_field2'], condition=F.col('col') == 1)
+        argmax(F.col('field1'), [F.col('by_field1'), F.col('by_field2')], condition=F.lit(True))
+    """
+    if not isinstance(by, list):
+        by = [by]
+
+    if isinstance(field, string_types):
+        field = F.col(field)
+
+    by.append(field.alias('__tmp_argmax__'))
+    result = F.struct(*by)
+    if condition is not None:
+        result = F.when(condition, result)
+    result = F.max(result).getField('__tmp_argmax__')
 
     return result
