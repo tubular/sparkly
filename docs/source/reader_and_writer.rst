@@ -43,7 +43,7 @@ Sparkly relies on the official spark cassandra connector and was successfully te
 Elastic
 -------
 
-Sparkly relies on the official elastic spark connector and was successfully tested in production using version `5.1.1`.
+Sparkly relies on the official elastic spark connector and was successfully tested in production using version `6.5.4`.
 
 +---------------+-----------------------------------------------------------------------------+
 | Package       | https://spark-packages.org/package/elastic/elasticsearch-hadoop             |
@@ -58,7 +58,7 @@ Sparkly relies on the official elastic spark connector and was successfully test
 
     class MySession(SparklySession):
         # Feel free to play with other versions
-        packages = ['org.elasticsearch:elasticsearch-spark-20_2.11:5.1.1']
+        packages = ['org.elasticsearch:elasticsearch-spark-20_2.11:6.5.4']
 
     spark = MySession()
 
@@ -226,7 +226,7 @@ To solve the problem, we decided to add the universal api to read/write `DataFra
         packages = [
             'datastax:spark-cassandra-connector:1.6.1-s_2.10',
             'com.databricks:spark-csv_2.10:1.4.0',
-            'org.elasticsearch:elasticsearch-spark_2.10:2.3.0',
+            'org.elasticsearch:elasticsearch-spark_2.10:6.5.4',
         ]
 
     hc = MyContext()

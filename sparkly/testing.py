@@ -583,16 +583,17 @@ class CassandraFixture(Fixture):
            ...
     """
 
-    def __init__(self, host, setup_file, teardown_file):
+    def __init__(self, host, setup_file, teardown_file, port=9042):
         if not CASSANDRA_FIXTURES_SUPPORT:
             raise NotImplementedError('cassandra-driver package isn\'t available. '
                                       'Use pip install sparkly[test] to fix it.')
         self.host = host
+        self.port = port
         self.setup_file = setup_file
         self.teardown_file = teardown_file
 
     def _execute(self, statements):
-        cluster = Cluster([self.host])
+        cluster = Cluster([self.host], port=self.port)
         session = cluster.connect()
         for statement in statements.split(';'):
             if bool(statement.strip()):
@@ -669,8 +670,9 @@ class ElasticFixture(Fixture):
         )
 
     def _request(self, method, url, body=None):
+        headers = {'Content-Type': 'application/json'}
         connection = HTTPConnection(self.host, port=self.port)
-        connection.request(method, url, body)
+        connection.request(method, url, body, headers)
         response = connection.getresponse()
         if sys.version_info.major == 3:
             code = response.code
@@ -698,11 +700,12 @@ class MysqlFixture(Fixture):
            ...
     """
 
-    def __init__(self, host, user, password=None, data=None, teardown=None):
+    def __init__(self, host, user, port=3306, password=None, data=None, teardown=None):
         if not MYSQL_FIXTURES_SUPPORT:
             raise NotImplementedError('PyMySQL package isn\'t available. '
                                       'Use pip install sparkly[test] to fix it.')
         self.host = host
+        self.port = port
         self.user = user
         self.password = password
         self.data = data
@@ -713,6 +716,7 @@ class MysqlFixture(Fixture):
             user=self.user,
             password=self.password,
             host=self.host,
+            port=self.port,
         )
         cursor = ctx.cursor()
         cursor.execute(statements)
