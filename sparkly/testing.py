@@ -700,7 +700,7 @@ class MysqlFixture(Fixture):
            ...
     """
 
-    def __init__(self, host, user, port=3306, password=None, data=None, teardown=None):
+    def __init__(self, host, user, password=None, data=None, teardown=None, port=3306):
         if not MYSQL_FIXTURES_SUPPORT:
             raise NotImplementedError('PyMySQL package isn\'t available. '
                                       'Use pip install sparkly[test] to fix it.')
