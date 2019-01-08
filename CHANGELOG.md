@@ -1,3 +1,9 @@
+## 2.5.0
+* Add `port` argument to `CassandraFixture` and `MysqlFixture`
+* Add `Content-Type` header to `ElasticFixture` to support ElasticSearch `6.x`
+* Update `elasticsearch-hadoop` connector to `6.5.4`
+* Update image tag for elasticsearch to `6.5.4`
+
 ## 2.4.1
 * Fix write_ext.kafka: run foreachPartition instead of mapPartitions because returned value can cause spark.driver.maxResultSize excess
 
