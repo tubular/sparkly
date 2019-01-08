@@ -77,6 +77,24 @@ class TestWriteByUrl(unittest.TestCase):
             options={},
         )
 
+    def test_cassandra_custom_port(self):
+        self.write_ext.cassandra = mock.Mock()
+
+        self.write_ext.by_url(
+            'cassandra://host:19042/ks/cf?consistency=ONE&mode=overwrite&parallelism=10',
+        )
+
+        self.write_ext.cassandra.assert_called_once_with(
+            host='host',
+            keyspace='ks',
+            table='cf',
+            port=19042,
+            mode='overwrite',
+            consistency='ONE',
+            parallelism=10,
+            options={},
+        )
+
     def test_elastic(self):
         self.write_ext.elastic = mock.Mock()
 
@@ -102,6 +120,21 @@ class TestWriteByUrl(unittest.TestCase):
             database='db',
             table='table',
             port=None,
+            mode=None,
+            parallelism=20,
+            options={},
+        )
+
+    def test_mysql_custom_port(self):
+        self.write_ext.mysql = mock.Mock()
+
+        self.write_ext.by_url('mysql://host:33306/db/table?parallelism=20')
+
+        self.write_ext.mysql.assert_called_with(
+            host='host',
+            database='db',
+            table='table',
+            port=33306,
             mode=None,
             parallelism=20,
             options={},

@@ -485,7 +485,7 @@ class SparklyWriter(object):
 
     def _resolve_cassandra(self, parsed_url, parsed_qs):
         return self.cassandra(
-            host=parsed_url.netloc,
+            host=parsed_url.hostname,
             keyspace=parsed_url.path.split('/')[1],
             table=parsed_url.path.split('/')[2],
             consistency=parsed_qs.pop('consistency', None),
@@ -524,7 +524,7 @@ class SparklyWriter(object):
 
     def _resolve_mysql(self, parsed_url, parsed_qs):
         return self.mysql(
-            host=parsed_url.netloc,
+            host=parsed_url.hostname,
             database=parsed_url.path.split('/')[1],
             table=parsed_url.path.split('/')[2],
             port=parsed_url.port,

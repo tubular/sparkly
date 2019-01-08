@@ -1,3 +1,6 @@
+## 2.5.1
+* Fix port issue with reading and writing `by_url`. `urlparse` return `netloc` with port, which breaks read and write from MySQL and Cassandra.
+
 ## 2.5.0
 * Add `port` argument to `CassandraFixture` and `MysqlFixture`
 * Add `Content-Type` header to `ElasticFixture` to support ElasticSearch `6.x`
