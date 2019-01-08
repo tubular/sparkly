@@ -1,4 +1,4 @@
-## 2.4.2
+## 2.5.0
 * Add `port` argument to `CassandraFixture` and `MysqlFixture`
 * Add `Content-Type` header to `ElasticFixture` to support ElasticSearch `6.x`
 * Update `elasticsearch-hadoop` connector to `6.5.4`
