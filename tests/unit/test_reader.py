@@ -113,6 +113,23 @@ class TestSparklyReaderByUrl(unittest.TestCase):
             options={'query.retry.count': '2'},
         )
 
+    def test_cassandra_custom_port(self):
+        self.read_ext.cassandra = mock.Mock(return_value=self.fake_df)
+
+        df = self.read_ext.by_url('cassandra://localhost:19042/test_cf/test_table?'
+                                  'consistency=ONE&parallelism=8&query.retry.count=2')
+
+        self.assertEqual(df, self.fake_df)
+        self.read_ext.cassandra.assert_called_with(
+            host='localhost',
+            port=19042,
+            keyspace='test_cf',
+            table='test_table',
+            consistency='ONE',
+            parallelism=8,
+            options={'query.retry.count': '2'},
+        )
+
     def test_mysql(self):
         self.read_ext.mysql = mock.Mock(return_value=self.fake_df)
 
@@ -125,6 +142,22 @@ class TestSparklyReaderByUrl(unittest.TestCase):
             database='test_database',
             table='test_table',
             port=None,
+            parallelism=None,
+            options={'user': 'root', 'password': 'pass'},
+        )
+
+    def test_mysql_custom_port(self):
+        self.read_ext.mysql = mock.Mock(return_value=self.fake_df)
+
+        df = self.read_ext.by_url('mysql://localhost:33306/test_database/test_table?'
+                                  'user=root&password=pass')
+
+        self.assertEqual(df, self.fake_df)
+        self.read_ext.mysql.assert_called_with(
+            host='localhost',
+            database='test_database',
+            table='test_table',
+            port=33306,
             parallelism=None,
             options={'user': 'root', 'password': 'pass'},
         )
