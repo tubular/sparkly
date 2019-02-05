@@ -359,3 +359,183 @@ class TestSwitchCase(SparklyGlobalSessionTest):
                 {'value': 0, 'value_2': 'worst'},
             ],
         )
+
+class TestArgmax(SparklyGlobalSessionTest):
+    session = SparklyTestSession
+
+    def test_non_nullable_values(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('1', 'test1', None, 3),
+                ('1', None, 2, 4),
+                ('2', 'test2', 3, 1),
+                ('2', 'test3', 4, 2),
+            ],
+            schema=T.StructType([
+                T.StructField('id', T.StringType(), nullable=True),
+                T.StructField('value1', T.StringType(), nullable=True),
+                T.StructField('value2', T.IntegerType(), nullable=True),
+                T.StructField('target', T.IntegerType(), nullable=True),
+            ]),
+        )
+
+        df = (
+            df
+            .groupBy('id')
+            .agg(
+                F.max('target').alias('target'),
+                *[
+                    SF.argmax(col, 'target', condition=F.col(col).isNotNull()).alias(col)
+                    for col in df.columns
+                    if col not in ['id', 'target']
+                ]
+            )
+        )
+
+        self.assertDataFrameEqual(
+            df,
+            [
+                {'id': '1', 'target': 4, 'value1': 'test1', 'value2': 2},
+                {'id': '2', 'target': 2, 'value1': 'test3', 'value2': 4},
+            ],
+        )
+
+    def test_nullable_values(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('1', 'test1', None, 3),
+                ('1', None, 2, 4),
+                ('2', 'test2', 3, 1),
+                ('2', 'test3', 4, 2),
+            ],
+            schema=T.StructType([
+                T.StructField('id', T.StringType(), nullable=True),
+                T.StructField('value1', T.StringType(), nullable=True),
+                T.StructField('value2', T.IntegerType(), nullable=True),
+                T.StructField('target', T.IntegerType(), nullable=True),
+            ]),
+        )
+
+        df = (
+            df
+            .groupBy('id')
+            .agg(
+                F.max('target').alias('target'),
+                *[
+                    SF.argmax(col, 'target').alias(col)
+                    for col in df.columns
+                    if col not in ['id', 'target']
+                ]
+            )
+        )
+
+        self.assertDataFrameEqual(
+            df,
+            [
+                {'id': '1', 'target': 4, 'value1': None, 'value2': 2},
+                {'id': '2', 'target': 2, 'value1': 'test3', 'value2': 4},
+            ],
+        )
+
+    def test_break_ties(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('1', 'test1', 1, 4),
+                ('1', 'test2', 1, 3),
+                ('2', 'test3', 1, 4),
+                ('2', 'test4', 2, 3),
+            ],
+            schema=T.StructType([
+                T.StructField('id', T.StringType(), nullable=True),
+                T.StructField('value', T.StringType(), nullable=True),
+                T.StructField('target1', T.IntegerType(), nullable=True),
+                T.StructField('target2', T.IntegerType(), nullable=True),
+            ]),
+        )
+
+        df = (
+            df
+            .groupBy('id')
+            .agg(
+                SF.argmax('value', ['target1', 'target2']).alias('value')
+            )
+        )
+
+        self.assertDataFrameEqual(
+            df,
+            [
+                {'id': '1', 'value': 'test1'},
+                {'id': '2', 'value': 'test4'},
+            ],
+        )
+
+    def test_with_conditions(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('1', 'test1', 2),
+                ('1', 'test2', 1),
+                ('2', 'test3', 1),
+                ('2', 'test4', 2),
+            ],
+            schema=T.StructType([
+                T.StructField('id', T.StringType(), nullable=True),
+                T.StructField('value', T.StringType(), nullable=True),
+                T.StructField('target1', T.IntegerType(), nullable=True),
+            ]),
+        )
+
+        df = (
+            df
+            .groupBy('id')
+            .agg(
+                SF.argmax(
+                    'value',
+                    'target1',
+                    condition=F.col('value') != 'test1',
+                ).alias('value'),
+            )
+        )
+
+        self.assertDataFrameEqual(
+            df,
+            [
+                {'id': '1', 'value': 'test2'},
+                {'id': '2', 'value': 'test4'},
+            ],
+        )
+
+    def test_with_column_expressions(self):
+        df = self.spark.createDataFrame(
+            data=[
+                ('1', None, 'test1', 1, 4),
+                ('1', 'test2', 'test2_1', 1, 3),
+                ('2', 'test3', None, 1, 4),
+                ('2', 'test4', 'test5', 2, 6),
+            ],
+            schema=T.StructType([
+                T.StructField('id', T.StringType(), nullable=True),
+                T.StructField('value1', T.StringType(), nullable=True),
+                T.StructField('value2', T.StringType(), nullable=True),
+                T.StructField('target1', T.IntegerType(), nullable=True),
+                T.StructField('target2', T.IntegerType(), nullable=True),
+            ]),
+        )
+
+        df = (
+            df
+            .groupBy('id')
+            .agg(
+                SF.argmax(
+                    F.coalesce(F.col('value1'), F.col('value2')),
+                    F.col('target1') + F.col('target2'),
+                ).alias('value'),
+            )
+        )
+
+        self.assertDataFrameEqual(
+            df,
+            [
+                {'id': '1', 'value': 'test1'},
+                {'id': '2', 'value': 'test4'},
+            ],
+        )
