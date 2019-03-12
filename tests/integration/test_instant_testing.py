@@ -52,6 +52,9 @@ class TestInstantTesting(SparklyGlobalSessionTest):
                 'gateway_port':
                     self.spark.sparkContext._gateway.java_gateway_server.getListeningPort(),
                 'session_pid': os.getpid(),
+                'gateway_secret': getattr(
+                    self.spark.sparkContext._gateway.gateway_parameters, 'auth_token', None,
+                ),
             })
 
     def test_get_context(self):

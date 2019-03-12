@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+import os
+
 from pyspark.sql.types import StringType
 
 from sparkly import SparklySession
@@ -22,10 +24,10 @@ from sparkly.utils import absolute_path
 
 class SparklyTestSession(SparklySession):
     packages = [
-        'datastax:spark-cassandra-connector:2.0.0-M2-s_2.11',
+        'datastax:spark-cassandra-connector:2.4.0-s_2.11',
         'org.elasticsearch:elasticsearch-spark-20_2.11:6.5.4',
-        'org.apache.spark:spark-streaming-kafka-0-8_2.11:2.1.0',
-        'mysql:mysql-connector-java:5.1.39',
+        'org.apache.spark:spark-streaming-kafka-0-8_2.11:2.4.0',
+        'mysql:mysql-connector-java:6.0.6',
         'io.confluent:kafka-avro-serializer:3.0.1',
     ]
 

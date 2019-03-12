@@ -307,28 +307,29 @@ class SparklyTest(TestCase):
                 def _sort_structs(dt, ignore_order_depth):
                     if ignore_order_depth == 0:
                         return dt
-                    if dt.typeName() == 'array':
+
+                    if isinstance(dt, T.StructField):
+                        return T.StructField(
+                            dt.name,
+                            _sort_structs(dt.dataType, ignore_order_depth),
+                            nullable=ignore_nullability or dt.containsNull,
+                            metadata=dt.metadata,
+                        )
+                    elif dt.typeName() == 'struct':
+                        return T.StructType([
+                           _sort_structs(f, ignore_order_depth - 1)
+                           for f in sorted(dt.fields, key=lambda f: f.name)
+                        ])
+                    elif dt.typeName() == 'array':
                         return T.ArrayType(
                             elementType=_sort_structs(dt.elementType, ignore_order_depth),
                             containsNull=ignore_nullability or dt.containsNull,
                         )
-                    if dt.typeName() == 'map':
+                    elif dt.typeName() == 'map':
                         return T.MapType(
                             keyType=_sort_structs(dt.keyType, ignore_order_depth),
                             valueType=_sort_structs(dt.valueType, ignore_order_depth),
                             valueContainsNull=ignore_nullability or dt.valueContainsNull,
-                        )
-                    if dt.typeName() == 'struct':
-                        return T.StructType([
-                            _sort_structs(f, ignore_order_depth - 1)
-                            for f in sorted(dt.fields, key=lambda f: f.name)
-                        ])
-                    if dt.typeName() == 'structf':
-                        return T.StructField(
-                            dt.name,
-                            _sort_structs(dt.dataType, ignore_order_depth),
-                            nullable=ignore_nullability or dt.nullable,
-                            metadata=dt.metadata,
                         )
                     return dt
 

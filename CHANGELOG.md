@@ -1,3 +1,7 @@
+## 2.7.0
+* Migrate to spark 2.4.0
+* Fix testing.DataType to use new convention to get field type
+
 ## 2.6.0
 * Add argmax function to sparkly.functions
 

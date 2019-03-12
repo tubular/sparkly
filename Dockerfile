@@ -21,14 +21,10 @@ LABEL maintainer="dev@tubularlabs.com"
 # Install OpenJDK 8
 RUN apt-get update && apt-get install -y default-jre
 
-# Install Spark 1.6.2
+# Install Spark 2.4.0
 RUN apt-get update && apt-get install -y curl
-RUN curl -s http://d3kbcqa49mib13.cloudfront.net/spark-2.1.0-bin-hadoop2.7.tgz | tar -xz -C /usr/local/
-RUN cd /usr/local && ln -s spark-2.1.0-bin-hadoop2.7 spark
-
-ENV SPARK_HOME "/usr/local/spark/"
-ENV PYTHONPATH "/usr/local/spark/python/lib/pyspark.zip:/usr/local/spark/python/lib/py4j-0.10.4-src.zip:/opt/sparkly"
-ENV SPARK_TESTING true
+RUN curl -s https://archive.apache.org/dist/spark/spark-2.4.0/spark-2.4.0-bin-hadoop2.7.tgz | tar -xz -C /usr/local/
+RUN cd /usr/local && ln -s spark-2.4.0-bin-hadoop2.7 spark
 
 # Install Python development & testing utils
 RUN apt-get update && apt-get install -y python python-dev python3-pip
@@ -39,10 +35,10 @@ COPY spark.log4j.properties /usr/local/spark/conf/log4j.properties
 
 # Make integration tests faster
 RUN /usr/local/spark/bin/spark-shell --repositories=http://packages.confluent.io/maven/ --packages=\
-datastax:spark-cassandra-connector:2.0.0-M2-s_2.11,\
+datastax:spark-cassandra-connector:2.4.0-s_2.11,\
 org.elasticsearch:elasticsearch-spark-20_2.11:6.5.4,\
-org.apache.spark:spark-streaming-kafka-0-8_2.11:2.1.0,\
-mysql:mysql-connector-java:5.1.39,\
+org.apache.spark:spark-streaming-kafka-0-8_2.11:2.4.0,\
+mysql:mysql-connector-java:6.0.6,\
 io.confluent:kafka-avro-serializer:3.0.1
 
 # Python env
@@ -54,6 +50,10 @@ COPY requirements_extras.txt /tmp/requirements_extras.txt
 RUN python3 -m pip install -r /tmp/requirements.txt
 RUN python3 -m pip install -r /tmp/requirements_dev.txt
 RUN python3 -m pip install -r /tmp/requirements_extras.txt
+
+ENV SPARK_HOME "/usr/local/spark/"
+ENV PYTHONPATH "/usr/local/spark/python/lib/pyspark.zip:/usr/local/spark/python/lib/py4j-0.10.7-src.zip:/opt/sparkly"
+ENV SPARK_TESTING true
 
 # Provision Sparkly
 ADD . /opt/sparkly/
