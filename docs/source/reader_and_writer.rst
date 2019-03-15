@@ -13,13 +13,15 @@ so you can keep your code agnostic to the storages you use.
 Cassandra
 ---------
 
-Sparkly relies on the official spark cassandra connector and was successfully tested in production using version `2.0.0-M2`.
+Sparkly relies on the official spark cassandra connector and was successfully tested in production using version `2.4.0`.
 
 +---------------+---------------------------------------------------------------------------------------+
 | Package       | https://spark-packages.org/package/datastax/spark-cassandra-connector                 |
 +---------------+---------------------------------------------------------------------------------------+
-| Configuration | https://github.com/datastax/spark-cassandra-connector/blob/v2.0.0-M2/doc/reference.md |
+| Configuration | https://github.com/datastax/spark-cassandra-connector/blob/v2.4.0/doc/reference.md |
 +---------------+---------------------------------------------------------------------------------------+
+
+For using overwrite mode, it is needed to specify confirm.truncate as true. Otherwise, use append mode to update existing data.
 
 .. code-block:: python
 
@@ -28,7 +30,7 @@ Sparkly relies on the official spark cassandra connector and was successfully te
 
     class MySession(SparklySession):
         # Feel free to play with other versions
-        packages = ['datastax:spark-cassandra-connector:2.0.0-M2-s_2.11']
+        packages = ['datastax:spark-cassandra-connector:2.4.0-s_2.11']
 
     spark = MySession()
 
@@ -78,9 +80,9 @@ The first one allows us to read data efficiently,
 the second covers a lack of writing functionality in the official distribution.
 
 +---------------+------------------------------------------------------------------------------------------+
-| Package       | https://mvnrepository.com/artifact/org.apache.spark/spark-streaming-kafka-0-8_2.11/2.1.0 |
+| Package       | https://mvnrepository.com/artifact/org.apache.spark/spark-streaming-kafka-0-8_2.11/2.4.0 |
 +---------------+------------------------------------------------------------------------------------------+
-| Configuration | http://spark.apache.org/docs/2.1.0/streaming-kafka-0-8-integration.html                  |
+| Configuration | http://spark.apache.org/docs/2.4.0/streaming-kafka-0-8-integration.html                  |
 +---------------+------------------------------------------------------------------------------------------+
 
 .. note::
@@ -99,7 +101,7 @@ the second covers a lack of writing functionality in the official distribution.
 
     class MySession(SparklySession):
         packages = [
-            'org.apache.spark:spark-streaming-kafka-0-8_2.11:2.1.0',
+            'org.apache.spark:spark-streaming-kafka-0-8_2.11:2.4.0',
         ]
 
     spark = MySession()
@@ -157,7 +159,7 @@ Basically, it's just a high level api on top of the native
 
     class MySession(SparklySession):
         # Feel free to play with other versions.
-        packages = ['mysql:mysql-connector-java:5.1.39']
+        packages = ['mysql:mysql-connector-java:6.0.6']
 
 
     spark = MySession()

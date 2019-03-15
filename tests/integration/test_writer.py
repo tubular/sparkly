@@ -101,6 +101,10 @@ class TestWriteCassandra(SparklyGlobalSessionTest):
             table='test_writer',
             consistency='ONE',
             mode='overwrite',
+            # overwrite would first perform truncation.
+            # Either change mode to 'append' to change data already in the table,
+            # or set confirm.truncate to true
+            options={'confirm.truncate': True},
         )
 
         written_df = self.spark.read_ext.by_url(

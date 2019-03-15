@@ -17,6 +17,7 @@
 dev:
 	docker-compose build dev
 	docker-compose run dev bash
+	docker-compose down -v ; exit $$retcode
 
 dist:
 	docker-compose build dev

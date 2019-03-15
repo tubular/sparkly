@@ -107,7 +107,16 @@ class InstantTesting(object):
         session_pid = os.getpid()
 
         with open(cls.LOCK_FILE_PATH, 'w') as lock:
-            json.dump({'gateway_port': gateway_port, 'session_pid': session_pid}, lock)
+            json.dump(
+                {
+                    'gateway_port': gateway_port,
+                    'session_pid': session_pid,
+                    'gateway_secret': getattr(
+                        spark_context._gateway.gateway_parameters, 'auth_token', None,
+                    ),
+                },
+                lock,
+            )
             logger.info(
                 'Successfully set spark context for the instant testing [pid=%s, gateway=%s]',
                 session_pid, gateway_port
@@ -143,6 +152,7 @@ class InstantTesting(object):
             )
 
             os.environ['PYSPARK_GATEWAY_PORT'] = str(state['gateway_port'])
+            os.environ['PYSPARK_GATEWAY_SECRET'] = str(state['gateway_secret'])
             gateway = launch_gateway()
             java_import(gateway.jvm, 'org.apache.spark.SparkContext')
             jvm_spark_context = gateway.jvm.SparkContext.getOrCreate()
