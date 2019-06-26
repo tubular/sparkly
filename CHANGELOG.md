@@ -1,3 +1,6 @@
+## 2.7.1
+* Allow newer versions of `six` package (avoid depednecy hell)
+
 ## 2.7.0
 * Migrate to spark 2.4.0
 * Fix testing.DataType to use new convention to get field type
