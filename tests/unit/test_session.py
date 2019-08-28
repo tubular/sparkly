@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+from copy import copy
 import sys
 import unittest
 try:
@@ -32,10 +33,21 @@ class TestSparklySession(unittest.TestCase):
 
     def setUp(self):
         super(TestSparklySession, self).setUp()
+        # In several of the following tests, we want to check that the environment
+        # was set appropriately when SparkContext was initialized. Since the state
+        # of the environment at the end of the session is not representative of this
+        # (we leave no trace of sparkly on the env), we instruct the mock to capture
+        # os.environ every time it's called.
         self.spark_context_mock = mock.Mock(spec=SparkContext)
+        self.spark_context_environ = {}
+
+        def capture_environ(*args, **kwargs):
+            from sparkly.session import os
+            self.spark_context_environ = copy(os.environ)
+            return self.spark_context_mock()
 
         self.patches = [
-            mock.patch('sparkly.session.SparkContext', self.spark_context_mock),
+            mock.patch('sparkly.session.SparkContext', side_effect=capture_environ),
         ]
         [p.start() for p in self.patches]
 
@@ -66,7 +78,7 @@ class TestSparklySession(unittest.TestCase):
 
         _Session()
 
-        self.assertEqual(os_mock.environ, {
+        self.assertEqual(self.spark_context_environ, {
             'PYSPARK_PYTHON': sys.executable,
             'PYSPARK_SUBMIT_ARGS': (
                 '--packages package1,package2 '
@@ -88,7 +100,7 @@ class TestSparklySession(unittest.TestCase):
 
         _Session()
 
-        self.assertEqual(os_mock.environ, {
+        self.assertEqual(self.spark_context_environ, {
             'PYSPARK_PYTHON': sys.executable,
             'PYSPARK_SUBMIT_ARGS': (
                 '--repositories http://my.maven.repo,http://another.maven.repo '
@@ -107,7 +119,7 @@ class TestSparklySession(unittest.TestCase):
 
         _Session()
 
-        self.assertEqual(os_mock.environ, {
+        self.assertEqual(self.spark_context_environ, {
             'PYSPARK_PYTHON': sys.executable,
             'PYSPARK_SUBMIT_ARGS': (
                 '--jars file_a.jar,file_b.jar '
@@ -129,7 +141,7 @@ class TestSparklySession(unittest.TestCase):
 
         _Session()
 
-        self.assertEqual(os_mock.environ, {
+        self.assertEqual(self.spark_context_environ, {
             'PYSPARK_PYTHON': sys.executable,
             'PYSPARK_SUBMIT_ARGS': (
                 '--conf "spark.option.a=value_a" '
@@ -147,7 +159,7 @@ class TestSparklySession(unittest.TestCase):
             'spark.option.c': 'value_c',
         })
 
-        self.assertEqual(os_mock.environ, {
+        self.assertEqual(self.spark_context_environ, {
             'PYSPARK_PYTHON': sys.executable,
             'PYSPARK_SUBMIT_ARGS': (
                 '--conf "spark.option.a=value_a" '
@@ -167,7 +179,7 @@ class TestSparklySession(unittest.TestCase):
 
         _Session()
 
-        self.assertEqual(os_mock.environ, {
+        self.assertEqual(self.spark_context_environ, {
             'PYSPARK_PYTHON': sys.executable,
             'PYSPARK_SUBMIT_ARGS': (
                 '--conf "spark.sql.catalogImplementation=my_fancy_catalog" '
@@ -181,26 +193,30 @@ class TestSparklySession(unittest.TestCase):
 
         SparklySession()
 
-        self.assertEqual(os_mock.environ, {
+        self.assertEqual(self.spark_context_environ, {
             'PYSPARK_PYTHON': sys.executable,
             'PYSPARK_SUBMIT_ARGS': '--conf "spark.sql.catalogImplementation=hive" pyspark-shell',
         })
 
     @mock.patch('sparkly.session.os')
-    def test_session_appends_to_pyspark_submit_args(self, os_mock):
+    def test_session_temporarily_appends_to_pyspark_submit_args(self, os_mock):
         os_mock.environ = {
             'PYSPARK_SUBMIT_ARGS': '--conf "my.conf.here=5g" --and-other-properties',
         }
 
         SparklySession()
 
-        self.assertEqual(os_mock.environ, {
+        self.assertEqual(self.spark_context_environ, {
             'PYSPARK_PYTHON': sys.executable,
             'PYSPARK_SUBMIT_ARGS': (
                 '--conf "my.conf.here=5g" --and-other-properties '
                 '--conf "spark.sql.catalogImplementation=hive" '
                 'pyspark-shell'
             ),
+        })
+
+        self.assertEqual(os_mock.environ, {
+            'PYSPARK_SUBMIT_ARGS': '--conf "my.conf.here=5g" --and-other-properties',
         })
 
         # test more complicated session
@@ -213,7 +229,7 @@ class TestSparklySession(unittest.TestCase):
 
         _Session()
 
-        self.assertEqual(os_mock.environ, {
+        self.assertEqual(self.spark_context_environ, {
             'PYSPARK_PYTHON': sys.executable,
             'PYSPARK_SUBMIT_ARGS': (
                 '--conf "my.conf.here=5g" --and-other-properties '
@@ -223,6 +239,10 @@ class TestSparklySession(unittest.TestCase):
                 '--conf "spark.sql.catalogImplementation=hive" '
                 'pyspark-shell'
             ),
+        })
+
+        self.assertEqual(os_mock.environ, {
+            'PYSPARK_SUBMIT_ARGS': '--conf "my.conf.here=5g" --and-other-properties',
         })
 
     def test_broken_udf(self):

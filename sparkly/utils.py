@@ -14,6 +14,8 @@
 # limitations under the License.
 #
 
+from contextlib import contextmanager
+from copy import deepcopy
 import functools
 import inspect
 from itertools import islice
@@ -291,3 +293,24 @@ def schema_has(t, required_fields):
             )
 
     return True
+
+
+@contextmanager
+def temporary_dict_copy(d):
+    """Context manager that allows temp modifications of a dict.
+
+    On entering the context, the dictionary is deep-copied. On exiting, the
+    values corresponding to keys that existed in the original state are
+    restored, and keys that were not present in the original state are removed.
+
+    Args:
+        d (dict)
+    """
+    original = deepcopy(d)
+    yield
+    # Restore keys that were set in the original
+    for key, value in original.items():
+        d[key] = value
+    # and remove keys that did not exist in the original
+    for key in set(d.keys()) - set(original.keys()):
+        del d[key]

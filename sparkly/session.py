@@ -25,6 +25,7 @@ from sparkly.catalog import SparklyCatalog
 from sparkly.instant_testing import InstantTesting
 from sparkly.reader import SparklyReader
 from sparkly.writer import attach_writer_to_dataframe
+from sparkly.utils import temporary_dict_copy
 
 
 class SparklySession(SparkSession):
@@ -79,8 +80,6 @@ class SparklySession(SparkSession):
     _instantiated_session = None
 
     def __init__(self, additional_options=None):
-        os.environ['PYSPARK_PYTHON'] = sys.executable
-
         submit_args = [
             # options that were already defined through PYSPARK_SUBMIT_ARGS
             # take precedence over SparklySession's
@@ -91,21 +90,24 @@ class SparklySession(SparkSession):
             self._setup_options(additional_options),
             'pyspark-shell',
         ]
-        os.environ['PYSPARK_SUBMIT_ARGS'] = ' '.join(filter(None, submit_args))
 
-        # If we are in instant testing mode
-        if InstantTesting.is_activated():
-            spark_context = InstantTesting.get_context()
+        with temporary_dict_copy(os.environ):
+            os.environ['PYSPARK_SUBMIT_ARGS'] = ' '.join(filter(None, submit_args))
+            os.environ['PYSPARK_PYTHON'] = sys.executable
 
-            # It's the first run, so we have to create context and demonise the process.
-            if spark_context is None:
+            # If we are in instant testing mode
+            if InstantTesting.is_activated():
+                spark_context = InstantTesting.get_context()
+
+                # It's the first run, so we have to create context and demonise the process.
+                if spark_context is None:
+                    spark_context = SparkContext()
+                    if os.fork() == 0:  # Detached process.
+                        signal.pause()
+                    else:
+                        InstantTesting.set_context(spark_context)
+            else:
                 spark_context = SparkContext()
-                if os.fork() == 0:  # Detached process.
-                    signal.pause()
-                else:
-                    InstantTesting.set_context(spark_context)
-        else:
-            spark_context = SparkContext()
 
         # Init HiveContext
         super(SparklySession, self).__init__(spark_context)
