@@ -18,11 +18,13 @@ import uuid
 import pickle
 import unittest
 
+from sparkly.session import SparklySession
 from sparkly.testing import (
     CassandraFixture,
     ElasticFixture,
     MysqlFixture,
     SparklyGlobalSessionTest,
+    SparklyTest,
     KafkaFixture,
     KafkaWatcher)
 from sparkly.utils import absolute_path
@@ -226,3 +228,102 @@ class TestKafkaWatcher(SparklyGlobalSessionTest):
             producer.send(topic, key=row.key, value=row.value)
         producer.flush()
         return len(rows)
+
+
+class TestSwitchingBetweenTestSessions(unittest.TestCase):
+    # Test whether a user can switch between different sessions
+    # during tests
+
+    def test_switch_session_between_sparkly_tests(self):
+        # Define a test session with an ES6 dependency
+        class SessionA(SparklySession):
+            packages = [
+                'org.elasticsearch:elasticsearch-spark-20_2.11:6.5.4',
+            ]
+
+            repositories = [
+                'http://packages.confluent.io/maven/',
+            ]
+
+        class TestSessionA(SparklyTest):
+            session = SessionA
+
+        # Define a test session with an ES7 dependency
+        class SessionB(SparklySession):
+            packages = [
+                'org.elasticsearch:elasticsearch-spark-20_2.11:7.3.1',
+            ]
+
+            repositories = [
+                'http://packages.confluent.io/maven/',
+            ]
+
+        class TestSessionB(SparklyTest):
+            session = SessionB
+
+        # Make sure that when the ES6 session is set up, the underlying
+        # spark session contains the appropriate jars
+        TestSessionA.setUpClass()
+        expected_jars = [
+            'file:///root/.ivy2/jars/org.elasticsearch_elasticsearch-spark-20_2.11-6.5.4.jar',
+        ]
+        installed_jars = list(TestSessionA.spark._jsc.jars())
+        self.assertEqual(installed_jars, expected_jars)
+        TestSessionA.tearDownClass()
+
+        # And now make sure that when the ES7 session is set up, the underlying
+        # spark session contains the appropriate jars as well
+        TestSessionB.setUpClass()
+        expected_jars = [
+            'file:///root/.ivy2/jars/org.elasticsearch_elasticsearch-spark-20_2.11-7.3.1.jar',
+        ]
+        installed_jars = list(TestSessionB.spark._jsc.jars())
+        self.assertEqual(installed_jars, expected_jars)
+        TestSessionB.tearDownClass()
+
+    def test_switch_global_session_between_sparkly_tests(self):
+        # Define a test session with an ES6 dependency
+        class SessionA(SparklySession):
+            packages = [
+                'org.elasticsearch:elasticsearch-spark-20_2.11:6.5.4',
+            ]
+
+            repositories = [
+                'http://packages.confluent.io/maven/',
+            ]
+
+        class TestSessionA(SparklyGlobalSessionTest):
+            session = SessionA
+
+        # Define a test session with an ES7 dependency
+        class SessionB(SparklySession):
+            packages = [
+                'org.elasticsearch:elasticsearch-spark-20_2.11:7.3.1',
+            ]
+
+            repositories = [
+                'http://packages.confluent.io/maven/',
+            ]
+
+        class TestSessionB(SparklyGlobalSessionTest):
+            session = SessionB
+
+        # Make sure that when the ES6 session is set up, the underlying
+        # spark session contains the appropriate jars
+        TestSessionA.setUpClass()
+        expected_jars = [
+            'file:///root/.ivy2/jars/org.elasticsearch_elasticsearch-spark-20_2.11-6.5.4.jar',
+        ]
+        installed_jars = list(TestSessionA.spark._jsc.jars())
+        self.assertEqual(installed_jars, expected_jars)
+        TestSessionA.tearDownClass()
+
+        # And now make sure that when the ES7 session is set up, the underlying
+        # spark session contains the appropriate jars as well
+        TestSessionB.setUpClass()
+        expected_jars = [
+            'file:///root/.ivy2/jars/org.elasticsearch_elasticsearch-spark-20_2.11-7.3.1.jar',
+        ]
+        installed_jars = list(TestSessionB.spark._jsc.jars())
+        self.assertEqual(installed_jars, expected_jars)
+        TestSessionB.tearDownClass()

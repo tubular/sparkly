@@ -27,12 +27,14 @@ import operator
 import os
 import pprint
 import shutil
+import signal
 import sys
 import tempfile
 from unittest import TestCase
 from unittest.util import safe_repr
 import warnings
 
+from pyspark.context import SparkContext
 from pyspark.sql import types as T
 import six
 
@@ -72,6 +74,32 @@ logger = logging.getLogger()
 
 
 _test_session_cache = None
+
+
+def _ensure_gateway_is_down():
+    # Apparently, the gateway and underlying JVM stay alive between different
+    # invocations of SparkContext, even when the context is explicitly stopped.
+    # This makes it impossible to have multiple SparklySessions for testing,
+    # with different JAR requirements etc; once the first one initializes the
+    # gateway / JVM, the other ones just re-use the existing gateway. So we have
+    # to kill it explicitly here.
+    if not SparkContext._gateway:
+        return
+
+    jvm_pid = int(
+        # Get the still active JVM
+        SparkContext._gateway.jvm
+        # Extract its process name (pid@hostname)
+        .java.lang.management.ManagementFactory.getRuntimeMXBean().getName()
+        # And keep the pid (yeah, unfortunately there's no easier way to
+        # get it in Java 8...)
+        .split('@')[0]
+    )
+    SparkContext._gateway.shutdown()
+    SparkContext._gateway = None
+    os.kill(jvm_pid, signal.SIGKILL)
+    os.environ.pop('PYSPARK_GATEWAY_PORT', None)
+    os.environ.pop('PYSPARK_GATEWAY_SECRET', None)
 
 
 class SparklyTest(TestCase):
@@ -122,6 +150,7 @@ class SparklyTest(TestCase):
             logger.info('Found a global session, stopping it %r', _test_session_cache)
             _test_session_cache.stop()
             _test_session_cache = None
+            _ensure_gateway_is_down()
 
         cls.spark = cls.setup_session()
 
@@ -151,6 +180,7 @@ class SparklyTest(TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.spark.stop()
+        _ensure_gateway_is_down()
         super(SparklyTest, cls).tearDownClass()
 
         for fixture in cls.class_fixtures:
@@ -505,6 +535,7 @@ class SparklyGlobalSessionTest(SparklyTest):
             if _test_session_cache:
                 logger.info('Stopping the previous global session %r', _test_session_cache)
                 _test_session_cache.stop()
+                _ensure_gateway_is_down()
 
             logger.info('Starting the new global session for %r', cls.session)
             spark = _test_session_cache = cls.setup_session()

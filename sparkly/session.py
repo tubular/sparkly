@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 
+from copy import deepcopy
 import os
 import signal
 import sys
@@ -77,8 +78,10 @@ class SparklySession(SparkSession):
     repositories = []
 
     _instantiated_session = None
+    _original_environment = None
 
     def __init__(self, additional_options=None):
+        SparklySession._original_environment = deepcopy(os.environ)
         os.environ['PYSPARK_PYTHON'] = sys.executable
 
         submit_args = [
@@ -138,6 +141,8 @@ class SparklySession(SparkSession):
         if SparklySession._instantiated_session is not None:
             SparkSession.stop(SparklySession._instantiated_session)
             SparklySession._instantiated_session = None
+            os.environ = SparklySession._original_environment
+            SparklySession._original_environment = None
 
     @property
     def builder(self):
