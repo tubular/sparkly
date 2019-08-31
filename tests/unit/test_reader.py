@@ -77,7 +77,7 @@ class TestSparklyReaderByUrl(unittest.TestCase):
             header='false',
         )
 
-    def test_elastic(self):
+    def test_elastic_on_or_before_6(self):
         self.read_ext.elastic = mock.Mock(return_value=self.fake_df)
 
         df = self.read_ext.by_url('elastic://es_host/test_index/test_type?'
@@ -89,6 +89,25 @@ class TestSparklyReaderByUrl(unittest.TestCase):
             host='es_host',
             es_index='test_index',
             es_type='test_type',
+            query='?q=name:*Johnny*',
+            fields=['name', 'surname'],
+            port=None,
+            parallelism=4,
+            options={'es.input.json': 'true'},
+        )
+
+    def test_elastic_on_and_after_7(self):
+        self.read_ext.elastic = mock.Mock(return_value=self.fake_df)
+
+        df = self.read_ext.by_url('elastic://es_host/test_index?'
+                                  'q=name:*Johnny*&fields=name,surname&'
+                                  'es.input.json=true&parallelism=4')
+
+        self.assertEqual(df, self.fake_df)
+        self.read_ext.elastic.assert_called_with(
+            host='es_host',
+            es_index='test_index',
+            es_type=None,
             query='?q=name:*Johnny*',
             fields=['name', 'surname'],
             port=None,

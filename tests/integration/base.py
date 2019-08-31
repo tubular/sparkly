@@ -25,7 +25,7 @@ from sparkly.utils import absolute_path
 class SparklyTestSession(SparklySession):
     packages = [
         'datastax:spark-cassandra-connector:2.4.0-s_2.11',
-        'org.elasticsearch:elasticsearch-spark-20_2.11:6.5.4',
+        'org.elasticsearch:elasticsearch-spark-20_2.11:7.3.0',
         'org.apache.spark:spark-streaming-kafka-0-8_2.11:2.4.0',
         'mysql:mysql-connector-java:6.0.6',
         'io.confluent:kafka-avro-serializer:3.0.1',
@@ -43,3 +43,13 @@ class SparklyTestSession(SparklySession):
         'collect_max': 'brickhouse.udf.collect.CollectMaxUDAF',
         'length_of_text': (lambda text: len(text), StringType())
     }
+
+
+class SparklyTestSessionWithES6(SparklySession):
+    packages = [
+        'org.elasticsearch:elasticsearch-spark-20_2.11:6.5.4',
+    ]
+
+    repositories = [
+        'http://packages.confluent.io/maven/',
+    ]

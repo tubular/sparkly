@@ -656,7 +656,7 @@ class ElasticFixture(Fixture):
            ...
     """
 
-    def __init__(self, host, es_index, es_type, mapping=None, data=None, port=None):
+    def __init__(self, host, es_index, es_type=None, mapping=None, data=None, port=None):
         self.host = host
         self.port = port or 9200
         self.es_index = es_index
@@ -680,7 +680,7 @@ class ElasticFixture(Fixture):
             )
             self._request(
                 'PUT',
-                '/{}/_mapping/{}'.format(self.es_index, self.es_type),
+                '/{}/_mapping/{}'.format(self.es_index, self.es_type or ''),
                 self.read_file(self.mapping),
             )
 
