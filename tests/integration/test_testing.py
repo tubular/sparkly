@@ -28,7 +28,11 @@ from sparkly.testing import (
     KafkaFixture,
     KafkaWatcher)
 from sparkly.utils import absolute_path
-from tests.integration.base import SparklyTestSession
+from tests.integration.base import (
+    SparklyTestSession,
+    SparklyTestSessionWithES6,
+)
+
 
 try:
     from kafka import KafkaConsumer, KafkaProducer
@@ -119,13 +123,13 @@ class TestMysqlFixtures(SparklyGlobalSessionTest):
         ])
 
 
-class TestElasticFixture(SparklyGlobalSessionTest):
+class TestElastic6Fixture(SparklyTest):
 
-    session = SparklyTestSession
+    session = SparklyTestSessionWithES6
 
     class_fixtures = [
         ElasticFixture(
-            'elastic.docker',
+            'elastic6.docker',
             'sparkly_test_fixture',
             'test',
             absolute_path(__file__, 'resources', 'test_fixtures', 'mapping.json'),
@@ -134,11 +138,33 @@ class TestElasticFixture(SparklyGlobalSessionTest):
     ]
 
     def test_elastic_fixture(self):
-        df = self.spark.read_ext.by_url('elastic://elastic.docker/sparkly_test_fixture/test?'
-                                     'es.read.metadata=false')
+        df = self.spark.read_ext.by_url(
+            'elastic://elastic6.docker/sparkly_test_fixture/test?es.read.metadata=false'
+        )
         self.assertDataFrameEqual(df, [
             {'name': 'John', 'age': 56},
         ])
+
+
+class TestElastic7Fixture(SparklyGlobalSessionTest):
+
+    session = SparklyTestSession
+
+    class_fixtures = [
+        ElasticFixture(
+            'elastic7.docker',
+            'sparkly_test_fixture',
+            None,
+            absolute_path(__file__, 'resources', 'test_fixtures', 'mapping.json'),
+            absolute_path(__file__, 'resources', 'test_fixtures', 'data_for_es7.json'),
+        )
+    ]
+
+    def test_elastic_fixture(self):
+        df = self.spark.read_ext.by_url(
+            'elastic://elastic7.docker/sparkly_test_fixture?es.read.metadata=false'
+        )
+        self.assertDataFrameEqual(df, [{'name': 'John', 'age': 56}])
 
 
 class TestKafkaFixture(SparklyGlobalSessionTest):

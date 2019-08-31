@@ -81,6 +81,7 @@ class SparklyWriter(object):
 
             elastic://localhost:9200/my_index/my_type?&parallelism=3&mode=overwrite
                 &es.write.operation=upsert
+            Note: type is deprecated in Elasticsearch 7.
 
         Is an equivalent for::
 
@@ -154,14 +155,14 @@ class SparklyWriter(object):
 
         return self._basic_write(writer_options, options, parallelism, mode)
 
-    def elastic(self, host, es_index, es_type, port=None, mode=None,
+    def elastic(self, host, es_index, es_type=None, port=None, mode=None,
                 parallelism=None, options=None):
         """Write a dataframe into an ElasticSearch index.
 
         Args:
             host (str): Elastic server host.
             es_index (str): Elastic index.
-            es_type (str): Elastic type.
+            es_type (str|None): Elastic type. Deprecated in Elasticsearch 7 but required in below 7
             port (int|None) Elastic server port.
             mode (str|None): Spark save mode,
                 http://spark.apache.org/docs/latest/sql-programming-guide.html#save-modes
@@ -173,7 +174,7 @@ class SparklyWriter(object):
         assert self._spark.has_package('org.elasticsearch:elasticsearch-spark')
 
         writer_options = {
-            'path': '{}/{}'.format(es_index, es_type),
+            'path': '{}/{}'.format(es_index, es_type) if es_type else es_index,
             'format': 'org.elasticsearch.spark.sql',
             'es.nodes': host,
         }
@@ -512,10 +513,12 @@ class SparklyWriter(object):
         )
 
     def _resolve_elastic(self, parsed_url, parsed_qs):
+        path_segments = parsed_url.path.split('/')
+
         return self.elastic(
             host=parsed_url.netloc,
-            es_index=parsed_url.path.split('/')[1],
-            es_type=parsed_url.path.split('/')[2],
+            es_index=path_segments[1],
+            es_type=path_segments[2] if len(path_segments) > 2 else None,
             port=parsed_url.port,
             mode=parsed_qs.pop('mode', None),
             parallelism=parsed_qs.pop('parallelism', None),

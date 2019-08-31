@@ -19,13 +19,17 @@ import uuid
 from sparkly.exceptions import InvalidArgumentError
 from sparkly.testing import (
     SparklyGlobalSessionTest,
+    SparklyTest,
     CassandraFixture,
     MysqlFixture,
     ElasticFixture,
     KafkaFixture,
 )
 from sparkly.utils import absolute_path, kafka_get_topics_offsets
-from tests.integration.base import SparklyTestSession
+from tests.integration.base import (
+    SparklyTestSession,
+    SparklyTestSessionWithES6,
+)
 
 
 class SparklyReaderCassandraTest(SparklyGlobalSessionTest):
@@ -67,12 +71,34 @@ class SparklyReaderCassandraTest(SparklyGlobalSessionTest):
         ])
 
 
-class SparklyReaderElasticTest(SparklyGlobalSessionTest):
-    session = SparklyTestSession
+ELASTIC_TEST_DATA = [
+    {
+        'name': 'Smith3',
+        'topics': [1, 4, 5],
+        'age': 31,
+        'demo': {
+            'age_30': 110,
+            'age_10': 50,
+        }
+    },
+    {
+        'name': 'Smith4',
+        'topics': [4, 5],
+        'age': 12,
+        'demo': {
+            'age_30': 20,
+            'age_10': 1,
+        }
+    }
+]
+
+
+class SparklyReaderElastic6Test(SparklyTest):
+    session = SparklyTestSessionWithES6
 
     fixtures = [
         ElasticFixture(
-            'elastic.docker',
+            'elastic6.docker',
             'sparkly_test',
             'test',
             None,
@@ -82,7 +108,7 @@ class SparklyReaderElasticTest(SparklyGlobalSessionTest):
 
     def test_elastic(self):
         df = self.spark.read_ext.elastic(
-            host='elastic.docker',
+            host='elastic6.docker',
             port=9200,
             es_index='sparkly_test',
             es_type='test',
@@ -93,26 +119,36 @@ class SparklyReaderElasticTest(SparklyGlobalSessionTest):
             },
         )
 
-        self.assertDataFrameEqual(df, [
-            {
-                'name': 'Smith3',
-                'topics': [1, 4, 5],
-                'age': 31,
-                'demo': {
-                    'age_30': 110,
-                    'age_10': 50,
-                }
+        self.assertDataFrameEqual(df, ELASTIC_TEST_DATA)
+
+
+class SparklyReaderElastic7Test(SparklyGlobalSessionTest):
+    session = SparklyTestSession
+
+    fixtures = [
+        ElasticFixture(
+            'elastic7.docker',
+            'sparkly_test',
+            None,
+            None,
+            absolute_path(__file__, 'resources', 'test_read', 'elastic7_setup.json'),
+        )
+    ]
+
+    def test_elastic(self):
+        df = self.spark.read_ext.elastic(
+            host='elastic7.docker',
+            port=9200,
+            es_index='sparkly_test',
+            es_type=None,
+            query='?q=name:*Smith*',
+            options={
+                'es.read.field.as.array.include': 'topics',
+                'es.read.metadata': 'false',
             },
-            {
-                'name': 'Smith4',
-                'topics': [4, 5],
-                'age': 12,
-                'demo': {
-                    'age_30': 20,
-                    'age_10': 1,
-                }
-            }
-        ])
+        )
+
+        self.assertDataFrameEqual(df, ELASTIC_TEST_DATA)
 
 
 class SparklyReaderMySQLTest(SparklyGlobalSessionTest):
