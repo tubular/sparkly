@@ -15,6 +15,8 @@
 #
 import uuid
 
+from pyspark.sql import functions as F
+
 
 class SparklyCatalog(object):
     """A set of tools to interact with HiveMetastore."""
@@ -203,6 +205,71 @@ class SparklyCatalog(object):
             table_name, property_name, value
         ))
 
+    def get_database_property(self, db_name, property_name, to_type=None):
+        """Read value for database property.
+
+        Args:
+            db_name (str): A database name.
+            property_name (str): A property name to read value for.
+            to_type (function): Cast value to the given type. E.g. `int` or `float`.
+
+        Returns:
+            Any
+        """
+        if not to_type:
+            to_type = str
+
+        value = self.get_database_properties(db_name).get(property_name)
+        if value is not None:
+            return to_type(value)
+
+    def get_database_properties(self, db_name):
+        """Get database properties from the metastore.
+
+        Args:
+            db_name (str): A database name.
+
+        Returns:
+            dict[str,str]: Key/value for properties.
+        """
+        properties = (
+            self._spark.sql('DESCRIBE DATABASE EXTENDED {}'.format(db_name))
+            .where(F.col('database_description_item') == 'Properties')
+            .select('database_description_value')
+            .first()
+        )
+
+        parsed_properties = {}
+
+        if properties:
+            for name, value in read_db_properties_format(properties.database_description_value):
+                parsed_properties[name] = value
+
+        return parsed_properties
+
+    def set_database_property(self, db_name, property_name, value):
+        """Set value for database property.
+
+        Args:
+            db_name (str): A database name.
+            property_name (str): A property name to set value for.
+            value (Any): Will be automatically casted to string.
+        """
+        property_name_blacklist = {',', '(', ')'}
+        property_value_blacklist = {'(', ')'}
+
+        if set(property_name) & property_name_blacklist:
+            raise ValueError(
+                'Property name must not contain symbols: {}'.format(property_name_blacklist))
+
+        if set(str(value)) & property_value_blacklist:
+            raise ValueError(
+                'Property value must not contain symbols: {}'.format(property_value_blacklist))
+
+        self._spark.sql("ALTER DATABASE {} SET DBPROPERTIES ('{}'='{}')".format(
+            db_name, property_name, value,
+        ))
+
 
 def get_db_name(table_name):
     """Get database name from full table name."""
@@ -217,3 +284,52 @@ def get_table_name(table_name):
     """Get table name from full table name."""
     parts = table_name.split('.', 1)
     return parts[-1]
+
+
+def read_db_properties_format(raw_db_properties):
+    """Helper to read non-standard db properties format.
+
+    Note:
+        Spark/Hive doesn't provide a way to read separate key/values for database properties.
+        They provide a custom format like: ((key_a,value_a), (key_b,value_b))
+        Neither keys nor values are escaped.
+        Here we try our best to parse this format by tracking balanced parentheses.
+        We assume property names don't contain comma.
+
+    Return:
+        list[list[str]] - the list of key-value pairs.
+    """
+    def _unpack_parentheses(string):
+        bits = []
+        last_bit = ''
+        checksum = 0
+
+        for c in string:
+            if c == '(':
+                if checksum == 0:
+                    last_bit = ''
+                else:
+                    last_bit += c
+                checksum += 1
+            elif c == ')':
+                checksum -= 1
+                if checksum == 0:
+                    bits.append(last_bit)
+                else:
+                    last_bit += c
+            else:
+                last_bit += c
+
+            if checksum < 0:
+                raise ValueError('Parentheses are not balanced')
+
+        if checksum != 0:
+            raise ValueError('Parentheses are not balanced')
+
+        return bits
+
+    properties = _unpack_parentheses(raw_db_properties)
+    if properties:
+        return [x.split(',', 1) for x in _unpack_parentheses(properties[0])]
+    else:
+        return []
