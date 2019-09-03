@@ -1,3 +1,9 @@
+## 2.8.0
+* Extend `SparklyCatalog` to work with database properties:
+- `spark.catalog_ext.set_database_property`
+- `spark.catalog_ext.get_database_property`
+- `spark.catalog_ext.get_database_properties`
+
 ## 2.7.1
 * Allow newer versions of `six` package (avoid depednecy hell)
 

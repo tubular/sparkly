@@ -16,6 +16,7 @@
 
 from sparkly.testing import SparklyGlobalSessionTest
 from tests.integration.base import SparklyTestSession
+from sparkly.catalog import read_db_properties_format
 
 
 class TestSparklyCatalog(SparklyGlobalSessionTest):
@@ -144,3 +145,53 @@ class TestSparklyCatalog(SparklyGlobalSessionTest):
         self.assertIsNone(
             self.spark.catalog_ext.get_table_property('test_db.test_table', 'unknown')
         )
+
+    def test_set_database_property_with_prohibited_symbols(self):
+        with self.assertRaises(ValueError):
+            self.spark.catalog_ext.set_database_property('test_db', 'broken,key', 'normal_value')
+
+        with self.assertRaises(ValueError):
+            self.spark.catalog_ext.set_database_property('test_db', 'normal_key', 'broken(value)')
+
+    def test_get_database_property(self):
+        self.spark.catalog_ext.set_database_property('test_db', 'property_a', 'just,a,string')
+        self.spark.catalog_ext.set_database_property('test_db', 'property_b', '123')
+
+        self.assertEqual(
+            self.spark.catalog_ext.get_database_property('test_db', 'property_a'),
+            'just,a,string',
+        )
+        self.assertEqual(
+            self.spark.catalog_ext.get_database_property('test_db', 'property_b', to_type=int),
+            123,
+        )
+        self.assertIsNone(
+            self.spark.catalog_ext.get_database_property('test_db', 'unknown_prop', to_type=int),
+        )
+
+    def test_get_database_properties(self):
+        self.spark.catalog_ext.set_database_property('test_db', 'property_a', 'just,a,string')
+        self.spark.catalog_ext.set_database_property('test_db', 'property_b', '123')
+
+        self.assertEqual(self.spark.catalog_ext.get_database_properties('test_db'), {
+            'property_a': 'just,a,string',
+            'property_b': '123',
+        })
+
+    def test_read_db_properties_format_for_typical_input(self):
+        self.assertEqual(read_db_properties_format('((a,b), (c,d))'), [['a', 'b'], ['c', 'd']])
+        self.assertEqual(read_db_properties_format('((a,b))'), [['a', 'b']])
+        self.assertEqual(read_db_properties_format('()'), [])
+
+    def test_read_db_properties_format_for_broken_input(self):
+        with self.assertRaises(ValueError):
+            read_db_properties_format('((a, b), (c, d)')
+
+        with self.assertRaises(ValueError):
+            read_db_properties_format(')(a, b), (c, d)(')
+
+        with self.assertRaises(ValueError):
+            read_db_properties_format(')(')
+
+        with self.assertRaises(ValueError):
+            read_db_properties_format(')')
