@@ -149,7 +149,7 @@ class SparklyReader(object):
         Args:
             host (str): Elastic server host.
             es_index (str): Elastic index.
-            es_type (str): Elastic type.
+            es_type (str|None): Elastic type. Deprecated in Elasticsearch 7 but required in below 7
             query (str): Pre-filter es documents, e.g. '?q=views:>10'.
             fields (list[str]|None): Select only specified fields.
             port (int|None) Elastic server port.
@@ -164,7 +164,7 @@ class SparklyReader(object):
         assert self._spark.has_package('org.elasticsearch:elasticsearch-spark')
 
         reader_options = {
-            'path': '{}/{}'.format(es_index, es_type),
+            'path': '{}/{}'.format(es_index, es_type) if es_type else es_index,
             'format': 'org.elasticsearch.spark.sql',
             'es.nodes': host,
             'es.query': query,
@@ -330,10 +330,12 @@ class SparklyReader(object):
         if 'fields' in parsed_qs:
             kwargs['fields'] = parsed_qs.pop('fields').split(',')
 
+        path_segments = parsed_url.path.split('/')
+
         return self.elastic(
             host=parsed_url.netloc,
-            es_index=parsed_url.path.split('/')[1],
-            es_type=parsed_url.path.split('/')[2],
+            es_index=path_segments[1],
+            es_type=path_segments[2] if len(path_segments) > 2 else None,
             port=parsed_url.port,
             parallelism=parsed_qs.pop('parallelism', None),
             options=parsed_qs,

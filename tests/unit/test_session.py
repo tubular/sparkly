@@ -263,3 +263,17 @@ class TestSparklySession(unittest.TestCase):
         original_session = _Session()
         retrieved_session = SparklySession.get_or_create()
         self.assertEqual(id(retrieved_session), id(original_session))
+
+    @mock.patch('sparkly.session.os')
+    @mock.patch('sparkly.session.SparkSession')
+    def test_stop_restores_the_environment(self, spark_session_mock, os_mock):
+        os_mock.environ = {
+            'PYSPARK_SUBMIT_ARGS': '--conf "my.conf.here=5g" --and-other-properties',
+        }
+
+        SparklySession()
+        SparklySession.stop()
+
+        self.assertEqual(os_mock.environ, {
+            'PYSPARK_SUBMIT_ARGS': '--conf "my.conf.here=5g" --and-other-properties',
+        })

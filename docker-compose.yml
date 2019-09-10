@@ -21,7 +21,9 @@ services:
     depends_on:
       cassandra.docker:
         condition: service_healthy
-      elastic.docker:
+      elastic6.docker:
+        condition: service_healthy
+      elastic7.docker:
         condition: service_healthy
       kafka.docker:
         condition: service_healthy
@@ -37,7 +39,9 @@ services:
     depends_on:
       cassandra.docker:
         condition: service_healthy
-      elastic.docker:
+      elastic6.docker:
+        condition: service_healthy
+      elastic7.docker:
         condition: service_healthy
       kafka.docker:
         condition: service_healthy
@@ -56,10 +60,29 @@ services:
     healthcheck:
       test: ps ax | grep cassandra
 
-  elastic.docker:
+  elastic6.docker:
     image: docker.elastic.co/elasticsearch/elasticsearch:6.5.4
+    environment:
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - discovery.type=single-node
     healthcheck:
-      test: ps ax | grep elastic
+      test: "curl -f http://localhost:9200/_cat/health | grep green"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  elastic7.docker:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.3.0
+    environment:
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - discovery.type=single-node
+    healthcheck:
+      test: "curl -f http://localhost:9200/_cat/health | grep green"
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   mysql.docker:
     image: mysql:5.7

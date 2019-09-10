@@ -95,7 +95,7 @@ class TestWriteByUrl(unittest.TestCase):
             options={},
         )
 
-    def test_elastic(self):
+    def test_elastic_on_or_before_6(self):
         self.write_ext.elastic = mock.Mock()
 
         self.write_ext.by_url('elastic://host/index/type?parallelism=15')
@@ -109,7 +109,22 @@ class TestWriteByUrl(unittest.TestCase):
             parallelism=15,
             options={},
         )
+    
+    def test_elastic_on_and_after_7(self):
+        self.write_ext.elastic = mock.Mock()
 
+        self.write_ext.by_url('elastic://host/index?parallelism=15')
+
+        self.write_ext.elastic.assert_called_once_with(
+            host='host',
+            es_index='index',
+            es_type=None,
+            port=None,
+            mode=None,
+            parallelism=15,
+            options={},
+        )
+    
     def test_mysql(self):
         self.write_ext.mysql = mock.Mock()
 

@@ -1,3 +1,8 @@
+## 2.8.1
+* Fix support for using multiple sparkly sessions during tests
+* SparklySession does not persist modifications to os.environ
+* Support ElasticSearch 7 by making type optional.
+
 ## 2.8.0
 * Extend `SparklyCatalog` to work with database properties:
 - `spark.catalog_ext.set_database_property`
