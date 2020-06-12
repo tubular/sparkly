@@ -1,5 +1,5 @@
 ## 2.8.2
-* Support the latest `pymysql` in `sparkly.testing.MysqlFixture`
+* Support 0.9.x `pymysql` in `sparkly.testing.MysqlFixture`
 
 ## 2.8.1
 * Fix support for using multiple sparkly sessions during tests
