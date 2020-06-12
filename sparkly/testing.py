@@ -16,17 +16,14 @@
 
 import collections
 import contextlib
-import copy
 import difflib
 from functools import partial, total_ordering
 import importlib
 import json
 import logging
 import math
-import operator
 import os
 import pprint
-import shutil
 import signal
 import sys
 import tempfile
@@ -36,7 +33,6 @@ import warnings
 
 from pyspark.context import SparkContext
 from pyspark.sql import types as T
-import six
 
 from sparkly import SparklySession
 from sparkly.exceptions import FixtureError
@@ -55,13 +51,10 @@ except ImportError:
 
 try:
     import pymysql as connector
+    from pymysql.constants import CLIENT
     MYSQL_FIXTURES_SUPPORT = True
 except ImportError:
-    try:
-        import mysql.connector as connector
-        MYSQL_FIXTURES_SUPPORT = True
-    except ImportError:
-        MYSQL_FIXTURES_SUPPORT = False
+    MYSQL_FIXTURES_SUPPORT = False
 
 try:
     from kafka import KafkaProducer, SimpleClient
@@ -749,6 +742,8 @@ class MysqlFixture(Fixture):
             password=self.password,
             host=self.host,
             port=self.port,
+            program_name='sparkly',
+            client_flag=CLIENT.MULTI_STATEMENTS,
         )
         cursor = ctx.cursor()
         cursor.execute(statements)
