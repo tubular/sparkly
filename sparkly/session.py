@@ -14,12 +14,14 @@
 # limitations under the License.
 #
 
+import atexit
 from copy import deepcopy
 import os
 import signal
 import sys
 
 from pyspark import SparkContext
+from pyspark.conf import SparkConf
 from pyspark.sql import SparkSession
 
 from sparkly.catalog import SparklyCatalog
@@ -84,6 +86,13 @@ class SparklySession(SparkSession):
         SparklySession._original_environment = deepcopy(os.environ)
         os.environ['PYSPARK_PYTHON'] = sys.executable
 
+        options = {
+            'spark.sql.catalogImplementation': 'hive',
+        }
+        options.update(self.options or {})
+        options.update(additional_options or {})
+        options = {str(key): str(value) for key, value in options.items()}
+
         submit_args = [
             # options that were already defined through PYSPARK_SUBMIT_ARGS
             # take precedence over SparklySession's
@@ -91,27 +100,36 @@ class SparklySession(SparkSession):
             self._setup_repositories(),
             self._setup_packages(),
             self._setup_jars(),
-            self._setup_options(additional_options),
+            self._setup_options(options),
             'pyspark-shell',
         ]
         os.environ['PYSPARK_SUBMIT_ARGS'] = ' '.join(filter(None, submit_args))
 
+        def get_context():
+            conf = SparkConf()
+            conf.setAll(options.items())
+            return SparkContext(conf=conf)
+
         # If we are in instant testing mode
         if InstantTesting.is_activated():
-            spark_context = InstantTesting.get_context()
+            context = InstantTesting.get_context()
 
             # It's the first run, so we have to create context and demonise the process.
-            if spark_context is None:
-                spark_context = SparkContext()
+            if context is None:
+                context = get_context()
                 if os.fork() == 0:  # Detached process.
                     signal.pause()
                 else:
-                    InstantTesting.set_context(spark_context)
+                    InstantTesting.set_context(context)
         else:
-            spark_context = SparkContext()
+            context = get_context()
 
-        # Init HiveContext
-        super(SparklySession, self).__init__(spark_context)
+        super(SparklySession, self).__init__(context)
+
+        # similar to session builder:
+        for key, value in options.items():
+            self._jsparkSession.sessionState().conf().setConfString(key, value)
+
         self._setup_udfs()
 
         self.read_ext = SparklyReader(self)
@@ -192,17 +210,7 @@ class SparklySession(SparkSession):
         else:
             return ''
 
-    def _setup_options(self, additional_options):
-        options = {}
-
-        options.update(self.options)
-
-        if additional_options:
-            options.update(additional_options)
-
-        if 'spark.sql.catalogImplementation' not in options:
-            options['spark.sql.catalogImplementation'] = 'hive'
-
+    def _setup_options(self, options):
         # Here we massage conf properties with the intent to pass them to
         # spark-submit; this is convenient as it is unified with the approach
         # we take for repos, packages and jars, and it also handles precedence
@@ -218,3 +226,11 @@ class SparklySession(SparkSession):
                 self.catalog.registerFunction(name, *defn)
             else:
                 raise NotImplementedError('Incorrect UDF definition: {}: {}'.format(name, defn))
+
+
+# https://issues.apache.org/jira/browse/SPARK-27927
+# Spark on Kubernetes has an issue where the python process finishes,
+# but the controlling java process just hangs, so nothing terminates.
+# There is a simple workaround to stop the session prior to python termination.
+# We do that here with an atexit registration.
+atexit.register(SparklySession.stop)

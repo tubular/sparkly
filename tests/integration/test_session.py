@@ -21,6 +21,12 @@ from tests.integration.base import SparklyTestSession
 class TestSparklySession(SparklyGlobalSessionTest):
     session = SparklyTestSession
 
+    def test_options(self):
+        self.assertEqual('hive', self.spark.conf.get('spark.sql.catalogImplementation'))
+        self.assertEqual('117', self.spark.conf.get('my.custom.option.1'))
+        self.assertEqual('223', self.spark.conf.get('my.custom.option.2'))
+        self.assertEqual('333', self.spark.conf.get('my.custom.option.3'))
+
     def test_python_udf(self):
         rows = self.spark.sql('select length_of_text("hello world")')
         self.assertEqual(rows.collect()[0][0], '11')
