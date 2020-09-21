@@ -43,20 +43,6 @@ class TestSparklySession(unittest.TestCase):
         [p.stop() for p in self.patches]
         super(TestSparklySession, self).tearDown()
 
-    def test_has_package(self):
-        hc = SparklySession()
-        self.assertFalse(hc.has_package('datastax:spark-cassandra-connector'))
-
-        hc.packages = ['datastax:spark-cassandra-connector:1.6.1-s_2.10']
-        self.assertTrue(hc.has_package('datastax:spark-cassandra-connector'))
-
-    def test_has_jar(self):
-        hc = SparklySession()
-        self.assertFalse(hc.has_jar('mysql-connector-java'))
-
-        hc.jars = ['mysql-connector-java-5.1.39-bin.jar']
-        self.assertTrue(hc.has_jar('mysql-connector-java'))
-
     @mock.patch('sparkly.session.os')
     def test_session_with_packages(self, os_mock):
         os_mock.environ = {}

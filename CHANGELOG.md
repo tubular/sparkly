@@ -3,6 +3,7 @@
 * Some minor changes to help in a spark-on-kubernetes environment:
     * In addition to setting `PYSPARK_SUBMIT_ARGS`, also explicitly set config params so they are picked up by an already-running JVM
     * Register a handler to stop spark session on python termination to deal with [SPARK-27927](https://issues.apache.org/jira/browse/SPARK-27927)
+* Removed `has_package` and `has_jar` functions, which are incomplete checks (resulting in false negatives) and are merely syntactic sugar.
 
 ## 2.8.2
 * Support 0.9.x `pymysql` in `sparkly.testing.MysqlFixture`

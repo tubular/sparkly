@@ -170,28 +170,6 @@ class SparklySession(SparkSession):
             'Please, follow the documentation for more details.'
         )
 
-    def has_package(self, package_prefix):
-        """Check if the package is available in the session.
-
-        Args:
-            package_prefix (str): E.g. "org.elasticsearch:elasticsearch-spark".
-
-        Returns:
-            bool
-        """
-        return any(package for package in self.packages if package.startswith(package_prefix))
-
-    def has_jar(self, jar_name):
-        """Check if the jar is available in the session.
-
-        Args:
-            jar_name (str): E.g. "mysql-connector-java".
-
-        Returns:
-            bool
-        """
-        return any(jar for jar in self.jars if jar_name in jar)
-
     def _setup_repositories(self):
         if self.repositories:
             return '--repositories {}'.format(','.join(self.repositories))

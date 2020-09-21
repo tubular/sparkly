@@ -125,8 +125,6 @@ class SparklyReader(object):
         Returns:
             pyspark.sql.DataFrame
         """
-        assert self._spark.has_package('datastax:spark-cassandra-connector')
-
         reader_options = {
             'format': 'org.apache.spark.sql.cassandra',
             'spark.cassandra.connection.host': host,
@@ -161,8 +159,6 @@ class SparklyReader(object):
         Returns:
             pyspark.sql.DataFrame
         """
-        assert self._spark.has_package('org.elasticsearch:elasticsearch-spark')
-
         reader_options = {
             'path': '{}/{}'.format(es_index, es_type) if es_type else es_index,
             'format': 'org.elasticsearch.spark.sql',
@@ -197,9 +193,6 @@ class SparklyReader(object):
         Returns:
             pyspark.sql.DataFrame
         """
-        assert (self._spark.has_jar('mysql-connector-java') or
-                self._spark.has_package('mysql:mysql-connector-java'))
-
         reader_options = {
             'format': 'jdbc',
             'driver': 'com.mysql.jdbc.Driver',
@@ -254,8 +247,6 @@ class SparklyReader(object):
         Raises:
             InvalidArgumentError
         """
-        assert self._spark.has_package('org.apache.spark:spark-streaming-kafka')
-
         if not key_deserializer or not value_deserializer or not schema:
             raise InvalidArgumentError('You should specify all of parameters:'
                                        '`key_deserializer`, `value_deserializer` and `schema`')
