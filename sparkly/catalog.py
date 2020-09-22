@@ -16,6 +16,7 @@
 import uuid
 
 from pyspark.sql import functions as F
+from pyspark.sql import utils as U
 
 
 class SparklyCatalog(object):
@@ -116,17 +117,13 @@ class SparklyCatalog(object):
         Returns:
             bool
         """
-        db_name = get_db_name(table_name)
-        rel_table_name = get_table_name(table_name)
 
-        if not self.has_database(db_name):
+        try:
+            self._spark.sql('SELECT 1 FROM {} WHERE 1=0'.format(table_name))
+        except U.AnalysisException:
             return False
 
-        for table in self._spark.catalog.listTables(db_name):
-            if table.name == rel_table_name:
-                return True
-
-        return False
+        return True
 
     def has_database(self, db_name):
         """Check if database exists in the metastore.

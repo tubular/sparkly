@@ -85,7 +85,7 @@ services:
       retries: 20
 
   mysql.docker:
-    image: mysql:5.7
+    image: mysql:5.7.11
     environment:
       MYSQL_DATABASE: sparkly_test
       MYSQL_USER: root

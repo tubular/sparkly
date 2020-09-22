@@ -138,8 +138,6 @@ class SparklyWriter(object):
             options (dict[str, str]): Additional options to `org.apache.spark.sql.cassandra`
                 format (see configuration for :ref:`cassandra`).
         """
-        assert self._spark.has_package('datastax:spark-cassandra-connector')
-
         writer_options = {
             'format': 'org.apache.spark.sql.cassandra',
             'spark.cassandra.connection.host': host,
@@ -171,8 +169,6 @@ class SparklyWriter(object):
             options (dict[str, str]): Additional options to `org.elasticsearch.spark.sql` format
                 (see configuration for :ref:`elastic`).
         """
-        assert self._spark.has_package('org.elasticsearch:elasticsearch-spark')
-
         writer_options = {
             'path': '{}/{}'.format(es_index, es_type) if es_type else es_index,
             'format': 'org.elasticsearch.spark.sql',
@@ -200,9 +196,6 @@ class SparklyWriter(object):
             options (dict): Additional options for JDBC writer
                 (see configuration for :ref:`mysql`).
         """
-        assert (self._spark.has_jar('mysql-connector-java') or
-                self._spark.has_package('mysql:mysql-connector-java'))
-
         writer_options = {
             'format': 'jdbc',
             'driver': 'com.mysql.jdbc.Driver',
@@ -246,8 +239,6 @@ class SparklyWriter(object):
                 during the write stage (see :ref:`controlling-the-load`).
             options (dict|None): Additional options.
         """
-        assert self._spark.has_package('org.apache.spark:spark-streaming-kafka')
-
         if not KAFKA_WRITER_SUPPORT:
             raise NotImplementedError('kafka-python package isn\'t available. '
                                       'Use pip install sparkly[kafka] to fix it.')

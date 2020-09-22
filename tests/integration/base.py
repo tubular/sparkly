@@ -44,6 +44,13 @@ class SparklyTestSession(SparklySession):
         'length_of_text': (lambda text: len(text), StringType())
     }
 
+    options = {
+        'my.custom.option.1': '117',
+        'my.custom.option.2': 223,
+        # will be overwritten by additional_options passed in setup_session
+        'my.custom.option.3': '319',
+    }
+
 
 class SparklyTestSessionWithES6(SparklySession):
     packages = [

@@ -90,6 +90,7 @@ def _ensure_gateway_is_down():
     )
     SparkContext._gateway.shutdown()
     SparkContext._gateway = None
+    SparkContext._jvm = None
     os.kill(jvm_pid, signal.SIGKILL)
     os.environ.pop('PYSPARK_GATEWAY_PORT', None)
     os.environ.pop('PYSPARK_GATEWAY_SECRET', None)
@@ -133,6 +134,9 @@ class SparklyTest(TestCase):
 
             # Reduce number of shuffle partitions (faster tests).
             'spark.sql.shuffle.partitions': '4',
+
+            # test overwriting of options
+            'my.custom.option.3': 333,
         })
 
     @classmethod
