@@ -1,4 +1,4 @@
-## 2.9.0
+## 3.0.0
 * Improved performance of `catalog_ext.has_table` function by trying to execute a dummy SQL rather than listing the entire database, noticable mostly with databases with many tables.
 * Some minor changes to help in a spark-on-kubernetes environment:
     * In addition to setting `PYSPARK_SUBMIT_ARGS`, also explicitly set config params so they are picked up by an already-running JVM
