@@ -19,4 +19,4 @@ from sparkly.session import SparklySession
 assert SparklySession
 
 
-__version__ = '3.0.0.dev1'
+__version__ = '3.0.0'

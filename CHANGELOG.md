@@ -4,6 +4,9 @@
     * In addition to setting `PYSPARK_SUBMIT_ARGS`, also explicitly set config params so they are picked up by an already-running JVM
     * Register a handler to stop spark session on python termination to deal with [SPARK-27927](https://issues.apache.org/jira/browse/SPARK-27927)
 * Removed `has_package` and `has_jar` functions, which are incomplete checks (resulting in false negatives) and are merely syntactic sugar.
+* Added options (class variables) `name` and `app_id_template` to autogenerate a unique value for
+  spark option `spark.app.id`, which can help to preserve spark history data for all sessions across restarts.
+  This functionality can be disabled by setting `app_id_template` to `None` or `''`.
 
 ## 2.8.2
 * Support 0.9.x `pymysql` in `sparkly.testing.MysqlFixture`
