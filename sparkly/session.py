@@ -19,6 +19,8 @@ from copy import deepcopy
 import os
 import signal
 import sys
+import time
+import uuid
 
 from pyspark import SparkContext
 from pyspark.conf import SparkConf
@@ -72,23 +74,62 @@ class SparklySession(SparkSession):
             Key - a name of the function,
             Value - either a class name imported from a JAR file
                 or a tuple with python function and its return type.
+        name (str): a name that is used in default app_id_template (see below)
+        app_id_template (str|None): if set and nonempty, generate the `spark.app.id` with
+            this template. Interpolation is available with some pre-defined variables:
+                * initial_time: the time that the first session started
+                * initial_uid: a unique id associated with the first session
+                * session_time: the time the session started
+                * session_uid: a unique id associated with the session
+            A default value is provided using the name, initial-uid and session-time.
+            This helps a specific use case when running in Kubernetes: when a session
+            is restarted, the same app-id is used, breaking storage of spark-history data
+            (only the first session will have its history stored, unless overwrite mode
+            is used, in which case only the last session will have its history stored).
+            By defaulting to using the initial-uid and session-time information, we get
+            sane "grouping" of all sessions originating from the same initial session, but also
+            achieve separate individual app ids so that history for each can be maintained.
+            To disable this functionality entirely, simply set to None or emptystring.
+            Finally, if a user manually specifies `spark.app.id`, then that value will
+            always trump any template provided here.
     """
+    name = 'sparkly'
     options = {}
     packages = []
     jars = []
     udfs = {}
     repositories = []
+    app_id_template = '{name}-{initial_uid}-{session_time}'
 
     _instantiated_session = None
     _original_environment = None
+
+    _initial_time = None
+    _initial_uid = None
 
     def __init__(self, additional_options=None):
         SparklySession._original_environment = deepcopy(os.environ)
         os.environ['PYSPARK_PYTHON'] = sys.executable
 
+        self._initial_time = self._initial_time or int(time.time())
+        self._initial_uid = self._initial_uid or uuid.uuid4().hex
+        self._session_time = int(time.time())
+        self._session_uid = uuid.uuid4().hex
+
         options = {
             'spark.sql.catalogImplementation': 'hive',
         }
+        app_id_template = self.app_id_template
+        if app_id_template:
+            options.update({
+                'spark.app.id': app_id_template.format(
+                    name=self.name,
+                    initial_time=self._initial_time,
+                    initial_uid=self._initial_uid,
+                    session_time=self._session_time,
+                    session_uid=self._session_uid,
+                ),
+            })
         options.update(self.options or {})
         options.update(additional_options or {})
         options = {str(key): str(value) for key, value in options.items()}

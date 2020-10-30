@@ -28,6 +28,11 @@ RUN cd /usr/local && ln -s spark-2.4.0-bin-hadoop2.7 spark
 
 # Install Python development & testing utils
 RUN apt-get update && apt-get install -y python python-dev python3-pip
+# NOTE: the pip upgrade is required in order to resolve proper deps
+# for virtualenv, specifically that `importlib-resources-3.3.0` does
+# not support py35, and that 3.2.1 should be used instead.
+# also note that this must be done prior to any other pip installs.
+RUN python3 -m pip install --upgrade pip==20.2.4
 RUN python3 -m pip install tox==2.4.1
 
 # Remove noisy spark logging
