@@ -85,6 +85,8 @@ class TestSparklyCatalog(SparklyGlobalSessionTest):
         self.assertFalse(self.spark.catalog_ext.has_table('test_db.test_table'))
 
     def test_has_table(self):
+        self.assertFalse(self.spark.catalog_ext.has_table(None))
+        self.assertFalse(self.spark.catalog_ext.has_table(''))
         self.assertTrue(self.spark.catalog_ext.has_table('test_table'))
         self.assertTrue(self.spark.catalog_ext.has_table('test_db.test_table'))
         self.assertFalse(self.spark.catalog_ext.has_table('test_unknown_table'))

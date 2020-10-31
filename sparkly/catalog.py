@@ -118,6 +118,9 @@ class SparklyCatalog(object):
             bool
         """
 
+        if not table_name:
+            return False
+
         try:
             self._spark.sql('SELECT 1 FROM {} WHERE 1=0'.format(table_name))
         except U.AnalysisException:
