@@ -22,8 +22,6 @@ try:
 except ImportError:
     from urlparse import urlparse, parse_qsl
 
-from pyspark.streaming.kafka import KafkaUtils, OffsetRange
-
 from sparkly.utils import parse_schema
 
 
@@ -247,6 +245,11 @@ class SparklyReader(object):
         Raises:
             InvalidArgumentError
         """
+        try:
+            from pyspark.streaming.kafka import KafkaUtils, OffsetRange
+        except ImportError:
+            raise NotImplementedError('Reading from kafka not supported')
+
         if not key_deserializer or not value_deserializer or not schema:
             raise InvalidArgumentError('You should specify all of parameters:'
                                        '`key_deserializer`, `value_deserializer` and `schema`')
