@@ -206,6 +206,23 @@ def sum_cols(cols):
     Example:
         df = df.withColumn('sum', sum_cols(['a', 'b', 'c']))
         df = df.withColumn('sum', sum_cols([F.col('a'), F.col('b'), 'c']))
+
+        >>> df = spark.createDataFrame([[1, 2, 3], [0, 1, 0]], schema=['a', 'b', 'c'])
+        >>> df.show()
+        +---+---+---+
+        |  a|  b|  c|
+        +---+---+---+
+        |  1|  2|  3|
+        |  0|  1|  0|
+        +---+---+---+
+        df = df.withColumn('sum', sum_cols(['a', 'b', 'c']))
+        >>> df.show()
+        +---+---+---+---+
+        |  a|  b|  c|sum|
+        +---+---+---+---+
+        |  1|  2|  3|  6|
+        |  0|  1|  0|  1|
+        +---+---+---+---+
     """
     if not isinstance(cols, (list, tuple)):
         cols = [cols]
@@ -230,3 +247,20 @@ def mean_cols(cols):
     if not isinstance(cols, (list, tuple)):
         cols = [cols]
     return sum_cols(cols) / len(cols)
+
+
+def abs(col):
+    """Computes the absolute value
+
+    Return:
+        pyspark.sql.Column
+    
+    Example:
+        F.col('x').abs()
+        abs('x')
+    """
+    if isinstance(col, string_types):
+        col = F.col(col)
+    elif not isinstance(col, Column):
+        col = F.lit(col)
+    return F.abs(col)

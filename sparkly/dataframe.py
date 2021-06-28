@@ -224,15 +224,6 @@ def mean_cols(df, cols, col_out):
     return df.withColumn(col_out, SF.mean_cols(cols))
 
 
-def abs(col):
-    """Computes the absolute value
-
-    Return:
-        pyspark.sql.Column
-    """
-    return F.abs(col)
-
-
 def install_extension():
     pyspark.sql.dataframe.DataFrame.shape = shape
     pyspark.sql.dataframe.DataFrame.rename = rename
@@ -243,4 +234,4 @@ def install_extension():
     pyspark.sql.dataframe.DataFrame.mean_col = mean_col
     pyspark.sql.dataframe.DataFrame.sum_cols = sum_cols
     pyspark.sql.dataframe.DataFrame.mean_cols = mean_cols
-    pyspark.sql.column.Column.abs = abs
+    pyspark.sql.column.Column.abs = SF.abs
