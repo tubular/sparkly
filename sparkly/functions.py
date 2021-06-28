@@ -17,6 +17,7 @@
 from collections import defaultdict
 from functools import reduce
 import operator
+from operator import add
 from six import string_types
 
 from pyspark.sql import Column
@@ -191,3 +192,41 @@ def argmax(field, by, condition=None):
     result = F.max(result).getField('__tmp_argmax__')
 
     return result
+
+
+def sum_cols(cols):
+    """Sum multiple columns row-wise
+
+    Args:
+        cols (list, tuple[string, pyspark.sql.Column]): columns to sum over
+
+    Returns:
+        pyspark.sql.Column
+
+    Example:
+        df = df.withColumn('sum', sum_cols(['a', 'b', 'c']))
+        df = df.withColumn('sum', sum_cols([F.col('a'), F.col('b'), 'c']))
+    """
+    if not isinstance(cols, (list, tuple)):
+        cols = [cols]
+    cols = [
+        c if isinstance(c, Column) else F.col(c)
+        if isinstance(string_types) else F.lit(c)
+        for c in cols
+    ]
+
+    return reduce(add, cols)
+
+
+def mean_cols(cols):
+    """Mean of multiple columns row-wise
+
+    Args:
+        cols (list, tuple[string, pyspark.sql.Column]): columns to take the mean over
+
+    Returns:
+        pyspark.sql.Column
+    """
+    if not isinstance(cols, (list, tuple)):
+        cols = [cols]
+    return sum_cols(cols) / len(cols)
