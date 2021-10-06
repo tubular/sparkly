@@ -49,6 +49,7 @@ try:
 except ImportError:
     CASSANDRA_FIXTURES_SUPPORT = False
 
+
 try:
     import pymysql as connector
     from pymysql.constants import CLIENT
@@ -57,7 +58,7 @@ except ImportError:
     MYSQL_FIXTURES_SUPPORT = False
 
 try:
-    from kafka import KafkaProducer, SimpleClient
+    from kafka import KafkaConsumer, KafkaProducer
     KAFKA_FIXTURES_SUPPORT = True
 except ImportError:
     KAFKA_FIXTURES_SUPPORT = False
@@ -883,8 +884,8 @@ class KafkaWatcher:
         self._df = None
         self.count = 0
 
-        kafka_client = SimpleClient(host)
-        kafka_client.ensure_topic_exists(topic)
+        kafka_consumer = KafkaConsumer(bootstrap_servers=host)
+        kafka_consumer.partitions_for_topic(topic)
 
     def __enter__(self):
         self._df = None
