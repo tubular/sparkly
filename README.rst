@@ -85,7 +85,7 @@ At the moment we support:
 
 .. |Sparkly PyPi Version| image:: http://img.shields.io/pypi/v/sparkly.svg
    :target: https://pypi.python.org/pypi/sparkly
-.. |Sparkly Build Status| image:: https://travis-ci.org/tubular/sparkly.svg?branch=master
-   :target: https://travis-ci.org/tubular/sparkly
+.. |Sparkly Build Status| image:: https://travis-ci.com/tubular/sparkly.svg?branch=master
+   :target: https://travis-ci.com/tubular/sparkly
 .. |Documentation Status| image:: https://readthedocs.org/projects/sparkly/badge/?version=latest
    :target: http://sparkly.readthedocs.io/en/latest/?badge=latest
