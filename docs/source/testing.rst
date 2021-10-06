@@ -116,7 +116,7 @@ but it still kills the context at the end. It's especially annoying if you work 
 On each run you have to wait 25-30 seconds till a new context is ready.
 We added a tool to preserve spark context between multiple test runs.
 
-.. code-block::
+.. code-block:: bash
 
     # Activate instant testing mode.
     sparkly-testing up

@@ -26,11 +26,11 @@ from sparkly.testing import (
     SparklyGlobalSessionTest,
     SparklyTest,
     KafkaFixture,
-    KafkaWatcher)
+    KafkaWatcher,
+)
 from sparkly.utils import absolute_path
 from tests.integration.base import (
     SparklyTestSession,
-    SparklyTestSessionWithES6,
 )
 
 
@@ -123,36 +123,13 @@ class TestMysqlFixtures(SparklyGlobalSessionTest):
         ])
 
 
-class TestElastic6Fixture(SparklyTest):
-
-    session = SparklyTestSessionWithES6
-
-    class_fixtures = [
-        ElasticFixture(
-            'elastic6.docker',
-            'sparkly_test_fixture',
-            'test',
-            absolute_path(__file__, 'resources', 'test_fixtures', 'mapping.json'),
-            absolute_path(__file__, 'resources', 'test_fixtures', 'data.json'),
-        )
-    ]
-
-    def test_elastic_fixture(self):
-        df = self.spark.read_ext.by_url(
-            'elastic://elastic6.docker/sparkly_test_fixture/test?es.read.metadata=false'
-        )
-        self.assertDataFrameEqual(df, [
-            {'name': 'John', 'age': 56},
-        ])
-
-
-class TestElastic7Fixture(SparklyGlobalSessionTest):
+class TestElasticFixture(SparklyGlobalSessionTest):
 
     session = SparklyTestSession
 
     class_fixtures = [
         ElasticFixture(
-            'elastic7.docker',
+            'elastic.docker',
             'sparkly_test_fixture',
             None,
             absolute_path(__file__, 'resources', 'test_fixtures', 'mapping.json'),
@@ -162,7 +139,7 @@ class TestElastic7Fixture(SparklyGlobalSessionTest):
 
     def test_elastic_fixture(self):
         df = self.spark.read_ext.by_url(
-            'elastic://elastic7.docker/sparkly_test_fixture?es.read.metadata=false'
+            'elastic://elastic.docker/sparkly_test_fixture?es.read.metadata=false'
         )
         self.assertDataFrameEqual(df, [{'name': 'John', 'age': 56}])
 

@@ -17,23 +17,9 @@ Installation
 
 Sparkly itself is easy to install::
 
-    pip install sparkly
+    pip install pyspark  # pick your version
+    pip install sparkly (compatible with spark >= 2.4)
 
-The tricky part is ``pyspark``. There is no official distribution on
-PyPI. As a workaround we can suggest:
-
-1) Use env variable ``PYTHONPATH`` to point to your Spark installation,
-   something like::
-
-       export PYTHONPATH="/usr/local/spark/python/lib/pyspark.zip:/usr/local/spark/python/lib/py4j-0.10.4-src.zip"
-
-2) Use our ``setup.py`` file for ``pyspark``. Just add this to your
-   ``requirements.txt``::
-
-       -e git+https://github.com/Tubular/spark@branch-2.1.0#egg=pyspark&subdirectory=python
-
-Here in Tubular, we published ``pyspark`` to our internal PyPi
-repository.
 
 Getting Started
 ---------------
@@ -85,7 +71,7 @@ At the moment we support:
 
 .. |Sparkly PyPi Version| image:: http://img.shields.io/pypi/v/sparkly.svg
    :target: https://pypi.python.org/pypi/sparkly
-.. |Sparkly Build Status| image:: https://travis-ci.org/tubular/sparkly.svg?branch=master
-   :target: https://travis-ci.org/tubular/sparkly
+.. |Sparkly Build Status| image:: https://travis-ci.com/tubular/sparkly.svg?branch=master
+   :target: https://travis-ci.com/tubular/sparkly
 .. |Documentation Status| image:: https://readthedocs.org/projects/sparkly/badge/?version=latest
    :target: http://sparkly.readthedocs.io/en/latest/?badge=latest

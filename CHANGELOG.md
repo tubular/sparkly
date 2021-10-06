@@ -7,6 +7,10 @@
 * Added options (class variables) `name` and `app_id_template` to autogenerate a unique value for
   spark option `spark.app.id`, which can help to preserve spark history data for all sessions across restarts.
   This functionality can be disabled by setting `app_id_template` to `None` or `''`.
+* Drop support of Python 2.7
+* Run integration tests using Python 3.7
+* Drop tests for Elastic 6.x
+* Use Kafka 2.8.0 for integration tests
 
 ## 2.8.2
 * Support 0.9.x `pymysql` in `sparkly.testing.MysqlFixture`

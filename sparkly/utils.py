@@ -20,7 +20,11 @@ from itertools import islice
 import os
 import re
 
-from kafka import KafkaConsumer, TopicPartition
+try:
+    from kafka import KafkaConsumer, TopicPartition
+except ImportError:
+    pass
+
 import pylru
 from pyspark import StorageLevel
 from pyspark.sql import DataFrame
