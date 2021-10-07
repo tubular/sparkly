@@ -21,11 +21,11 @@ dev:
 
 dist:
 	docker-compose build dev
-	docker-compose run --no-deps dev python3 setup.py bdist_wheel ; retcode="$$?" ; docker-compose down -v ; exit $$retcode
+	docker-compose run --no-deps dev python setup.py bdist_wheel ; retcode="$$?" ; docker-compose down -v ; exit $$retcode
 
 docs:
 	docker-compose build dev
-	docker-compose run --no-deps dev sphinx-build -b html docs/source docs/build
+	docker-compose run --no-deps dev python -m sphinx -b html docs/source docs/build
 
 test:
 	docker-compose build test
