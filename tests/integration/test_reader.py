@@ -28,7 +28,6 @@ from sparkly.testing import (
 from sparkly.utils import absolute_path, kafka_get_topics_offsets
 from tests.integration.base import (
     SparklyTestSession,
-    SparklyTestSessionWithES6,
 )
 
 
@@ -93,41 +92,12 @@ ELASTIC_TEST_DATA = [
 ]
 
 
-class SparklyReaderElastic6Test(SparklyTest):
-    session = SparklyTestSessionWithES6
-
-    fixtures = [
-        ElasticFixture(
-            'elastic6.docker',
-            'sparkly_test',
-            'test',
-            None,
-            absolute_path(__file__, 'resources', 'test_read', 'elastic_setup.json'),
-        )
-    ]
-
-    def test_elastic(self):
-        df = self.spark.read_ext.elastic(
-            host='elastic6.docker',
-            port=9200,
-            es_index='sparkly_test',
-            es_type='test',
-            query='?q=name:*Smith*',
-            options={
-                'es.read.field.as.array.include': 'topics',
-                'es.read.metadata': 'false',
-            },
-        )
-
-        self.assertDataFrameEqual(df, ELASTIC_TEST_DATA)
-
-
-class SparklyReaderElastic7Test(SparklyGlobalSessionTest):
+class SparklyReaderElasticTest(SparklyGlobalSessionTest):
     session = SparklyTestSession
 
     fixtures = [
         ElasticFixture(
-            'elastic7.docker',
+            'elastic.docker',
             'sparkly_test',
             None,
             None,
@@ -137,7 +107,7 @@ class SparklyReaderElastic7Test(SparklyGlobalSessionTest):
 
     def test_elastic(self):
         df = self.spark.read_ext.elastic(
-            host='elastic7.docker',
+            host='elastic.docker',
             port=9200,
             es_index='sparkly_test',
             es_type=None,

@@ -18,7 +18,7 @@ Sparkly relies on the official spark cassandra connector and was successfully te
 +---------------+---------------------------------------------------------------------------------------+
 | Package       | https://spark-packages.org/package/datastax/spark-cassandra-connector                 |
 +---------------+---------------------------------------------------------------------------------------+
-| Configuration | https://github.com/datastax/spark-cassandra-connector/blob/v2.4.0/doc/reference.md |
+| Configuration | https://github.com/datastax/spark-cassandra-connector/blob/v2.4.0/doc/reference.md    |
 +---------------+---------------------------------------------------------------------------------------+
 
 For using overwrite mode, it is needed to specify confirm.truncate as true. Otherwise, use append mode to update existing data.
@@ -50,7 +50,7 @@ Sparkly relies on the official elastic spark connector and was successfully test
 +---------------+-----------------------------------------------------------------------------+
 | Package       | https://spark-packages.org/package/elastic/elasticsearch-hadoop             |
 +---------------+-----------------------------------------------------------------------------+
-| Configuration | https://www.elastic.co/guide/en/elasticsearch/hadoop/5.1/configuration.html |
+| Configuration | https://www.elastic.co/guide/en/elasticsearch/hadoop/7.3/configuration.html |
 +---------------+-----------------------------------------------------------------------------+
 
 .. code-block:: python
@@ -60,7 +60,7 @@ Sparkly relies on the official elastic spark connector and was successfully test
 
     class MySession(SparklySession):
         # Feel free to play with other versions
-        packages = ['org.elasticsearch:elasticsearch-spark-20_2.11:6.5.4']
+        packages = ['org.elasticsearch:elasticsearch-spark-20_2.11:7.3.0']
 
     spark = MySession()
 

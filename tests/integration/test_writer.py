@@ -39,7 +39,6 @@ from sparkly.testing import (
 )
 from tests.integration.base import (
     SparklyTestSession,
-    SparklyTestSessionWithES6,
 )
 
 try:
@@ -119,45 +118,12 @@ class TestWriteCassandra(SparklyGlobalSessionTest):
         self.assertDataFrameEqual(written_df, TEST_DATA)
 
 
-class TestWriteElastic6(SparklyTest):
-    session = SparklyTestSessionWithES6
-
-    fixtures = [
-        ElasticFixture(
-            'elastic6.docker',
-            'sparkly_test',
-            'test',
-            None,
-            absolute_path(__file__, 'resources', 'test_write', 'elastic_setup.json')
-        )
-    ]
-
-    def test_write_elastic(self):
-        df = self.spark.createDataFrame(TEST_DATA)
-
-        df.write_ext.elastic(
-            host='elastic6.docker',
-            port=9200,
-            es_index='sparkly_test',
-            es_type='test_writer',
-            mode='overwrite',
-            options={
-                'es.mapping.id': 'uid',
-            }
-        )
-
-        df = self.spark.read_ext.by_url(
-            'elastic://elastic6.docker/sparkly_test/test_writer?es.read.metadata=false'
-        )
-        self.assertDataFrameEqual(df, TEST_DATA)
-
-
-class TestWriteElastic7(SparklyGlobalSessionTest):
+class TestWriteElastic(SparklyGlobalSessionTest):
     session = SparklyTestSession
 
     fixtures = [
         ElasticFixture(
-            'elastic7.docker',
+            'elastic.docker',
             'sparkly_test',
             None,
             None,
@@ -169,7 +135,7 @@ class TestWriteElastic7(SparklyGlobalSessionTest):
         df = self.spark.createDataFrame(TEST_DATA)
 
         df.write_ext.elastic(
-            host='elastic7.docker',
+            host='elastic.docker',
             port=9200,
             es_index='sparkly_test',
             es_type=None,
@@ -180,7 +146,7 @@ class TestWriteElastic7(SparklyGlobalSessionTest):
         )
 
         df = self.spark.read_ext.by_url(
-            'elastic://elastic7.docker/sparkly_test?es.read.metadata=false',
+            'elastic://elastic.docker/sparkly_test?es.read.metadata=false',
         )
         self.assertDataFrameEqual(df, TEST_DATA)
 

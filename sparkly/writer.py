@@ -251,7 +251,11 @@ class SparklyWriter(object):
             )
             for message in messages:
                 as_dict = message.asDict(recursive=True)
-                result = producer.send(topic, key=as_dict['key'], value=as_dict['value'])
+                try:
+                    result = producer.send(topic, key=as_dict['key'], value=as_dict['value'])
+                except Exception as exc:
+                    raise WriteError('Error publishing to kafka: {}'.format(exc))
+
                 if result.failed():
                     raise WriteError('Error publishing to kafka: {}'.format(result.exception))
 

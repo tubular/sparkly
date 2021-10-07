@@ -21,10 +21,10 @@ import os
 import re
 
 try:
-    from kafka import SimpleClient
-    from kafka.structs import OffsetRequestPayload
+    from kafka import KafkaConsumer, TopicPartition
 except ImportError:
     pass
+
 import pylru
 from pyspark import StorageLevel
 from pyspark.sql import DataFrame
@@ -76,24 +76,16 @@ def kafka_get_topics_offsets(host, topic, port=9092):
         [(int, int, int)]: [(partition, start_offset, end_offset)].
     """
     brokers = ['{}:{}'.format(host, port)]
-    client = SimpleClient(brokers)
-
-    offsets = []
-    partitions = client.get_partition_ids_for_topic(topic)
-
-    offsets_responses_end = client.send_offset_request(
-        [OffsetRequestPayload(topic, partition, -1, 1)
-         for partition in partitions]
-    )
-    offsets_responses_start = client.send_offset_request(
-        [OffsetRequestPayload(topic, partition, -2, 1)
-         for partition in partitions]
-    )
-
-    for start_offset, end_offset in zip(offsets_responses_start, offsets_responses_end):
-        offsets.append((start_offset.partition,
-                        start_offset.offsets[0],
-                        end_offset.offsets[0]))
+    consumer = KafkaConsumer(bootstrap_servers=brokers)
+    topic_partitions = [TopicPartition(topic, p) for p in consumer.partitions_for_topic(topic)]
+    start_offsets_raw = consumer.beginning_offsets(topic_partitions)
+    end_offsets_raw = consumer.end_offsets(topic_partitions)
+    start_offsets = {tp.partition: offset for tp, offset in start_offsets_raw.items()}
+    end_offsets = {tp.partition: offset for tp, offset in end_offsets_raw.items()}
+    offsets = [
+        (partition, start_offsets[partition], end_offsets[partition])
+        for partition in start_offsets
+    ]
 
     return offsets
 

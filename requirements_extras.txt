@@ -16,6 +16,6 @@
 
 cassandra-driver==3.7.1
 PyMySQL==0.9.3
-kafka-python==1.2.2
+kafka-python==2.0.2
 redis==2.10.5
 ujson==1.35

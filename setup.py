@@ -70,10 +70,8 @@ setup(
 
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.7',
     ],
 
     # What does your project relate to?
@@ -91,8 +89,8 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=requirements,
     extras_require={
-        'kafka': ['kafka-python>=1.2.2,<1.3'],
+        'kafka': ['kafka-python>=2.0.2,<2.1'],
         'redis': ['redis>=2.10,<3', 'ujson>=1.33,<2'],
-        'test': ['cassandra-driver>=3.7,<3.8', 'PyMySQL>=0.7,<0.10', 'kafka-python>=1.2.2,<1.3', 'redis>=2.10,<3', 'ujson>=1.33,<2'],
+        'test': ['cassandra-driver>=3.7,<3.8', 'PyMySQL>=0.7,<0.10', 'kafka-python>=2.0.2,<2.1', 'redis>=2.10,<3', 'ujson>=1.33,<2'],
     },
 )

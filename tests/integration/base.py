@@ -24,7 +24,7 @@ from sparkly.utils import absolute_path
 
 class SparklyTestSession(SparklySession):
     packages = [
-        'datastax:spark-cassandra-connector:2.4.0-s_2.11',
+        'com.datastax.spark:spark-cassandra-connector_2.11:2.4.0',
         'org.elasticsearch:elasticsearch-spark-20_2.11:7.3.0',
         'org.apache.spark:spark-streaming-kafka-0-8_2.11:2.4.0',
         'mysql:mysql-connector-java:6.0.6',
@@ -50,13 +50,3 @@ class SparklyTestSession(SparklySession):
         # will be overwritten by additional_options passed in setup_session
         'my.custom.option.3': '319',
     }
-
-
-class SparklyTestSessionWithES6(SparklySession):
-    packages = [
-        'org.elasticsearch:elasticsearch-spark-20_2.11:6.5.4',
-    ]
-
-    repositories = [
-        'http://packages.confluent.io/maven/',
-    ]
