@@ -36,7 +36,7 @@ from pyspark.sql import types as T
 
 from sparkly import SparklySession
 from sparkly.exceptions import FixtureError
-from sparkly.utils import kafka_get_topics_offsets
+from sparkly.utils import kafka_create_topic, kafka_get_topics_offsets
 
 if sys.version_info.major == 3:
     from http.client import HTTPConnection
@@ -58,8 +58,7 @@ except ImportError:
     MYSQL_FIXTURES_SUPPORT = False
 
 try:
-    import kafka.admin
-    from kafka import KafkaConsumer, KafkaProducer, KafkaAdminClient
+    from kafka import KafkaConsumer, KafkaProducer
     KAFKA_FIXTURES_SUPPORT = True
 except ImportError:
     KAFKA_FIXTURES_SUPPORT = False
@@ -862,8 +861,6 @@ class KafkaWatcher:
         host,
         topic,
         port=9092,
-        num_partitions=2,
-        replication_factor=1,
     ):
         """Initialize context manager
 
@@ -887,14 +884,7 @@ class KafkaWatcher:
         self._df = None
         self.count = 0
 
-        kafka_admin = KafkaAdminClient(bootstrap_servers=host)
-        kafka_admin.create_topics([
-            kafka.admin.NewTopic(
-                name=topic,
-                num_partitions=num_partitions,
-                replication_factor=replication_factor,
-            ),
-        ])
+        kafka_create_topic(host, topic)
 
     def __enter__(self):
         self._df = None

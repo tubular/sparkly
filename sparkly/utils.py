@@ -21,7 +21,8 @@ import os
 import re
 
 try:
-    from kafka import KafkaConsumer, TopicPartition
+    from kafka import KafkaAdminClient, KafkaConsumer, TopicPartition
+    import kafka.admin
 except ImportError:
     pass
 
@@ -77,17 +78,39 @@ def kafka_get_topics_offsets(host, topic, port=9092):
     """
     brokers = ['{}:{}'.format(host, port)]
     consumer = KafkaConsumer(bootstrap_servers=brokers)
-    topic_partitions = [TopicPartition(topic, p) for p in consumer.partitions_for_topic(topic)]
-    start_offsets_raw = consumer.beginning_offsets(topic_partitions)
-    end_offsets_raw = consumer.end_offsets(topic_partitions)
-    start_offsets = {tp.partition: offset for tp, offset in start_offsets_raw.items()}
-    end_offsets = {tp.partition: offset for tp, offset in end_offsets_raw.items()}
-    offsets = [
-        (partition, start_offsets[partition], end_offsets[partition])
-        for partition in start_offsets
-    ]
+    partitions = consumer.partitions_for_topic(topic)
+    offsets = []
+    if partitions:
+        topic_partitions = [TopicPartition(topic, p) for p in partitions]
+        start_offsets_raw = consumer.beginning_offsets(topic_partitions)
+        end_offsets_raw = consumer.end_offsets(topic_partitions)
+        start_offsets = {tp.partition: offset for tp, offset in start_offsets_raw.items()}
+        end_offsets = {tp.partition: offset for tp, offset in end_offsets_raw.items()}
+        offsets = [
+            (partition, start_offsets[partition], end_offsets[partition])
+            for partition in start_offsets
+        ]
 
     return offsets
+
+def kafka_create_topic(host, topic, port=9092, num_partitions=2, replication_factor=1):
+    """Creates Kafka topic.
+
+    Args:
+        host (str): Kafka host.
+        topic (str): Kafka topic.
+        port (int): Kafka port.
+        num_partitions (int): Number of topic's partitions.
+        replication_factor (int): Number of partition's replicas.
+    """
+    kafka_admin = KafkaAdminClient(bootstrap_servers=f'{host}:{port}')
+    kafka_admin.create_topics([
+        kafka.admin.NewTopic(
+            name=topic,
+            num_partitions=num_partitions,
+            replication_factor=replication_factor,
+        ),
+    ])
 
 
 class lru_cache(object):
