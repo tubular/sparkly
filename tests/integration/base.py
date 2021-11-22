@@ -26,7 +26,7 @@ class SparklyTestSession(SparklySession):
     packages = [
         'com.datastax.spark:spark-cassandra-connector_2.11:2.4.0',
         'org.elasticsearch:elasticsearch-spark-20_2.11:7.3.0',
-        'org.apache.spark:spark-streaming-kafka-0-8_2.11:2.4.0',
+        'org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.0',
         'mysql:mysql-connector-java:6.0.6',
         'io.confluent:kafka-avro-serializer:3.0.1',
     ]

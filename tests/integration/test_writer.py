@@ -220,7 +220,7 @@ class TestWriteKafka(SparklyGlobalSessionTest):
 
     def test_write_kafka_dataframe_error(self):
         def _errored_serializer(data):
-            raise ValueError
+            raise ValueError('this is a testable error')
 
         try:
             self.expected_data.write_ext.kafka(
@@ -230,7 +230,7 @@ class TestWriteKafka(SparklyGlobalSessionTest):
                 value_serializer=_errored_serializer,
             )
         except Py4JJavaError as ex:
-            self.assertIn('WriteError(\'Error publishing to kafka', str(ex))
+            self.assertIn('this is a testable error', str(ex))
         else:
             raise AssertionError('WriteError exception not raised')
 

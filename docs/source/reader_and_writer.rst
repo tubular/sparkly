@@ -74,23 +74,13 @@ Sparkly relies on the official elastic spark connector and was successfully test
 Kafka
 -----
 
-Sparkly's reader and writer for Kafka are built on top of the official spark package
-for Kafka and python library `kafka-python <https://github.com/dpkp/kafka-python>`_ .
-The first one allows us to read data efficiently,
-the second covers a lack of writing functionality in the official distribution.
+Sparkly's reader and writer for Kafka are built on top of the official spark package for Kafka-SQL.
 
 +---------------+------------------------------------------------------------------------------------------+
-| Package       | https://mvnrepository.com/artifact/org.apache.spark/spark-streaming-kafka-0-8_2.11/2.4.0 |
+| Package       | https://mvnrepository.com/artifact/org.apache.spark/spark-sql-kafka-0-10_2.11/2.4.0      |
 +---------------+------------------------------------------------------------------------------------------+
-| Configuration | http://spark.apache.org/docs/2.4.0/streaming-kafka-0-8-integration.html                  |
+| Configuration | https://spark.apache.org/docs/2.4.0/structured-streaming-kafka-integration.html          |
 +---------------+------------------------------------------------------------------------------------------+
-
-.. note::
-    - To interact with Kafka, ``sparkly`` needs the ``kafka-python`` library. You can get it via:
-      ```
-      pip install sparkly[kafka]
-      ```
-    - Sparkly was tested in production using Apache Kafka **0.10.x**.
 
 .. code-block:: python
 
@@ -101,7 +91,7 @@ the second covers a lack of writing functionality in the official distribution.
 
     class MySession(SparklySession):
         packages = [
-            'org.apache.spark:spark-streaming-kafka-0-8_2.11:2.4.0',
+            'org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.0',
         ]
 
     spark = MySession()
@@ -123,8 +113,11 @@ the second covers a lack of writing functionality in the official distribution.
     df = hc.read_ext.kafka(
         'kafka.host',
         topic='my.topic',
+        # key & value deserialization is optional; if not provided,
+        # then the user will have to deal with decoding the binary directly.
         key_deserializer=lambda item: json.loads(item.decode('utf-8')),
         value_deserializer=lambda item: json.loads(item.decode('utf-8')),
+        # if deserializers are used, the schema must be provided:
         schema=df_schema,
     )
 
@@ -132,6 +125,8 @@ the second covers a lack of writing functionality in the official distribution.
     df.write_ext.kafka(
         'kafka.host',
         topic='my.topic',
+        # key & value serialization is optional; if not provided,
+        # the `key` and `value` columns MUST already be StringType or BinaryType
         key_serializer=lambda item: json.dumps(item).encode('utf-8'),
         value_serializer=lambda item: json.dumps(item).encode('utf-8'),
     )

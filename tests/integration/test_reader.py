@@ -212,6 +212,28 @@ class TestReaderKafka(SparklyGlobalSessionTest):
 
         self.assertDataFrameEqual(df, self.expected_data * 2)
 
+        df = self.spark.read_ext.kafka(
+            'kafka.docker',
+            topic=self.topic,
+            offset_ranges=offsets,
+            key_deserializer=self.json_decoder,
+            value_deserializer=self.json_decoder,
+            schema=self.expected_data_df.schema,
+            include_meta_cols=True,
+        )
+        expected = [
+            # normal fields:
+            'key',
+            'value',
+            # meta fields:
+            'topic',
+            'partition',
+            'offset',
+            'timestamp',
+            'timestampType',
+        ]
+        self.assertListEqual(sorted(expected), sorted(df.schema.fieldNames()))
+
     def test_argument_errors(self):
         with self.assertRaises(InvalidArgumentError):
             self.spark.read_ext.kafka(
@@ -219,11 +241,17 @@ class TestReaderKafka(SparklyGlobalSessionTest):
                 topic=self.topic,
                 key_deserializer=self.json_decoder,
                 value_deserializer=self.json_decoder,
+                # no schema!
             )
-
-        with self.assertRaises(InvalidArgumentError):
             self.spark.read_ext.kafka(
                 'kafka.docker',
                 topic=self.topic,
-                schema=self.expected_data_df.schema,
+                key_deserializer=self.json_decoder,
+                # no schema!
+            )
+            self.spark.read_ext.kafka(
+                'kafka.docker',
+                topic=self.topic,
+                value_deserializer=self.json_decoder,
+                # no schema!
             )
