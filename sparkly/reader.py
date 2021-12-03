@@ -14,6 +14,10 @@
 # limitations under the License.
 #
 
+import json
+
+from pyspark.sql import functions as F
+
 from sparkly.exceptions import InvalidArgumentError
 from sparkly.utils import kafka_get_topics_offsets
 
@@ -213,7 +217,8 @@ class SparklyReader(object):
               schema=None,
               port=9092,
               parallelism=None,
-              options=None):
+              options=None,
+              include_meta_cols=None):
         """Creates dataframe from specified set of messages from Kafka topic.
 
         Defining ranges:
@@ -221,23 +226,23 @@ class SparklyReader(object):
             - If `offset_ranges` is omitted it will auto-discover it's partitions.
 
         The `schema` parameter, if specified, should contain two top level fields:
-        `key` and `value`.
+        `key` and `value`. It is only required if deserializers are used.
 
         Parameters `key_deserializer` and `value_deserializer` are callables
         which get bytes as input and should return python structures as output.
 
         Args:
             host (str): Kafka host.
-            topic (str|None): Kafka topic to read from.
+            topic (str|List[str]|None): Kafka topic(s) to read from.
             offset_ranges (list[(int, int, int)]|None): List of partition ranges
                 [(partition, start_offset, end_offset)].
             key_deserializer (function): Function used to deserialize the key.
             value_deserializer (function): Function used to deserialize the value.
             schema (pyspark.sql.types.StructType): Schema to apply to create a Dataframe.
             port (int): Kafka port.
-            parallelism (int|None): The max number of parallel tasks that could be executed
-                during the read stage (see :ref:`controlling-the-load`).
             options (dict|None): Additional kafka parameters, see KafkaUtils.createRDD docs.
+            include_meta_cols (bool|None): If true, also return "metadata" columns
+                like offset, topic, etc.
 
         Returns:
             pyspark.sql.DataFrame
@@ -245,39 +250,77 @@ class SparklyReader(object):
         Raises:
             InvalidArgumentError
         """
-        try:
-            from pyspark.streaming.kafka import KafkaUtils, OffsetRange
-        except ImportError:
-            raise NotImplementedError('Reading from kafka not supported')
+        if isinstance(topic, str):
+            topic = [topic]
 
-        if not key_deserializer or not value_deserializer or not schema:
-            raise InvalidArgumentError('You should specify all of parameters:'
-                                       '`key_deserializer`, `value_deserializer` and `schema`')
+        reader = (
+            self._spark.read.format('kafka')
+            .option('kafka.bootstrap.servers', f'{host}:{port}')
+            .option('subscribe', ','.join(topic))
+        )
 
-        kafka_params = {
-            'metadata.broker.list': '{}:{}'.format(host, port),
-        }
+        def get_offsets(offsets, which):
+            return {
+                offset[0]: offset[which]
+                for offset in offsets
+            }
 
-        if options:
-            kafka_params.update(options)
+        if offset_ranges:
+            if len(topic) > 1:
+                raise InvalidArgumentError(
+                    'Specifying offset_ranges for multiple topics is not currently supported; '
+                    'please specify options "startingOffsets" and "endingOffsets" manually'
+                )
+            starting_offsets = json.dumps({t: get_offsets(offset_ranges, 1) for t in topic})
+            ending_offsets = json.dumps({t: get_offsets(offset_ranges, 2) for t in topic})
+            reader = (
+                reader
+                .option('startingOffsets',  starting_offsets)
+                .option('endingOffsets', ending_offsets)
+            )
 
-        if not offset_ranges:
-            offset_ranges = kafka_get_topics_offsets(host, topic, port)
+        for key, value in (options or {}).items():
+            reader = reader.option(key, value)
 
-        offset_ranges = [OffsetRange(topic, partition, start_offset, end_offset)
-                         for partition, start_offset, end_offset in offset_ranges]
+        df = reader.load()
 
-        rdd = KafkaUtils.createRDD(self._spark.sparkContext,
-                                   kafkaParams=kafka_params,
-                                   offsetRanges=offset_ranges or [],
-                                   keyDecoder=key_deserializer,
-                                   valueDecoder=value_deserializer,
-                                   )
+        def get_schema(field):
+            if schema is None:
+                raise InvalidArgumentError(
+                    'Cannot use a deserializer without specifying schema'
+                )
+            candidates = [x for x in schema.fields if x.name == field]
+            if not candidates:
+                raise InvalidArgumentError(
+                    f'Cannot find field: {field} in schema: {schema.simpleString()}'
+                )
+            result = candidates[0].dataType
+            return result
+
+        if key_deserializer is not None:
+            df = df.withColumn(
+                'key',
+                F.udf(
+                    key_deserializer,
+                    returnType=get_schema('key'),
+                )(F.col('key')),
+            )
+        if value_deserializer is not None:
+            df = df.withColumn(
+                'value',
+                F.udf(
+                    value_deserializer,
+                    returnType=get_schema('value'),
+                )(F.col('value')),
+            )
+
+        if not include_meta_cols:
+            df = df.select('key', 'value')
 
         if parallelism:
-            rdd = rdd.coalesce(parallelism)
+            df = df.coalesce(parallelism)
 
-        return self._spark.createDataFrame(rdd, schema=schema)
+        return df
 
     def _basic_read(self, reader_options, additional_options, parallelism):
         reader_options.update(additional_options or {})

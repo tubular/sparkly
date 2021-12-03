@@ -20,13 +20,6 @@ except ImportError:
     from urlparse import urlparse, parse_qsl
 
 try:
-    from kafka import KafkaProducer
-except ImportError:
-    KAFKA_WRITER_SUPPORT = False
-else:
-    KAFKA_WRITER_SUPPORT = True
-
-try:
     import redis
     import ujson
 except ImportError:
@@ -239,35 +232,39 @@ class SparklyWriter(object):
                 during the write stage (see :ref:`controlling-the-load`).
             options (dict|None): Additional options.
         """
-        if not KAFKA_WRITER_SUPPORT:
-            raise NotImplementedError('kafka-python package isn\'t available. '
-                                      'Use pip install sparkly[kafka] to fix it.')
 
-        def write_partition_to_kafka(messages):
-            producer = KafkaProducer(
-                bootstrap_servers=['{}:{}'.format(host, port)],
-                key_serializer=key_serializer,
-                value_serializer=value_serializer,
-            )
-            for message in messages:
-                as_dict = message.asDict(recursive=True)
-                try:
-                    result = producer.send(topic, key=as_dict['key'], value=as_dict['value'])
-                except Exception as exc:
-                    raise WriteError('Error publishing to kafka: {}'.format(exc))
 
-                if result.failed():
-                    raise WriteError('Error publishing to kafka: {}'.format(result.exception))
+        def get_serializer_udf(serializer_func):
 
-            producer.flush()
-            producer.close()
+            @F.udf(returnType=T.BinaryType())
+            def serializer(value):
+                if isinstance(value, T.Row):
+                    value = value.asDict(recursive=True)
+                return serializer_func(value)
 
-        rdd = self._df.rdd
+            return serializer
+
+        df = self._df
+        if key_serializer:
+            key_serializer = get_serializer_udf(key_serializer)
+            df = df.withColumn('key', key_serializer(F.col('key')))
+        if value_serializer:
+            value_serializer = get_serializer_udf(value_serializer)
+            df = df.withColumn('value', value_serializer(F.col('value')))
 
         if parallelism:
-            rdd = rdd.coalesce(parallelism)
+            df = df.coalesce(parallelism)
 
-        rdd.foreachPartition(write_partition_to_kafka)
+        writer = (
+            df.write.format('kafka')
+            .option('kafka.bootstrap.servers', f'{host}:{port}')
+            .option('topic', topic)
+        )
+        options = options or {}
+        for key, value in options.items():
+            writer = writer.option(key, value)
+
+        return writer.save()
 
     def redis(self,
               key_by,
