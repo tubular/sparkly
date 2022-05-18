@@ -32,6 +32,7 @@ from unittest.util import safe_repr
 import warnings
 
 from pyspark.context import SparkContext
+from pyspark.sql import DataFrame
 from pyspark.sql import types as T
 
 from sparkly import SparklySession
@@ -97,6 +98,34 @@ def _ensure_gateway_is_down():
     os.environ.pop('PYSPARK_GATEWAY_SECRET', None)
 
 
+def dataframe_breakpoint(self, break_function=None):
+    """Injected method for DataFrame class during testing
+
+    User may supply their own break_function which takes a single parameter, df
+
+    Example:
+        output_df = (
+            input_df
+            .withColumn(...)
+            .where(...)
+            .groupBy(...)
+            .agg(...)
+            .breakpoint()    # will bring up the pdb debugger
+            .select(...)
+            .breakpoint(lambda df: df.show(10, False))  # will print 10 rows to console
+            ...
+        )
+    """
+
+    def pdb_breakpoint(df):
+        import pdb
+        pdb.set_trace()
+
+    break_function = break_function or pdb_breakpoint
+    break_function(self)
+    return self
+
+
 class SparklyTest(TestCase):
     """Base test for spark scrip tests.
 
@@ -158,6 +187,9 @@ class SparklyTest(TestCase):
 
         cls._init_session()
 
+        # define a `df.breakpoint()` for testing:
+        DataFrame.breakpoint = dataframe_breakpoint
+
         for fixture in cls.class_fixtures:
             fixture.setup_data()
 
@@ -178,6 +210,7 @@ class SparklyTest(TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.spark.stop()
+        delattr(DataFrame, 'breakpoint')
         _ensure_gateway_is_down()
         super(SparklyTest, cls).tearDownClass()
 
