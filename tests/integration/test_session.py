@@ -39,7 +39,7 @@ class TestSparklySession(SparklyGlobalSessionTest):
                 {'key_field': 'C', 'value_field': 3},
                 {'key_field': 'D', 'value_field': 4},
             ],
-        ).registerTempTable('test_jar_udf')
+        ).createOrReplaceTempView('test_jar_udf')
 
         rows = self.spark.sql('select collect(key_field, value_field) from test_jar_udf')
         self.assertEqual(rows.collect()[0][0], {'A': 1, 'B': 2, 'C': 3, 'D': 4})

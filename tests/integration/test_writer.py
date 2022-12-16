@@ -26,7 +26,6 @@ from pyspark.sql import functions as F
 from pyspark.sql import types as T
 from pyspark.sql.utils import PythonException
 import redis
-import six
 import ujson as json
 
 from sparkly.utils import absolute_path
@@ -71,7 +70,7 @@ class TestWriteByURL(SparklyGlobalSessionTest):
 
         written_df = self.spark.read_ext.by_url('csv://{}?header=true&inferSchema=true'
                                                 .format(dst_path))
-        self.assertDataFrameEqual(written_df, TEST_DATA)
+        self.assertRowsEqual(written_df.collect(), TEST_DATA)
 
     def test_write_parquet(self):
         dst_path = '{}/test_parquet'.format(self.temp_dir)
@@ -80,7 +79,7 @@ class TestWriteByURL(SparklyGlobalSessionTest):
         df.write_ext.by_url('parquet://{}?mode=overwrite'.format(dst_path))
 
         written_df = self.spark.read_ext.by_url('parquet://{}'.format(dst_path))
-        self.assertDataFrameEqual(written_df, TEST_DATA)
+        self.assertRowsEqual(written_df.collect(), TEST_DATA)
 
 
 class TestWriteCassandra(SparklyGlobalSessionTest):
@@ -115,7 +114,7 @@ class TestWriteCassandra(SparklyGlobalSessionTest):
             'sparkly_test/test_writer'
             '?consistency=ONE'
         )
-        self.assertDataFrameEqual(written_df, TEST_DATA)
+        self.assertRowsEqual(written_df.collect(), TEST_DATA)
 
 
 class TestWriteElastic(SparklyGlobalSessionTest):
@@ -148,7 +147,7 @@ class TestWriteElastic(SparklyGlobalSessionTest):
         df = self.spark.read_ext.by_url(
             'elastic://elastic.docker/sparkly_test?es.read.metadata=false',
         )
-        self.assertDataFrameEqual(df, TEST_DATA)
+        self.assertRowsEqual(df.collect(), TEST_DATA)
 
 
 class TestWriteMysql(SparklyGlobalSessionTest):
@@ -181,7 +180,7 @@ class TestWriteMysql(SparklyGlobalSessionTest):
             'sparkly_test/test_writer'
             '?user=root&password='
         )
-        self.assertDataFrameEqual(df, TEST_DATA)
+        self.assertRowsEqual(df.collect(), TEST_DATA)
 
 
 class TestWriteKafka(SparklyGlobalSessionTest):
@@ -216,7 +215,7 @@ class TestWriteKafka(SparklyGlobalSessionTest):
             data = {'key': message.key, 'value': message.value}
             actual_data.append(data)
 
-        self.assertDataFrameEqual(self.expected_data, actual_data)
+        self.assertRowsEqual(self.expected_data.collect(), actual_data)
 
     def test_write_kafka_dataframe_error(self):
         def _errored_serializer(data):
@@ -853,21 +852,16 @@ class TestWriteRedis(SparklyGlobalSessionTest):
             schema=T.StructType([T.StructField('key_1', T.StringType())]),
         )
 
-        with six.assertRaisesRegex(
-                self,
-                ValueError,
-                'redis: expire must be positive',
-        ):
+        with self.assertRaisesRegex(ValueError, 'redis: expire must be positive'):
             df.write_ext.redis(
                 key_by=['key_1'],
                 expire=0,
                 host='redis.docker',
             )
 
-        with six.assertRaisesRegex(
-                self,
-                ValueError,
-                'redis: bzip2, gzip and zlib are the only supported compression codecs',
+        with self.assertRaisesRegex(
+            ValueError,
+            'redis: bzip2, gzip and zlib are the only supported compression codecs',
         ):
             df.write_ext.redis(
                 key_by=['key_1'],
@@ -875,21 +869,16 @@ class TestWriteRedis(SparklyGlobalSessionTest):
                 host='redis.docker',
             )
 
-        with six.assertRaisesRegex(
-                self,
-                ValueError,
-                'redis: max pipeline size must be positive',
-        ):
+        with self.assertRaisesRegex(ValueError, 'redis: max pipeline size must be positive'):
             df.write_ext.redis(
                 key_by=['key_1'],
                 max_pipeline_size=0,
                 host='redis.docker',
             )
 
-        with six.assertRaisesRegex(
-                self,
-                ValueError,
-                'redis: only append \(default\), ignore and overwrite modes are supported',
+        with self.assertRaisesRegex(
+            ValueError,
+            r'redis: only append \(default\), ignore and overwrite modes are supported',
         ):
             df.write_ext.redis(
                 key_by=['key_1'],
@@ -897,10 +886,9 @@ class TestWriteRedis(SparklyGlobalSessionTest):
                 host='redis.docker',
             )
 
-        with six.assertRaisesRegex(
-                self,
-                AssertionError,
-                'redis: At least one of host or redis_client_init must be provided',
+        with self.assertRaisesRegex(
+            AssertionError,
+            'redis: At least one of host or redis_client_init must be provided',
         ):
             df.write_ext.redis(
                 key_by=['key_1'],
@@ -1454,66 +1442,53 @@ class TestWriteRedisByURL(SparklyGlobalSessionTest):
             schema=T.StructType([T.StructField('key_1', T.StringType())]),
         )
 
-        with six.assertRaisesRegex(
-                self,
-                AssertionError,
-                'redis: url must define keyBy columns to construct redis key',
+        with self.assertRaisesRegex(
+            AssertionError,
+            'redis: url must define keyBy columns to construct redis key',
         ):
             df.write_ext.by_url('redis://redis.docker')
 
-        with six.assertRaisesRegex(
-                self,
-                ValueError,
-                'redis: true and false \(default\) are the only supported groupByKey values',
+        with self.assertRaisesRegex(
+            ValueError,
+            r'redis: true and false \(default\) are the only supported groupByKey values',
         ):
             df.write_ext.by_url('redis://redis.docker?keyBy=key_1&groupByKey=tru')
 
-        with six.assertRaisesRegex(
-                self,
-                ValueError,
-                'redis: true and false \(default\) are the only supported excludeKeyColumns '
-                'values',
+        with self.assertRaisesRegex(
+            ValueError,
+            r'redis: true and false \(default\) are the only supported excludeKeyColumns values',
         ):
             df.write_ext.by_url('redis://redis.docker?keyBy=key_1&excludeKeyColumns=tru')
 
-        with six.assertRaisesRegex(
-                self,
-                ValueError,
-                'redis: expire must be positive',
-        ):
+        with self.assertRaisesRegex(ValueError, 'redis: expire must be positive'):
             df.write_ext.by_url('redis://redis.docker?keyBy=key_1&expire=0')
 
-        with six.assertRaisesRegex(
-                self,
-                ValueError,
-                'redis: expire must be a base 10, positive integer',
+        with self.assertRaisesRegex(
+            ValueError,
+            'redis: expire must be a base 10, positive integer',
         ):
             df.write_ext.by_url('redis://redis.docker?keyBy=key_1&expire=0x11')
 
-        with six.assertRaisesRegex(
-                self,
-                ValueError,
-                'redis: bzip2, gzip and zlib are the only supported compression codecs',
+        with self.assertRaisesRegex(
+            ValueError,
+            'redis: bzip2, gzip and zlib are the only supported compression codecs',
         ):
             df.write_ext.by_url('redis://redis.docker?keyBy=key_1&compression=snappy')
 
-        with six.assertRaisesRegex(
-                self,
-                ValueError,
-                'redis: max pipeline size must be positive',
+        with self.assertRaisesRegex(
+            ValueError,
+            'redis: max pipeline size must be positive',
         ):
             df.write_ext.by_url('redis://redis.docker?keyBy=key_1&maxPipelineSize=0')
 
-        with six.assertRaisesRegex(
-                self,
-                ValueError,
-                'redis: maxPipelineSize must be a base 10, positive integer',
+        with self.assertRaisesRegex(
+            ValueError,
+            'redis: maxPipelineSize must be a base 10, positive integer',
         ):
             df.write_ext.by_url('redis://redis.docker?keyBy=key_1&maxPipelineSize=0x11')
 
-        with six.assertRaisesRegex(
-                self,
-                ValueError,
-                'redis: only append \(default\), ignore and overwrite modes are supported',
+        with self.assertRaisesRegex(
+            ValueError,
+            r'redis: only append \(default\), ignore and overwrite modes are supported',
         ):
             df.write_ext.by_url('redis://redis.docker?keyBy=key_1&mode=error')

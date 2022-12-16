@@ -16,6 +16,7 @@
 import json
 import uuid
 import pickle
+import time
 import unittest
 
 from sparkly.session import SparklySession
@@ -93,13 +94,14 @@ class TestCassandraFixtures(SparklyGlobalSessionTest):
         )
 
         with data_in_cassandra:
+            time.sleep(2)  # wait till keyspace is up
             df = self.spark.read_ext.by_url('cassandra://cassandra.docker/sparkly_test/test')
-            self.assertDataFrameEqual(df, [
+            self.assertRowsEqual(df.select('uid', 'countries').collect(), [
                 {
                     'uid': '1',
                     'countries': {'AE': 13, 'BE': 1, 'BH': 3, 'CA': 1, 'DZ': 1, 'EG': 206},
                 },
-            ], fields=['uid', 'countries'])
+            ])
 
 
 class TestMysqlFixtures(SparklyGlobalSessionTest):
@@ -118,7 +120,7 @@ class TestMysqlFixtures(SparklyGlobalSessionTest):
 
     def test_mysql_fixture(self):
         df = self.spark.read_ext.by_url('mysql://mysql.docker/sparkly_test/test?user=root&password=')
-        self.assertDataFrameEqual(df, [
+        self.assertRowsEqual(df.collect(), [
             {'id': 1, 'name': 'john', 'surname': 'sk', 'age': 111},
         ])
 
@@ -141,7 +143,7 @@ class TestElasticFixture(SparklyGlobalSessionTest):
         df = self.spark.read_ext.by_url(
             'elastic://elastic.docker/sparkly_test_fixture?es.read.metadata=false'
         )
-        self.assertDataFrameEqual(df, [{'name': 'John', 'age': 56}])
+        self.assertRowsEqual(df.collect(), [{'name': 'John', 'age': 56}])
 
 
 class TestKafkaFixture(SparklyGlobalSessionTest):
@@ -177,7 +179,7 @@ class TestKafkaFixture(SparklyGlobalSessionTest):
         expected_data = self.spark.read.json(
             absolute_path(__file__, 'resources', 'test_fixtures', 'kafka.json')
         )
-        self.assertDataFrameEqual(expected_data, actual_data)
+        self.assertRowsEqual(expected_data.collect(), actual_data)
 
 
 class TestKafkaWatcher(SparklyGlobalSessionTest):
@@ -201,7 +203,7 @@ class TestKafkaWatcher(SparklyGlobalSessionTest):
         with kafka_watcher:
             expected_count = self.write_data(input_df, host, topic, port)
         self.assertEqual(kafka_watcher.count, expected_count)
-        self.assertDataFrameEqual(kafka_watcher.df, expected_data)
+        self.assertRowsEqual(kafka_watcher.df.collect(), expected_data)
 
         with kafka_watcher:
             pass
@@ -212,7 +214,7 @@ class TestKafkaWatcher(SparklyGlobalSessionTest):
         with kafka_watcher:
             expected_count = self.write_data(input_df, host, topic, port)
         self.assertEqual(kafka_watcher.count, expected_count)
-        self.assertDataFrameEqual(kafka_watcher.df, expected_data)
+        self.assertRowsEqual(kafka_watcher.df.collect(), expected_data)
 
     def get_test_data(self, filename):
         file_path = absolute_path(__file__, 'resources', 'test_testing', filename)

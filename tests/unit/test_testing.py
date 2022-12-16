@@ -67,25 +67,6 @@ class TestAssertRowsEqual(unittest.TestCase):
         with self.assertRaises(AssertionError):
             SparklyTest().assertRowsEqual(first, second, ignore_order=True)
 
-    def test_row(self):
-        first = T.Row(one=1, two=2, three=3, four=4)
-        second = T.Row(three=3, two=2, four=4, one=1)
-
-        # Spark currently sorts the fields of each row internally
-        # so these will match...
-        SparklyTest().assertRowsEqual(first, second)
-        self.assertEqual(first, second)
-
-        # but since Rows extend tuples, only the values are checked as
-        # long as the fields define the same alpha order
-        first = T.Row(one=1, two=2, three=3, four=4)
-        second = T.Row(th=3, tw=2, f=4, o=1)
-
-        # We fix this in our version by default
-        with self.assertRaises(AssertionError):
-            SparklyTest().assertRowsEqual(first, second)
-        self.assertEqual(first, second)
-
     def test_datatype(self):
         first = T.StructType([
             T.StructField('f1', T.BooleanType()),

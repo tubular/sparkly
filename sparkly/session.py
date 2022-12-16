@@ -242,7 +242,7 @@ class SparklySession(SparkSession):
             if isinstance(defn, str):
                 self.sql('create temporary function {} as "{}"'.format(name, defn))
             elif isinstance(defn, tuple):
-                self.catalog.registerFunction(name, *defn)
+                self.udf.register(name, *defn)
             else:
                 raise NotImplementedError('Incorrect UDF definition: {}: {}'.format(name, defn))
 

@@ -17,7 +17,6 @@
 from collections import defaultdict
 from functools import reduce
 import operator
-from six import string_types
 
 from pyspark.sql import Column
 from pyspark.sql import functions as F
@@ -181,7 +180,7 @@ def argmax(field, by, condition=None):
     if not isinstance(by, list):
         by = [by]
 
-    if isinstance(field, string_types):
+    if isinstance(field, str):
         field = F.col(field)
 
     by.append(field.alias('__tmp_argmax__'))

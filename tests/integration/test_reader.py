@@ -51,7 +51,7 @@ class SparklyReaderCassandraTest(SparklyGlobalSessionTest):
             consistency='ONE',
         )
 
-        self.assertDataFrameEqual(df, [
+        self.assertRowsEqual(df.collect(), [
             {
                 'countries': {'DZ': 1, 'EG': 206, 'BE': 1, 'CA': 1, 'AE': 13, 'BH': 3},
                 'uid': '1',
@@ -118,7 +118,7 @@ class SparklyReaderElasticTest(SparklyGlobalSessionTest):
             },
         )
 
-        self.assertDataFrameEqual(df, ELASTIC_TEST_DATA)
+        self.assertRowsEqual(df.collect(), ELASTIC_TEST_DATA)
 
 
 class SparklyReaderMySQLTest(SparklyGlobalSessionTest):
@@ -145,7 +145,7 @@ class SparklyReaderMySQLTest(SparklyGlobalSessionTest):
             }
         )
 
-        self.assertDataFrameEqual(df, [
+        self.assertRowsEqual(df.collect(), [
             {'id': 1, 'name': 'john', 'surname': 'sk', 'age': 111},
             {'id': 2, 'name': 'john', 'surname': 'po', 'age': 222},
             {'id': 3, 'name': 'john', 'surname': 'ku', 'age': 333},
@@ -180,8 +180,8 @@ class TestReaderKafka(SparklyGlobalSessionTest):
             value_deserializer=self.json_decoder,
             schema=self.expected_data_df.schema,
         )
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             self.expected_data,
         )
 
@@ -196,7 +196,7 @@ class TestReaderKafka(SparklyGlobalSessionTest):
             schema=self.expected_data_df.schema,
         )
 
-        self.assertDataFrameEqual(df, self.expected_data)
+        self.assertRowsEqual(df.collect(), self.expected_data)
 
         self.fixture.setup_data()
 
@@ -210,7 +210,7 @@ class TestReaderKafka(SparklyGlobalSessionTest):
             schema=self.expected_data_df.schema,
         )
 
-        self.assertDataFrameEqual(df, self.expected_data * 2)
+        self.assertRowsEqual(df.collect(), self.expected_data * 2)
 
         df = self.spark.read_ext.kafka(
             'kafka.docker',
