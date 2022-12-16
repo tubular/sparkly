@@ -24,7 +24,7 @@ import zlib
 
 from pyspark.sql import functions as F
 from pyspark.sql import types as T
-from py4j.protocol import Py4JJavaError
+from pyspark.sql.utils import PythonException
 import redis
 import six
 import ujson as json
@@ -229,7 +229,7 @@ class TestWriteKafka(SparklyGlobalSessionTest):
                 key_serializer=_errored_serializer,
                 value_serializer=_errored_serializer,
             )
-        except Py4JJavaError as ex:
+        except PythonException as ex:
             self.assertIn('this is a testable error', str(ex))
         else:
             raise AssertionError('WriteError exception not raised')

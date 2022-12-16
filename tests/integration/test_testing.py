@@ -238,10 +238,10 @@ class TestSwitchingBetweenTestSessions(unittest.TestCase):
     # during tests
 
     def test_switch_session_between_sparkly_tests(self):
-        # Define a test session with an ES6 dependency
+        # Define a test session with ES 7.14
         class SessionA(SparklySession):
             packages = [
-                'org.elasticsearch:elasticsearch-spark-20_2.11:6.5.4',
+                'org.elasticsearch:elasticsearch-spark-30_2.12:7.14.0',
             ]
 
             repositories = [
@@ -251,10 +251,10 @@ class TestSwitchingBetweenTestSessions(unittest.TestCase):
         class TestSessionA(SparklyTest):
             session = SessionA
 
-        # Define a test session with an ES7 dependency
+        # Define a test session with ES 7.17
         class SessionB(SparklySession):
             packages = [
-                'org.elasticsearch:elasticsearch-spark-20_2.11:7.3.1',
+                'org.elasticsearch:elasticsearch-spark-30_2.12:7.17.8',
             ]
 
             repositories = [
@@ -267,28 +267,30 @@ class TestSwitchingBetweenTestSessions(unittest.TestCase):
         # Make sure that when the ES6 session is set up, the underlying
         # spark session contains the appropriate jars
         TestSessionA.setUpClass()
-        expected_jars = [
-            'file:///root/.ivy2/jars/org.elasticsearch_elasticsearch-spark-20_2.11-6.5.4.jar',
-        ]
+        es_7_14_jar = (
+            'file:///root/.ivy2/jars/org.elasticsearch_elasticsearch-spark-30_2.12-7.14.0.jar'
+        )
         installed_jars = list(TestSessionA.spark._jsc.jars())
-        self.assertEqual(installed_jars, expected_jars)
+        self.assertIn(es_7_14_jar, installed_jars)
         TestSessionA.tearDownClass()
 
         # And now make sure that when the ES7 session is set up, the underlying
         # spark session contains the appropriate jars as well
         TestSessionB.setUpClass()
-        expected_jars = [
-            'file:///root/.ivy2/jars/org.elasticsearch_elasticsearch-spark-20_2.11-7.3.1.jar',
-        ]
+        es_7_17_jar = (
+            'file:///root/.ivy2/jars/org.elasticsearch_elasticsearch-spark-30_2.12-7.17.8.jar'
+        )
         installed_jars = list(TestSessionB.spark._jsc.jars())
-        self.assertEqual(installed_jars, expected_jars)
+        self.assertIn(es_7_17_jar, installed_jars)
+        self.assertNotIn(es_7_14_jar, installed_jars)
+
         TestSessionB.tearDownClass()
 
     def test_switch_global_session_between_sparkly_tests(self):
-        # Define a test session with an ES6 dependency
+        # Define a test session with ES 7.14
         class SessionA(SparklySession):
             packages = [
-                'org.elasticsearch:elasticsearch-spark-20_2.11:6.5.4',
+                'org.elasticsearch:elasticsearch-spark-30_2.12:7.14.0',
             ]
 
             repositories = [
@@ -298,10 +300,10 @@ class TestSwitchingBetweenTestSessions(unittest.TestCase):
         class TestSessionA(SparklyGlobalSessionTest):
             session = SessionA
 
-        # Define a test session with an ES7 dependency
+        # Define a test session with ES 7.17
         class SessionB(SparklySession):
             packages = [
-                'org.elasticsearch:elasticsearch-spark-20_2.11:7.3.1',
+                'org.elasticsearch:elasticsearch-spark-30_2.12:7.17.8',
             ]
 
             repositories = [
@@ -314,19 +316,20 @@ class TestSwitchingBetweenTestSessions(unittest.TestCase):
         # Make sure that when the ES6 session is set up, the underlying
         # spark session contains the appropriate jars
         TestSessionA.setUpClass()
-        expected_jars = [
-            'file:///root/.ivy2/jars/org.elasticsearch_elasticsearch-spark-20_2.11-6.5.4.jar',
-        ]
+        es_7_14_jar = (
+            'file:///root/.ivy2/jars/org.elasticsearch_elasticsearch-spark-30_2.12-7.14.0.jar'
+        )
         installed_jars = list(TestSessionA.spark._jsc.jars())
-        self.assertEqual(installed_jars, expected_jars)
+        self.assertIn(es_7_14_jar, installed_jars)
         TestSessionA.tearDownClass()
 
         # And now make sure that when the ES7 session is set up, the underlying
         # spark session contains the appropriate jars as well
         TestSessionB.setUpClass()
-        expected_jars = [
-            'file:///root/.ivy2/jars/org.elasticsearch_elasticsearch-spark-20_2.11-7.3.1.jar',
-        ]
+        es_7_17_jar = (
+            'file:///root/.ivy2/jars/org.elasticsearch_elasticsearch-spark-30_2.12-7.17.8.jar'
+        )
         installed_jars = list(TestSessionB.spark._jsc.jars())
-        self.assertEqual(installed_jars, expected_jars)
+        self.assertIn(es_7_17_jar, installed_jars)
+        self.assertNotIn(es_7_14_jar, installed_jars)
         TestSessionB.tearDownClass()
