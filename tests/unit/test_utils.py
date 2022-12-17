@@ -215,7 +215,7 @@ class TestSchemaHas(TestCase):
                 {'f1': T.IntegerType()},
             )
 
-        with self.assertRaisesRegex(TypeError, r'f1 is IntegerType\(\), expected LongType\(\)'):
+        with self.assertRaisesRegex(TypeError, r'f1 is IntegerType\(?\)?, expected LongType\(?\)?'):
             schema_has(
                 T.StructType([T.StructField('f1', T.IntegerType())]),
                 T.StructType([T.StructField('f1', T.LongType())]),
@@ -223,7 +223,7 @@ class TestSchemaHas(TestCase):
 
         with self.assertRaisesRegex(
             TypeError,
-            r'f1\.element\.s1 is IntegerType\(\), expected LongType\(\)',
+            r'f1\.element\.s1 is IntegerType\(?\)?, expected LongType\(?\)?',
         ):
             schema_has(
                 T.StructType([
@@ -242,20 +242,26 @@ class TestSchemaHas(TestCase):
 
         with self.assertRaisesRegex(
             TypeError,
-            r'element is IntegerType\(\), expected LongType\(\)',
+            r'element is IntegerType\(?\)?, expected LongType\(?\)?',
         ):
             schema_has(
                 T.ArrayType(T.IntegerType()),
                 T.ArrayType(T.LongType()),
             )
 
-        with self.assertRaisesRegex(TypeError, r'key is StringType\(\), expected LongType\(\)'):
+        with self.assertRaisesRegex(
+            TypeError,
+            r'key is StringType\(?\)?, expected LongType\(?\)?',
+        ):
             schema_has(
                 T.MapType(T.StringType(), T.IntegerType()),
                 T.MapType(T.LongType(), T.IntegerType()),
             )
 
-        with self.assertRaisesRegex(TypeError, r'value is IntegerType\(\), expected LongType\(\)'):
+        with self.assertRaisesRegex(
+            TypeError,
+            r'value is IntegerType\(?\)?, expected LongType\(?\)?'
+        ):
             schema_has(
                 T.MapType(T.StringType(), T.IntegerType()),
                 T.MapType(T.StringType(), T.LongType()),
@@ -286,7 +292,7 @@ class TestSchemaHas(TestCase):
 
         with self.assertRaisesRegex(
             TypeError,
-            r'element is IntegerType\(\), expected LongType\(\)',
+            r'element is IntegerType\(?\)?, expected LongType\(?\)?',
         ):
             schema_has(
                 T.ArrayType(T.IntegerType()),
