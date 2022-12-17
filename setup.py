@@ -59,7 +59,7 @@ setup(
 
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 5 - Production/Stable',
 
         # Indicate who your project is intended for
         'Intended Audience :: Developers',
@@ -72,6 +72,8 @@ setup(
         # that you indicate whether you support Python 2, Python 3 or both.
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.10',
     ],
 
     # What does your project relate to?
@@ -90,6 +92,12 @@ setup(
     install_requires=requirements,
     extras_require={
         'redis': ['redis>=2.10,<3', 'ujson>=1.33,<2'],
-        'test': ['cassandra-driver>=3.7,<3.8', 'PyMySQL>=0.7,<0.10', 'kafka-python>=2.0.2,<2.1', 'redis>=2.10,<3', 'ujson>=1.33,<2'],
+        'test': [
+            'cassandra-driver>=3.25,<3.26',
+            'PyMySQL>=0.7,<0.10',
+            'kafka-python>=2.0.2,<2.1',
+            'redis>=2.10,<3',
+            'ujson>=1.33,<2',
+        ],
     },
 )

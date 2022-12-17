@@ -49,7 +49,7 @@ class TestMultiJoin(SparklyGlobalSessionTest):
 
         joined_df = SF.multijoin([first_df, second_df, third_df], on='id', how='inner')
 
-        self.assertDataFrameEqual(joined_df, [{'id': 3}])
+        self.assertRowsEqual(joined_df.collect(), [{'id': 3}])
 
     def test_outer_join(self):
         first_df = self.spark.createDataFrame(
@@ -67,7 +67,7 @@ class TestMultiJoin(SparklyGlobalSessionTest):
 
         joined_df = SF.multijoin([first_df, second_df, third_df], on='id', how='outer')
 
-        self.assertDataFrameEqual(joined_df, [{'id': i} for i in [1, 2, 3, 4, 5]])
+        self.assertRowsEqual(joined_df.collect(), [{'id': i} for i in [1, 2, 3, 4, 5]])
 
     def test_coalescing(self):
         first_df = self.spark.createDataFrame(
@@ -87,8 +87,8 @@ class TestMultiJoin(SparklyGlobalSessionTest):
 
         joined_df = SF.multijoin([first_df, second_df], on='id', how='inner', coalesce=['value'])
 
-        self.assertDataFrameEqual(
-            joined_df,
+        self.assertRowsEqual(
+            joined_df.collect(),
             [{'id': 2, 'value': 'hi'}, {'id': 3, 'value': 'you'}, {'id': 4, 'value': 'may'}],
         )
 
@@ -110,8 +110,8 @@ class TestMultiJoin(SparklyGlobalSessionTest):
 
         joined_df = SF.multijoin([first_df, second_df], on='id', how='inner', coalesce=['value'])
 
-        self.assertDataFrameEqual(
-            joined_df,
+        self.assertRowsEqual(
+            joined_df.collect(),
             [{'id': 2, 'value': 'hi'}, {'id': 3, 'value': '3'}, {'id': 4, 'value': 'may'}],
         )
 
@@ -146,8 +146,8 @@ class TestSwitchCase(SparklyGlobalSessionTest):
 
         df = df.withColumn('value', SF.switch_case('name'))
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'name': 'one', 'value': None},
                 {'name': 'two', 'value': None},
@@ -164,8 +164,8 @@ class TestSwitchCase(SparklyGlobalSessionTest):
 
         df = df.withColumn('value', SF.switch_case('name', default=0))
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'name': 'one', 'value': 0},
                 {'name': 'two', 'value': 0},
@@ -182,8 +182,8 @@ class TestSwitchCase(SparklyGlobalSessionTest):
 
         df = df.withColumn('value', SF.switch_case('name', default=F.col('name')))
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'name': 'one', 'value': 'one'},
                 {'name': 'two', 'value': 'two'},
@@ -200,8 +200,8 @@ class TestSwitchCase(SparklyGlobalSessionTest):
 
         df = df.withColumn('value', SF.switch_case('name', one=1, two=2, three=3, default=0))
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'name': 'one', 'value': 1},
                 {'name': 'two', 'value': 2},
@@ -221,8 +221,8 @@ class TestSwitchCase(SparklyGlobalSessionTest):
             SF.switch_case(F.col('name'), one=1, two=2, three=3, default=0),
         )
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'name': 'one', 'value': 1},
                 {'name': 'two', 'value': 2},
@@ -242,8 +242,8 @@ class TestSwitchCase(SparklyGlobalSessionTest):
             SF.switch_case('name', {'one': 11, 'three': 33}, one=1, two=2, three=3, default=0),
         )
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'name': 'one', 'value': 11},
                 {'name': 'two', 'value': 2},
@@ -263,8 +263,8 @@ class TestSwitchCase(SparklyGlobalSessionTest):
             SF.switch_case('value', {1: 'one', 2: 'two', 3: 'three'}, default='hi'),
         )
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'name': 'one', 'value': 1},
                 {'name': 'two', 'value': 2},
@@ -292,8 +292,8 @@ class TestSwitchCase(SparklyGlobalSessionTest):
             ),
         )
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'value': 1, 'value_2': 11},
                 {'value': 2, 'value_2': 4},
@@ -320,8 +320,8 @@ class TestSwitchCase(SparklyGlobalSessionTest):
             ),
         )
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'value': 1, 'value_2': 'aloha'},
                 {'value': 2, 'value_2': 'hi'},
@@ -350,8 +350,8 @@ class TestSwitchCase(SparklyGlobalSessionTest):
             ),
         )
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'value': 1, 'value_2': 'bad'},
                 {'value': 2, 'value_2': 'good'},
@@ -392,8 +392,8 @@ class TestArgmax(SparklyGlobalSessionTest):
             )
         )
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'id': '1', 'target': 4, 'value1': 'test1', 'value2': 2},
                 {'id': '2', 'target': 2, 'value1': 'test3', 'value2': 4},
@@ -429,8 +429,8 @@ class TestArgmax(SparklyGlobalSessionTest):
             )
         )
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'id': '1', 'target': 4, 'value1': None, 'value2': 2},
                 {'id': '2', 'target': 2, 'value1': 'test3', 'value2': 4},
@@ -461,8 +461,8 @@ class TestArgmax(SparklyGlobalSessionTest):
             )
         )
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'id': '1', 'value': 'test1'},
                 {'id': '2', 'value': 'test4'},
@@ -496,8 +496,8 @@ class TestArgmax(SparklyGlobalSessionTest):
             )
         )
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'id': '1', 'value': 'test2'},
                 {'id': '2', 'value': 'test4'},
@@ -532,8 +532,8 @@ class TestArgmax(SparklyGlobalSessionTest):
             )
         )
 
-        self.assertDataFrameEqual(
-            df,
+        self.assertRowsEqual(
+            df.collect(),
             [
                 {'id': '1', 'value': 'test1'},
                 {'id': '2', 'value': 'test4'},

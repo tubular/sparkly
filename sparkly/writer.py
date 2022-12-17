@@ -50,7 +50,7 @@ class SparklyWriter(object):
     """
     def __init__(self, df):
         self._df = df
-        self._spark = df.sql_ctx.sparkSession
+        self._spark = df.sparkSession
 
     def by_url(self, url):
         """Write a dataframe to a destination specified by `url`.

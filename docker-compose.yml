@@ -47,17 +47,12 @@ services:
         condition: service_healthy
 
   cassandra.docker:
-    image: cassandra:2.1.13
-    mem_limit: 500M
-    memswap_limit: 600M
-    environment:
-      MAX_HEAP_SIZE: 500M
-      HEAP_NEWSIZE: 200M
+    image: cassandra:4.1
     healthcheck:
-      test: ps ax | grep cassandra
+      test: ["CMD-SHELL", "[ $$(nodetool statusgossip) = running ]"]
 
   elastic.docker:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.3.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.8
     environment:
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
@@ -69,16 +64,15 @@ services:
       retries: 20
 
   mysql.docker:
-    image: mysql:5.7.11
+    image: mysql:8.0
     environment:
       MYSQL_DATABASE: sparkly_test
-      MYSQL_USER: root
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     healthcheck:
-      test: ps ax | grep mysql
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
 
   kafka.docker:
-    image: confluentinc/cp-kafka:6.2.1
+    image: confluentinc/cp-kafka:7.3.0
     depends_on:
       zookeeper.docker:
         condition: service_healthy
@@ -94,11 +88,11 @@ services:
       test: ps ax | grep kafka
 
   redis.docker:
-    image: redis:3.2.4
+    image: redis:7.0
     expose:
-      - 6379
+      - "6379"
     healthcheck:
-      test: ps ax | grep redis
+      test: ["CMD", "redis-cli", "ping"]
 
   zookeeper.docker:
     image: confluent/zookeeper

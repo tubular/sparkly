@@ -23,7 +23,6 @@ except ImportError:
 from pyspark import StorageLevel
 from pyspark.sql import DataFrame
 from pyspark.sql import types as T
-import six
 
 from sparkly.utils import lru_cache, parse_schema, schema_has
 
@@ -204,28 +203,27 @@ class TestSchemaHas(TestCase):
         )
 
     def test_type_mismatch(self):
-        with six.assertRaisesRegex(self, AssertionError, 'Cannot compare heterogeneous types'):
+        with self.assertRaisesRegex(AssertionError, 'Cannot compare heterogeneous types'):
             schema_has(
                 T.StructType([T.StructField('f1', T.IntegerType())]),
                 T.ArrayType(T.IntegerType()),
             )
 
-        with six.assertRaisesRegex(self, AssertionError, 'Cannot compare heterogeneous types'):
+        with self.assertRaisesRegex(AssertionError, 'Cannot compare heterogeneous types'):
             schema_has(
                 T.ArrayType(T.IntegerType()),
                 {'f1': T.IntegerType()},
             )
 
-        with six.assertRaisesRegex(self, TypeError, 'f1 is IntegerType, expected LongType'):
+        with self.assertRaisesRegex(TypeError, r'f1 is IntegerType\(\), expected LongType\(\)'):
             schema_has(
                 T.StructType([T.StructField('f1', T.IntegerType())]),
                 T.StructType([T.StructField('f1', T.LongType())]),
             )
 
-        with six.assertRaisesRegex(
-                self,
-                TypeError,
-                'f1\.element\.s1 is IntegerType, expected LongType',
+        with self.assertRaisesRegex(
+            TypeError,
+            r'f1\.element\.s1 is IntegerType\(\), expected LongType\(\)',
         ):
             schema_has(
                 T.StructType([
@@ -242,32 +240,35 @@ class TestSchemaHas(TestCase):
                 ]),
             )
 
-        with six.assertRaisesRegex(self, TypeError, 'element is IntegerType, expected LongType'):
+        with self.assertRaisesRegex(
+            TypeError,
+            r'element is IntegerType\(\), expected LongType\(\)',
+        ):
             schema_has(
                 T.ArrayType(T.IntegerType()),
                 T.ArrayType(T.LongType()),
             )
 
-        with six.assertRaisesRegex(self, TypeError, 'key is StringType, expected LongType'):
+        with self.assertRaisesRegex(TypeError, r'key is StringType\(\), expected LongType\(\)'):
             schema_has(
                 T.MapType(T.StringType(), T.IntegerType()),
                 T.MapType(T.LongType(), T.IntegerType()),
             )
 
-        with six.assertRaisesRegex(self, TypeError, 'value is IntegerType, expected LongType'):
+        with self.assertRaisesRegex(TypeError, r'value is IntegerType\(\), expected LongType\(\)'):
             schema_has(
                 T.MapType(T.StringType(), T.IntegerType()),
                 T.MapType(T.StringType(), T.LongType()),
             )
 
     def test_undefined_field(self):
-        with six.assertRaisesRegex(self, KeyError, 'f2'):
+        with self.assertRaisesRegex(KeyError, 'f2'):
             schema_has(
                 T.StructType([T.StructField('f1', T.IntegerType())]),
                 T.StructType([T.StructField('f2', T.LongType())]),
             )
 
-        with six.assertRaisesRegex(self, KeyError, 'f1\.element\.s2'):
+        with self.assertRaisesRegex(KeyError, r'f1\.element\.s2'):
             schema_has(
                 T.StructType([
                     T.StructField(
@@ -283,7 +284,10 @@ class TestSchemaHas(TestCase):
                 ]),
             )
 
-        with six.assertRaisesRegex(self, TypeError, 'element is IntegerType, expected LongType'):
+        with self.assertRaisesRegex(
+            TypeError,
+            r'element is IntegerType\(\), expected LongType\(\)',
+        ):
             schema_has(
                 T.ArrayType(T.IntegerType()),
                 T.ArrayType(T.LongType()),

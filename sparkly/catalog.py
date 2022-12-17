@@ -234,15 +234,15 @@ class SparklyCatalog(object):
         """
         properties = (
             self._spark.sql('DESCRIBE DATABASE EXTENDED {}'.format(db_name))
-            .where(F.col('database_description_item') == 'Properties')
-            .select('database_description_value')
+            .where(F.col('info_name') == 'Properties')
+            .select('info_value')
             .first()
         )
 
         parsed_properties = {}
 
         if properties:
-            for name, value in read_db_properties_format(properties.database_description_value):
+            for name, value in read_db_properties_format(properties.info_value):
                 parsed_properties[name] = value
 
         return parsed_properties

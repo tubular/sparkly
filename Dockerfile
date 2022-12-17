@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-FROM python:3.7
+FROM python:3.10
 
 LABEL maintainer="dev@tubularlabs.com"
 

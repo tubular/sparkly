@@ -24,10 +24,10 @@ from sparkly.utils import absolute_path
 
 class SparklyTestSession(SparklySession):
     packages = [
-        'com.datastax.spark:spark-cassandra-connector_2.11:2.4.0',
-        'org.elasticsearch:elasticsearch-spark-20_2.11:7.3.0',
-        'org.apache.spark:spark-sql-kafka-0-10_2.11:2.4.0',
-        'mysql:mysql-connector-java:6.0.6',
+        'com.datastax.spark:spark-cassandra-connector_2.12:3.2.0',
+        'org.elasticsearch:elasticsearch-spark-30_2.12:7.17.8',
+        'org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.1',
+        'mysql:mysql-connector-java:8.0.31',
         'io.confluent:kafka-avro-serializer:3.0.1',
     ]
 
@@ -40,7 +40,7 @@ class SparklyTestSession(SparklySession):
     ]
 
     udfs = {
-        'collect_max': 'brickhouse.udf.collect.CollectMaxUDAF',
+        'collect': 'brickhouse.udf.collect.CollectUDAF',
         'length_of_text': (lambda text: len(text), StringType())
     }
 
