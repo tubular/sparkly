@@ -15,7 +15,7 @@
 #
 
 from sparkly.testing import SparklyGlobalSessionTest
-from tests.integration.base import SparklyTestSession
+from tests.integration.base import SparklyTestSession, SparklyTestSessionWithOldCatalog
 from sparkly.catalog import read_db_properties_format
 
 
@@ -197,3 +197,7 @@ class TestSparklyCatalog(SparklyGlobalSessionTest):
 
         with self.assertRaises(ValueError):
             read_db_properties_format(')')
+
+
+class TestSparklyWithOldCatalog(TestSparklyCatalog):
+    session = SparklyTestSessionWithOldCatalog

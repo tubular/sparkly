@@ -50,3 +50,9 @@ class SparklyTestSession(SparklySession):
         # will be overwritten by additional_options passed in setup_session
         'my.custom.option.3': '319',
     }
+
+
+class SparklyTestSessionWithOldCatalog(SparklyTestSession):
+    options = {
+        'spark.sql.legacy.keepCommandOutputSchema': 'true',
+    }
