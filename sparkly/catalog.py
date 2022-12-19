@@ -232,17 +232,27 @@ class SparklyCatalog(object):
         Returns:
             dict[str,str]: Key/value for properties.
         """
+        describe = self._spark.sql(f'DESCRIBE DATABASE EXTENDED {db_name}')
+
+        if 'database_description_item' in describe.columns:
+            key_col = 'database_description_item'
+            val_col = 'database_description_value'
+        else:
+            key_col = 'info_name'
+            val_col = 'info_value'
+
         properties = (
             self._spark.sql('DESCRIBE DATABASE EXTENDED {}'.format(db_name))
-            .where(F.col('info_name') == 'Properties')
-            .select('info_value')
+            .where(F.col(key_col) == 'Properties')
+            .select(val_col)
             .first()
         )
 
         parsed_properties = {}
 
         if properties:
-            for name, value in read_db_properties_format(properties.info_value):
+            info_value = getattr(properties, val_col)
+            for name, value in read_db_properties_format(info_value):
                 parsed_properties[name] = value
 
         return parsed_properties
