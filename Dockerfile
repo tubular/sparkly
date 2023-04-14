@@ -21,7 +21,9 @@ LABEL maintainer="dev@tubularlabs.com"
 # Install Java 8
 RUN apt-get update && apt-get install -y software-properties-common
 RUN apt-add-repository 'deb http://security.debian.org/debian-security stretch/updates main'
-RUN apt-get update && apt-get install -y openjdk-8-jdk
+RUN apt-get update && apt-get install -y openjdk-8-jdk \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Python env
 ENV CASS_DRIVER_NO_EXTENSIONS=1
