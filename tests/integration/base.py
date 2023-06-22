@@ -18,6 +18,7 @@ import os
 
 from pyspark.sql.types import StringType
 
+import pyspark 
 from sparkly import SparklySession
 from sparkly.utils import absolute_path
 
@@ -26,7 +27,7 @@ class SparklyTestSession(SparklySession):
     packages = [
         'com.datastax.spark:spark-cassandra-connector_2.12:3.2.0',
         'org.elasticsearch:elasticsearch-spark-30_2.12:7.17.8',
-        'org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.1',
+        'org.apache.spark:spark-sql-kafka-0-10_2.12:{}'.format(pyspark.__version__),
         'mysql:mysql-connector-java:8.0.31',
         'io.confluent:kafka-avro-serializer:3.0.1',
     ]

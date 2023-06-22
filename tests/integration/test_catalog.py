@@ -108,11 +108,11 @@ class TestSparklyCatalog(SparklyGlobalSessionTest):
         self.assertTrue(self.spark.catalog_ext.has_table('test_db.test_table'))
         self.assertFalse(self.spark.catalog_ext.has_table('test_db.new_test_table'))
 
-        self.spark.catalog_ext.rename_table('test_db.test_table', 'new_test_table')
+        self.spark.catalog_ext.rename_table('test_db.test_table', 'test_db.new_test_table')
 
         self.assertFalse(self.spark.catalog_ext.has_table('test_db.test_table'))
-        self.assertTrue(self.spark.catalog_ext.has_table('default.new_test_table'))
-        self.assertEqual(self.spark.table('default.new_test_table').count(), 2)
+        self.assertTrue(self.spark.catalog_ext.has_table('test_db.new_test_table'))
+        self.assertEqual(self.spark.table('test_db.new_test_table').count(), 2)
 
     def test_get_table_properties(self):
         properties = self.spark.catalog_ext.get_table_properties('test_table')
