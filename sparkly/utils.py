@@ -175,73 +175,10 @@ def parse_schema(schema):
         ...
         sparkly.exceptions.UnsupportedDataType: Cannot parse type from string: "unsupported"
     """
-    field_type, args_string = re.match('(\w+)<?(.*)>?$', schema).groups()
-    args = _parse_args(args_string) if args_string else []
-
-    if field_type in ATOMIC_TYPES:
-        return ATOMIC_TYPES[field_type]()
-    elif field_type in COMPLEX_TYPES:
-        return COMPLEX_TYPES[field_type](*args)
-    else:
-        message = 'Cannot parse type from string: "{}"'.format(field_type)
-        raise UnsupportedDataType(message)
-
-
-def _parse_args(args_string):
-    args = []
-    balance = 0
-    pos = 0
-    for i, ch in enumerate(args_string):
-        if ch == '<':
-            balance += 1
-        elif ch == '>':
-            balance -= 1
-        elif ch == ',' and balance == 0:
-            args.append(args_string[pos:i])
-            pos = i + 1
-
-    args.append(args_string[pos:])
-
-    return args
-
-
-def _is_atomic_type(obj):
-    return inspect.isclass(obj) and issubclass(obj, T.AtomicType) and obj is not T.DecimalType
-
-
-ATOMIC_TYPES = {
-    _type[1]().simpleString(): _type[1]
-    for _type in inspect.getmembers(T, _is_atomic_type)
-}
-
-
-def _init_map(*args):
-    return T.MapType(
-        keyType=parse_schema(args[0]),
-        valueType=parse_schema(args[1]),
-    )
-
-
-def _init_struct(*args):
-    struct = T.StructType()
-    for item in args:
-        field_name, field_type = item.split(':', 1)
-        field_type = parse_schema(field_type)
-        struct.add(field_name, field_type)
-
-    return struct
-
-
-def _init_array(*args):
-    return T.ArrayType(parse_schema(args[0]))
-
-
-COMPLEX_TYPES = {
-    'map': _init_map,
-    'struct': _init_struct,
-    'array': _init_array,
-}
-
+    try:
+        return T._parse_datatype_string(schema)
+    except Exception as e:
+        raise UnsupportedDataType(f'Cannot parse schema: {schema}: {e}')
 
 def schema_has(t, required_fields):
     """Check whether a complex dataType has specific fields.

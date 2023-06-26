@@ -21,6 +21,7 @@ LABEL maintainer="dev@tubularlabs.com"
 # Install Java 8
 RUN apt-get update && apt-get install -y software-properties-common
 RUN apt-add-repository 'deb http://security.debian.org/debian-security stretch/updates main'
+RUN apt-add-repository 'deb http://deb.debian.org/debian/ sid main'
 RUN apt-get update && apt-get install -y openjdk-8-jdk
 
 # Python env
